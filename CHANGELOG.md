@@ -7,12 +7,39 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.2.0] - 2026-07-28
+
+### Añadido
+
+- **Sistema de niveles**. Cuidar bien al pato da experiencia: sobre todo tenerlo
+  contento con el tiempo (+1/min), y atender una necesidad **cuando estaba baja**
+  (+10). Machacar los botones con las barras llenas no puntúa. También suman la
+  primera atención del día, con bonus por días seguidos, y hablar por el chat.
+  Nunca se pierde nivel, y con el ordenador apagado no se acumula experiencia.
+- **Diseños de pato desbloqueables**: Patito (Nv 1), Patita (Nv 3), Pato duro (Nv 6),
+  Pato gánster (Nv 10) y Capo de la mafia (Nv 15). Se ven todos desde el principio,
+  los que faltan atenuados y con un candado que indica su nivel.
+- Panel de **Diseños** en el menú, con el nivel, la barra de progreso y una
+  explicación desplegable de cómo se gana experiencia.
+- El **nivel acompaña al nombre en el chat**, para poder compararse con los demás.
+- Aviso al subir de nivel, que indica si eso ha desbloqueado algún diseño.
+- El generador de sprites procesa **varios diseños** a la vez, uno por cada arte en
+  `assets/sprites/fuentes/`, y hay una guía para añadirlos en
+  [`docs/DISENOS.md`](docs/DISENOS.md).
+
 ### Cambiado
 
 - Los iconos que aparecen sobre el pato son ahora los mismos que los de sus barras de
   estado, para saber de un vistazo qué necesita. El de "triste" era una gota, que se
   confundía con suciedad; ahora es un corazón roto. El de hambre pasa de pan a carne,
   igual que en el panel.
+- El pato de partida pasa a ser el **Patito**: el pato duro se convierte en una
+  recompensa de nivel 6.
+
+### Notas
+
+- Cuatro de los cinco diseños son **provisionales**: por ahora son el pato duro teñido
+  de otro color, a la espera de su arte propio. El sistema ya funciona con ellos.
 
 
 ## [0.1.3] - 2026-07-28
@@ -113,7 +140,8 @@ Primera versión.
   funciona con normalidad pero sin chat.
 - El instalador no está firmado, así que Windows SmartScreen mostrará un aviso.
 
-[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.1.3...HEAD
+[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.2.0
 [0.1.3]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.1.3
 [0.1.2]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.1.2
 [0.1.1]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.1.1

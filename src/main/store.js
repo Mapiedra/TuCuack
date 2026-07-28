@@ -37,12 +37,15 @@ const SETTINGS_FILE = 'settings.json';
 
 const DEFAULT_STATE = {
   stats: { hunger: 80, energy: 80, hygiene: 80, happiness: 80 },
+  // Experiencia y racha de días (ver renderer/game/Level.js).
+  level: { xp: 0, racha: 0, ultimoDia: '', chatHoy: 0 },
   savedAt: 0
 };
 
 const DEFAULT_SETTINGS = {
   displayName: '',
-  autoLaunch: false
+  autoLaunch: false,
+  skin: 'normal'        // diseño de pato elegido (renderer/game/skins.js)
 };
 
 module.exports = {
@@ -51,6 +54,7 @@ module.exports = {
     if (!state || typeof state !== 'object') return { ...DEFAULT_STATE };
     return {
       stats: { ...DEFAULT_STATE.stats, ...(state.stats || {}) },
+      level: { ...DEFAULT_STATE.level, ...(state.level || {}) },
       savedAt: typeof state.savedAt === 'number' ? state.savedAt : 0
     };
   },
@@ -58,6 +62,7 @@ module.exports = {
   save(data) {
     writeJson(STATE_FILE, {
       stats: (data && data.stats) || DEFAULT_STATE.stats,
+      level: (data && data.level) || DEFAULT_STATE.level,
       savedAt: Date.now()
     });
   },

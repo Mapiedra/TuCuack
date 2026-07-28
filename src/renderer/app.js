@@ -10,12 +10,15 @@ import { buildStatsPanel } from './ui/panels.js';
 import { buildSettingsPanel } from './ui/settings.js';
 import { openChatInput } from './ui/chatInput.js';
 import { showStatsTooltip, hideStatsTooltip } from './ui/tooltip.js';
+import { buildSkinsPanel } from './ui/skinsPanel.js';
+import { Level } from './game/Level.js';
+import { SKINS, skinPorId, estaDesbloqueada, SKIN_POR_DEFECTO } from './game/skins.js';
 import { ChatClient } from './chat/chatClient.js';
 import { SpeechBubbles } from './chat/speechBubble.js';
 
 const api = window.pato;
 
-let duck, behavior, tam, chat, speech;
+let duck, behavior, tam, chat, speech, level;
 let settings = { displayName: '', autoLaunch: false };
 let config = { version: '0.0.0', isDev: false };
 
@@ -91,10 +94,17 @@ async function main() {
 
   // El suelo es la parte superior de la barra de tareas: el pato camina ahí y
   // el overlay ocupa toda la pantalla para poder arrastrarlo a cualquier punto.
+  // Experiencia y diseño elegido (si el guardado apunta a uno que ya no está
+  // desbloqueado o no existe, se vuelve al de por defecto).
+  level = new Level(saved.level);
+  const skin = skinPorId(settings.skin);
+  const skinValida = skin && estaDesbloqueada(skin, level.nivel) ? skin.id : SKIN_POR_DEFECTO;
+
   duck = new Duck(
     document.getElementById('duck'),
     document.getElementById('duckCanvas'),
-    config.ground || 0
+    config.ground || 0,
+    skinValida
   );
   duck.setX(Math.min(window.innerWidth - duck.width - 40, 260));
   api.onLayoutChanged((d) => duck.setGround(d && d.ground));
@@ -128,6 +138,16 @@ async function main() {
     else if (kind === 'sleep' || kind === 'wake') behavior.refresh();
   });
 
+  // Al subir de nivel se avisa, y se cuenta si eso ha desbloqueado un diseño.
+  level.on('nivel', ({ nivel, rango }) => {
+    const nuevas = SKINS.filter((s) => s.nivel === nivel);
+    const extra = nuevas.length
+      ? `<br>Nuevo diseño: <b>${nuevas.map((s) => s.nombre).join(', ')}</b>`
+      : '';
+    avisoNivel(`¡Nivel <b>${nivel}</b>! · ${rango}${extra}`);
+    behavior.playOnce('happy', 1.6);
+  });
+
   setupChat();
   setupInteraction();
   setupTray();
@@ -158,6 +178,9 @@ async function main() {
                       paneles: openOverlays.size, timer: !!hoverTimer }),
       verTooltip: () => showStatsTooltip(tam, duckName(), duckAnchor()),
       verMenu: () => { const p = duckAnchor(); openDuckMenu(p.x, p.y); },
+      verSkins: () => { const p = duckAnchor(); openSkins(p.x, p.y); },
+      level,
+      darXp: (n) => { level.xp += n; return level.nivel; },
       act: doAction,
       chat,
       settings: () => settings,
@@ -180,8 +203,11 @@ function startLoops(statusBubbles) {
   };
   requestAnimationFrame(frame);
 
-  // Decaimiento de necesidades (1 s).
-  setInterval(() => tam.tick(1), 1000);
+  // Decaimiento de necesidades y experiencia por convivencia (1 s).
+  setInterval(() => {
+    tam.tick(1);
+    level.convivencia(1, tam.mood() === 'contento');
+  }, 1000);
 
   // Burbuja de ánimo (2 s).
   setInterval(() => {
@@ -194,7 +220,7 @@ function startLoops(statusBubbles) {
 }
 
 function saveNow() {
-  api.saveState({ stats: tam.stats });
+  api.saveState({ stats: tam.stats, level: level.toJSON() });
 }
 
 // ---- Interacción: arrastre + menú clic derecho --------------------------
@@ -385,6 +411,7 @@ function openDuckMenu(x, y) {
     { sep: true },
     { label: '💬 Hablar…', onClick: () => openTalk(x, y) },
     { label: '📊 Estadísticas', onClick: () => openStats(x, y) },
+    { label: `👕 Diseños · Nv ${level.nivel}`, onClick: () => openSkins(x, y) },
     { label: '⚙️ Ajustes…', onClick: () => openSettings(x, y) },
     { sep: true },
     { label: '❌ Salir', onClick: () => api.quit() }
@@ -404,11 +431,22 @@ function openDuckMenu(x, y) {
 }
 
 // ---- Acciones -----------------------------------------------------------
+// Necesidad que atiende cada acción, para saber si hacía falta de verdad.
+const STAT_DE_ACCION = { feed: 'hunger', play: 'happiness', clean: 'hygiene' };
+
 function doAction(name) {
-  if (name === 'feed') tam.feed();
-  else if (name === 'play') tam.play();
-  else if (name === 'clean') tam.clean();
-  else if (name === 'sleep') tam.toggleSleep();
+  // Se mira el valor ANTES de actuar: sólo da experiencia si estaba bajo, así
+  // machacar el botón con la barra llena no sirve de nada.
+  const stat = STAT_DE_ACCION[name];
+  const previo = stat ? tam.stats[stat] : null;
+
+  let hecho = false;
+  if (name === 'feed') hecho = tam.feed();
+  else if (name === 'play') hecho = tam.play();
+  else if (name === 'clean') hecho = tam.clean();
+  else if (name === 'sleep') hecho = tam.toggleSleep();
+
+  if (hecho && previo != null) level.cuidado(previo);
 }
 
 // ---- Paneles ------------------------------------------------------------
@@ -469,6 +507,31 @@ function duckName() {
   return (settings.displayName || '').trim() || 'Pato';
 }
 
+function openSkins(x, y) {
+  const { el } = buildSkinsPanel(level, duck.skinId, {
+    onElegir: (id) => {
+      duck.setSkin(id);
+      settings = { ...settings, skin: id };
+      api.saveSettings(settings);
+    },
+    onClose: () => unregisterOverlay(el)
+  });
+  mountPanel(el, x, y);
+}
+
+/** Cartelito de subida de nivel, sobre el pato. */
+function avisoNivel(html) {
+  const el = document.createElement('div');
+  el.className = 'levelup';
+  el.innerHTML = html;      // sólo texto propio, sin datos de terceros
+  document.body.appendChild(el);
+  const a = duckAnchor();
+  el.style.left = `${Math.max(8, Math.min(a.x - el.offsetWidth / 2,
+    window.innerWidth - el.offsetWidth - 8))}px`;
+  el.style.top = `${Math.max(8, a.y - el.offsetHeight - 10)}px`;
+  setTimeout(() => el.remove(), 5000);
+}
+
 function openTalk(x, y) {
   const { el } = openChatInput(x, Math.max(8, y - 60), {
     onSend: (text) => sendChat(text),
@@ -505,9 +568,12 @@ function setupChat() {
 }
 
 function sendChat(text) {
-  const name = duckName();
+  // El nivel viaja con el mensaje: es lo que hace que la progresión se vea
+  // entre compañeros, que es la gracia de tenerla.
+  const name = `${duckName()} · Nv ${level.nivel}`;
   chat.send(name, text);
   speech.show(name, text, { self: true });
+  level.chat();
   if (behavior) behavior.playOnce('talk', 2.2);
 }
 

@@ -53,6 +53,13 @@ puntero. Se descartó cubrir todo el escritorio con una única ventana gigante p
 penaliza el rendimiento y se comporta mal con monitores de distinta escala; así cada
 monitor lo dibuja a su propia resolución.
 
+**Niveles y diseños.** Cuidar bien al pato da experiencia: sobre todo tenerlo
+contento con el tiempo, y atender las necesidades **cuando de verdad hacen falta**
+(machacar los botones con las barras llenas no puntúa). Al subir de nivel se
+desbloquean diseños de pato, que se ven todos desde el principio pero con un candado
+hasta que se alcanza su nivel. El nivel viaja con los mensajes del chat, así que se
+compara con el de los demás. Detalles en [`docs/DISENOS.md`](docs/DISENOS.md).
+
 **Chat entre patos.** Todos los patos comparten **un único canal común**. Lo que
 escribes aparece en tu bocadillo y en el de los demás, y viceversa. Cada pato tiene un
 **nombre**, que se comprueba que no esté siendo usado por otro pato conectado.
@@ -96,12 +103,16 @@ los instaladores publicados lleven el chat, define los secrets `SUPABASE_URL` y
 
 ## Sprites y animaciones
 
-El sheet que usa la app (`assets/sprites/duck.png` + `duck.json`) **se genera** desde el
+Los sheets que usa la app (`assets/sprites/duck-<id>.png`) **se generan** desde el
 arte fuente:
 
 ```bash
 npm run sprites      # python tools/pack_sprites.py
 ```
+
+Procesa **todos** los diseños que haya en `assets/sprites/fuentes/<id>.webp` y produce
+un `assets/sprites/duck-<id>.png` por cada uno. Cómo debe ser ese arte y qué diseños
+faltan por dibujar: [`docs/DISENOS.md`](docs/DISENOS.md).
 
 El arte fuente trae cada frame a distinta escala y altura, y varios con el pato
 recortado (no cabía en su celda). El script lo corrige: segmenta el **cuerpo** por color

@@ -28,9 +28,15 @@ import numpy as np
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, 'assets', 'sprites', 'spritesheet-source.webp')
-OUT_PNG = os.path.join(ROOT, 'assets', 'sprites', 'duck.png')
-OUT_JSON = os.path.join(ROOT, 'assets', 'sprites', 'duck.json')
+SPRITES = os.path.join(ROOT, 'assets', 'sprites')
+FUENTES = os.path.join(SPRITES, 'fuentes')
+
+# Cada arte fuente en assets/sprites/fuentes/<id>.webp produce el sheet
+# assets/sprites/duck-<id>.png de un diseño de pato. Todos comparten la misma
+# rejilla y la misma estructura de animaciones.
+SRC = None          # lo fija main() para cada diseño
+OUT_PNG = None
+OUT_JSON = None
 
 FW, FH = 192, 208          # rejilla del arte fuente
 
@@ -399,10 +405,32 @@ def swing_from_row(src, row, n):
 
 
 def main():
+    """Procesa todos los diseños que haya en assets/sprites/fuentes/."""
+    global SRC, OUT_PNG, OUT_JSON
+    if not os.path.isdir(FUENTES):
+        print(f'No existe {FUENTES}')
+        return 1
+    artes = sorted(f for f in os.listdir(FUENTES)
+                   if f.lower().endswith(('.webp', '.png')))
+    if not artes:
+        print(f'No hay arte fuente en {FUENTES}')
+        return 1
+
+    problemas = 0
+    for arte in artes:
+        ident = os.path.splitext(arte)[0]
+        SRC = os.path.join(FUENTES, arte)
+        OUT_PNG = os.path.join(SPRITES, f'duck-{ident}.png')
+        OUT_JSON = os.path.join(SPRITES, f'duck-{ident}.json')
+        print(f'\n=== diseño "{ident}" ===')
+        problemas += pack_one()
+    return problemas
+
+
+def pack_one():
     src = load_source()
 
     # --- Animaciones tomadas del arte fuente -----------------------------
-    # (nombre, fila, nº frames, fps, loop)
     # (nombre, fila, nº frames, fps, loop, voltear)
     # `voltear` es para las filas dibujadas mirando a la izquierda: el resto del
     # arte mira a la derecha, que es la dirección canónica.

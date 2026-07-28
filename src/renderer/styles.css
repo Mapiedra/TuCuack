@@ -270,6 +270,118 @@ html, body {
   animation: pop 0.2s ease;
 }
 
+/* ---- Panel de diseños --------------------------------------------------- */
+.panel-skins { width: 330px; }
+
+.nivel-cab { margin-bottom: 10px; }
+.nivel-txt { font-size: 13px; margin-bottom: 4px; }
+.nivel-barra {
+  height: 9px;
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.nivel-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  border-radius: 5px;
+  transition: width 0.3s ease;
+}
+
+.skins-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  margin-bottom: 10px;
+}
+
+.skin-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 3px 5px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  font: inherit;
+  color: var(--ink);
+  overflow: hidden;
+}
+.skin-card:hover:not(:disabled) { border-color: var(--accent); background: rgba(255, 183, 3, 0.16); }
+.skin-card.puesta { border-color: var(--ink); background: rgba(255, 183, 3, 0.22); }
+
+/* Retrato: el primer frame del sheet (idle), recortado al pato.
+   El sheet mide 2320px de ancho; a 888px cada frame queda en ~89px, y el
+   desplazamiento descarta el margen transparente que rodea al dibujo. */
+.skin-mini {
+  width: 54px;
+  height: 56px;
+  background-repeat: no-repeat;
+  background-size: 888px auto;
+  background-position: -21px -33px;
+  image-rendering: pixelated;
+}
+.skin-nombre { font-size: 10px; text-align: center; line-height: 1.15; }
+
+/* Bloqueada: se ve, pero apagada y con el candado encima. */
+.skin-card.bloqueada { cursor: default; background: rgba(0, 0, 0, 0.06); }
+.skin-card.bloqueada .skin-mini { filter: grayscale(1) brightness(0.55) opacity(0.55); }
+.skin-card.bloqueada .skin-nombre { color: #999; }
+.skin-lock {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(30, 30, 40, 0.86);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.skin-tick {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-2);
+}
+
+.ayuda-xp { font-size: 11px; border-top: 1px solid rgba(0, 0, 0, 0.12); padding-top: 7px; }
+.ayuda-xp summary { cursor: pointer; font-weight: 600; font-size: 12px; }
+.ayuda-xp p { margin: 6px 0; line-height: 1.35; }
+.ayuda-xp ul { margin: 6px 0; padding-left: 0; list-style: none; }
+.ayuda-xp li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px dotted rgba(0, 0, 0, 0.12);
+}
+.ayuda-xp li b { color: var(--accent-2); white-space: nowrap; }
+
+/* Aviso de subida de nivel. */
+.levelup {
+  position: absolute;
+  z-index: 95;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 10px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.25);
+  animation: pop 0.25s ease;
+  pointer-events: none;
+}
+.levelup b { color: var(--accent); }
+
 /* ---- Globo de estadísticas (al dejar el ratón sobre el pato) ------------- */
 .tooltip {
   position: absolute;

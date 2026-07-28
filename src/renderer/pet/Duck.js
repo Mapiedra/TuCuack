@@ -34,7 +34,8 @@ const STATE_ANIM = {
 const CANON_DIR = 1; // el arte mira a la derecha
 
 export class Duck {
-  constructor(root, canvas, groundOffset = 0) {
+  constructor(root, canvas, groundOffset = 0, skinId = 'normal') {
+    this.skinId = skinId;
     this.el = root;              // #duck
     this.canvas = canvas;        // #duckCanvas
     this.x = 200;
@@ -56,16 +57,25 @@ export class Duck {
     const img = new Image();
     img.onload = () => {
       const sheet = { image: img, frameW: SHEET.frameW, frameH: SHEET.frameH, animations: SHEET.animations };
+      if (this.animator) this.animator.stop();
       this.animator = new SpriteAnimator(this.canvas, sheet);
       this.ready = true;
       this.animator.play(STATE_ANIM[this.state] || 'idle');
     };
     img.onerror = () => {
-      console.warn('[duck] no se pudo cargar el sprite; usando emoji de respaldo');
+      console.warn(`[duck] no se pudo cargar el diseño "${this.skinId}"; usando emoji`);
       this._emojiFallback();
     };
     // Ruta relativa al documento (src/renderer/index.html).
-    img.src = '../../assets/sprites/duck.png';
+    img.src = `../../assets/sprites/duck-${this.skinId}.png`;
+  }
+
+  /** Cambia el diseño del pato en caliente. */
+  setSkin(skinId) {
+    if (!skinId || skinId === this.skinId) return;
+    this.skinId = skinId;
+    this.ready = false;
+    this._loadSheet();
   }
 
   _emojiFallback() {
