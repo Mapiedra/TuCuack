@@ -187,6 +187,8 @@ async function main() {
       darXp: (n) => { level.xp += n; return level.nivel; },
       act: doAction,
       chat,
+      speech,
+      decir: (from, text) => speech.show(from, text, { self: false }),
       settings: () => settings,
       name: duckName
     };

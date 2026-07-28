@@ -7,6 +7,23 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.2.2] - 2026-07-28
+
+### Corregido
+
+Repaso a la maquetación del bocadillo del chat, que tenía cuatro problemas:
+
+- La **punta** eran dos triángulos superpuestos en posiciones fijas: ni quedaba
+  centrada bajo el globo ni encajaba consigo misma, y dejaba una costura. Ahora es un
+  cuadrado girado que continúa el contorno del globo.
+- El **texto se partía palabra a palabra**: el globo cuelga de una capa sin ancho, así
+  que se encogía al mínimo en lugar de ocupar lo que necesita.
+- El globo **daba un salto al aparecer**, porque la animación de entrada sobrescribía
+  el desplazamiento que lo centra sobre el pato.
+- Se **salía de la pantalla** cuando el pato andaba cerca de un borde. Ahora se aparta
+  lo justo y la punta se compensa para seguir señalándole.
+
+
 ## [0.2.1] - 2026-07-28
 
 ### Añadido
@@ -159,7 +176,8 @@ Primera versión.
   funciona con normalidad pero sin chat.
 - El instalador no está firmado, así que Windows SmartScreen mostrará un aviso.
 
-[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.2.1...HEAD
+[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.2.2
 [0.2.1]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.2.1
 [0.2.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.2.0
 [0.1.3]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.1.3
