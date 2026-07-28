@@ -16,12 +16,27 @@ let tray = null;
 /** @type {{ send: Function, isReady: Function } | null} */
 let chat = null;
 
-// El overlay ocupa la pantalla completa para poder arrastrar el pato a
-// cualquier punto. Se usa `bounds` (no `workArea`) para cubrir también la barra
-// de tareas, sobre la que el pato camina.
+// Monitor en el que vive el pato ahora mismo. El overlay cubre ese monitor
+// entero (se usa `bounds` y no `workArea` para tapar también la barra de
+// tareas, sobre la que el pato camina). Al arrastrarlo a otro monitor, la
+// ventana se muda allí en lugar de abarcar todo el escritorio: así no hay una
+// ventana gigante que penalice el rendimiento ni problemas con monitores de
+// distinta escala, porque cada uno se dibuja en el suyo.
+let currentDisplayId = null;
+
 function computeBounds() {
-  const b = screen.getPrimaryDisplay().bounds;
-  return { x: b.x, y: b.y, width: b.width, height: b.height };
+  const d = currentDisplay();
+  return { x: d.bounds.x, y: d.bounds.y, width: d.bounds.width, height: d.bounds.height };
+}
+
+function currentDisplay() {
+  if (currentDisplayId != null) {
+    const found = screen.getAllDisplays().find((d) => d.id === currentDisplayId);
+    if (found) return found;
+  }
+  const d = screen.getPrimaryDisplay();
+  currentDisplayId = d.id;
+  return d;
 }
 
 // Línea de "suelo" del pato, medida desde el borde inferior de la pantalla.
@@ -73,6 +88,10 @@ function createWindow() {
 
   win.once('ready-to-show', () => {
     win.show();
+    // Windows recorta al área de trabajo el tamaño pedido en el constructor, de
+    // modo que la ventana no llegaría a cubrir la barra de tareas. Repetir los
+    // bounds con la ventana ya visible sí surte efecto.
+    win.setBounds(computeBounds());
     if (isDev) win.webContents.openDevTools({ mode: 'detach' });
     if (process.argv.includes('--capture') || process.argv.includes('--probe')) {
       require('./capture').run(win, app, path);
@@ -93,6 +112,56 @@ function createWindow() {
   screen.on('display-added', reposition);
   screen.on('display-removed', reposition);
 }
+
+// ---- Arrastrar el pato entre monitores ----------------------------------
+//
+// Mientras se arrastra, se sigue el cursor a nivel de escritorio: los eventos
+// del renderer sólo llegan mientras el puntero está sobre la ventana, así que
+// no bastarían para detectar que ha salido hacia otro monitor. Cuando el cursor
+// entra en otro, la ventana se muda allí y el pato reaparece bajo el puntero.
+
+let dragTimer = null;
+const DRAG_POLL_MS = 40;
+
+function displayAt(point) {
+  return screen.getDisplayNearestPoint(point);
+}
+
+function moveToDisplay(display, cursor) {
+  if (!win || win.isDestroyed()) return;
+  currentDisplayId = display.id;
+  win.setBounds({
+    x: display.bounds.x, y: display.bounds.y,
+    width: display.bounds.width, height: display.bounds.height
+  });
+  // Sigue por encima de todo tras la mudanza.
+  win.setAlwaysOnTop(true, 'screen-saver');
+  win.webContents.send('display:changed', {
+    ground: groundFromBottom(),
+    width: display.bounds.width,
+    height: display.bounds.height,
+    // Posición del cursor dentro de la nueva ventana, para recolocar el pato.
+    cursor: { x: cursor.x - display.bounds.x, y: cursor.y - display.bounds.y }
+  });
+}
+
+function startDragTracking() {
+  stopDragTracking();
+  dragTimer = setInterval(() => {
+    if (!win || win.isDestroyed()) return stopDragTracking();
+    const cursor = screen.getCursorScreenPoint();
+    const target = displayAt(cursor);
+    if (target && target.id !== currentDisplayId) moveToDisplay(target, cursor);
+  }, DRAG_POLL_MS);
+}
+
+function stopDragTracking() {
+  if (dragTimer) clearInterval(dragTimer);
+  dragTimer = null;
+}
+
+ipcMain.on('drag:start', startDragTracking);
+ipcMain.on('drag:end', stopDragTracking);
 
 // ---- IPC ----------------------------------------------------------------
 

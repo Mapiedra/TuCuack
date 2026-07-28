@@ -30,6 +30,12 @@ contextBridge.exposeInMainWorld('pato', {
   openExternal: (url) => ipcRenderer.send('open-external', url),
 
   // Eventos hacia el renderer.
+  // Arrastre del pato: el proceso principal sigue el cursor mientras dura, para
+  // poder mudar la ventana si se cruza a otro monitor.
+  dragStart: () => ipcRenderer.send('drag:start'),
+  dragEnd: () => ipcRenderer.send('drag:end'),
+  onDisplayChanged: (cb) => ipcRenderer.on('display:changed', (_e, d) => cb(d)),
+
   onBeforeQuit: (cb) => ipcRenderer.on('app:before-quit', () => cb()),
   onLayoutChanged: (cb) => ipcRenderer.on('layout:changed', (_e, d) => cb(d)),
   onTrayCommand: (cb) => ipcRenderer.on('tray:command', (_e, cmd) => cb(cmd)),

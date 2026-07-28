@@ -47,6 +47,12 @@ La transición es automática: manda la inercia mientras va rápido, y cuando fr
 pato aletea. Constantes ajustables (`GRAVITY`, `WALL_BOUNCE`, `GLIDE_SPEED`…) juntas en
 [`src/renderer/app.js`](src/renderer/app.js).
 
+**Varios monitores.** El pato vive en uno cada vez y **se lleva a otro arrastrándolo**:
+al cruzar el cursor a otra pantalla, la ventana se muda allí con el pato bajo el
+puntero. Se descartó cubrir todo el escritorio con una única ventana gigante porque
+penaliza el rendimiento y se comporta mal con monitores de distinta escala; así cada
+monitor lo dibuja a su propia resolución.
+
 **Chat entre patos.** Todos los patos comparten **un único canal común**. Lo que
 escribes aparece en tu bocadillo y en el de los demás, y viceversa. Cada pato tiene un
 **nombre**, que se comprueba que no esté siendo usado por otro pato conectado.

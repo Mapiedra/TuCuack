@@ -7,6 +7,25 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.1.2] - 2026-07-28
+
+### Añadido
+
+- **El pato se puede llevar de un monitor a otro arrastrándolo**. Mientras se arrastra
+  se sigue el cursor a nivel de escritorio (los eventos de la ventana no bastan: dejan
+  de llegar en cuanto el puntero sale de ella) y, al entrar en otro monitor, la ventana
+  se muda allí con el pato bajo el cursor. Se descartó cubrir todo el escritorio con una
+  única ventana gigante: penaliza el rendimiento y se comporta mal con monitores de
+  distinta escala.
+
+### Corregido
+
+- La ventana no llegaba a cubrir la barra de tareas (Windows recorta al área de trabajo
+  el tamaño pedido al crearla), así que el pato caminaba justo por encima en vez de
+  sobre ella.
+- Los releases se publicaban como borrador y había que sacarlos a mano.
+- Si se soltaba el botón fuera de la ventana, el pato se quedaba pegado al cursor.
+
 ## [0.1.1] - 2026-07-28
 
 ### Añadido
@@ -61,6 +80,7 @@ Primera versión.
   funciona con normalidad pero sin chat.
 - El instalador no está firmado, así que Windows SmartScreen mostrará un aviso.
 
-[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.1.1...HEAD
+[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.1.2
 [0.1.1]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.1.0

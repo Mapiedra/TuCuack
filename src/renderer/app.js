@@ -85,6 +85,19 @@ async function main() {
   duck.setX(Math.min(window.innerWidth - duck.width - 40, 260));
   api.onLayoutChanged((d) => duck.setGround(d && d.ground));
 
+  // El pato ha cruzado a otro monitor mientras se arrastraba: la ventana ya se
+  // ha mudado, así que sólo hay que recolocarlo bajo el cursor y ajustar el
+  // suelo del monitor nuevo.
+  api.onDisplayChanged((d) => {
+    if (!d) return;
+    duck.setGround(d.ground);
+    if (d.cursor) {
+      duck.setDragTransition(false);
+      duck.setX(d.cursor.x - grab.x);
+      duck.setY((window.innerHeight - d.cursor.y) + grab.y);
+    }
+  });
+
   tam = new Tamagotchi(saved.stats);
   tam.applyOfflineDecay(saved.savedAt);
 
@@ -170,6 +183,9 @@ function saveNow() {
 function setupInteraction() {
   document.addEventListener('mousemove', (e) => {
     if (dragging) {
+      // Si el botón se soltó fuera de la ventana (p. ej. justo al cruzar de
+      // monitor), el mouseup no llega y el pato se quedaría pegado al cursor.
+      if (e.buttons === 0) { endDrag(); return; }
       duck.setX(e.clientX - grab.x);
       duck.setY((window.innerHeight - e.clientY) + grab.y);
       pushTrail(e);           // para calcular la inercia al soltar
@@ -213,6 +229,7 @@ function startDrag(e) {
   duck.setDragTransition(false);
   duck.setTilt(0);          // por si se le agarra mientras volaba
   behavior.lock();          // el pato cuelga del cursor
+  api.dragStart();          // el main vigila si cruza a otro monitor
   updateMouseCapture();
 }
 
@@ -239,6 +256,7 @@ function pointerVelocity() {
 // desplomarse planea aleteando hasta posarse.
 function endDrag() {
   dragging = false;
+  api.dragEnd();
   updateMouseCapture();
 
   const v = pointerVelocity();
