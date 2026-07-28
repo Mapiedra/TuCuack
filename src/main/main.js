@@ -39,16 +39,17 @@ function currentDisplay() {
   return d;
 }
 
-// Línea de "suelo" del pato, medida desde el borde inferior de la pantalla.
-// 0 = el pato camina SOBRE la barra de tareas (la pisa), que es el efecto
-// buscado. Para que caminase por encima de la barra en vez de sobre ella,
-// bastaría devolver su altura:
-//   const d = screen.getPrimaryDisplay();
-//   return (d.bounds.y + d.bounds.height) - (d.workArea.y + d.workArea.height);
-const GROUND_FROM_BOTTOM = 0;
-
+// Línea de "suelo" del pato, medida desde el borde inferior de la pantalla: la
+// altura de la barra de tareas, para que camine sobre ella y no por el borde.
+//
+// La ventana sigue cubriendo el monitor entero (así se le puede lanzar hasta
+// arriba); lo que cambia es dónde está el suelo, que es independiente. Si la
+// barra está oculta o en un lateral, el hueco es 0 y el pato camina por el
+// borde inferior, que es lo razonable.
 function groundFromBottom() {
-  return GROUND_FROM_BOTTOM;
+  const d = currentDisplay();
+  const gap = (d.bounds.y + d.bounds.height) - (d.workArea.y + d.workArea.height);
+  return Math.max(0, Math.round(gap));
 }
 
 function createWindow() {

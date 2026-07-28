@@ -31,10 +31,15 @@ export function showContextMenu(x, y, items, opts = {}) {
 
   document.body.appendChild(menu);
 
-  // Colocar dentro de los límites de la ventana.
+  // El menú se abre POR ENCIMA del punto indicado (con `gap` de margen) para no
+  // taparle la cara al pato. Si no cabe arriba, cae por debajo.
+  const gap = opts.gap != null ? opts.gap : 12;
   const rect = menu.getBoundingClientRect();
-  const px = Math.min(x, window.innerWidth - rect.width - 4);
-  const py = Math.min(y, window.innerHeight - rect.height - 4);
+  let py = y - rect.height - gap;
+  if (py < 4) py = Math.min(y + gap, window.innerHeight - rect.height - 4);
+  // Con `center`, `x` es el centro deseado (el del pato) y no el borde izquierdo.
+  const left = opts.center ? x - rect.width / 2 : x;
+  const px = Math.min(left, window.innerWidth - rect.width - 4);
   menu.style.left = `${Math.max(4, px)}px`;
   menu.style.top = `${Math.max(4, py)}px`;
 

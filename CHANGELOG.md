@@ -7,6 +7,31 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.1.3] - 2026-07-28
+
+### Añadido
+
+- **Las estadísticas aparecen al dejar el ratón sobre el pato**: un globo con
+  comida, energía, higiene y ánimo, y su estado de ánimo. Mientras lo señalas el
+  pato se para, en vez de seguir andando y escaparse del cursor.
+- **El cursor pasa a ser una mano** al ponerlo encima, y se cierra al agarrarlo.
+
+### Cambiado
+
+- El pato vuelve a **caminar sobre la barra de tareas** en lugar de por el borde de la
+  pantalla, sin renunciar a la altura completa: la ventana sigue cubriendo el monitor
+  entero (se le puede lanzar hasta arriba) y lo que sube es la línea del suelo, que
+  ahora es la altura de la barra. Si la barra está oculta o en un lateral, camina por
+  el borde inferior.
+- Los menús y paneles se abren **centrados sobre el pato y por encima de él**, en vez
+  de taparle desde el punto del clic.
+
+### Corregido
+
+- El globo de estadísticas se colocaba mal porque se medía mientras entraba con la
+  animación de escala, que devuelve un tamaño de 0.
+
+
 ## [0.1.2] - 2026-07-28
 
 ### Añadido
@@ -80,7 +105,8 @@ Primera versión.
   funciona con normalidad pero sin chat.
 - El instalador no está firmado, así que Windows SmartScreen mostrará un aviso.
 
-[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.1.2...HEAD
+[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.1.3
 [0.1.2]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.1.2
 [0.1.1]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.1.0

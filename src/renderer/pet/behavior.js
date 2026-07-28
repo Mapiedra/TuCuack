@@ -9,10 +9,25 @@ export class Behavior {
     this.timeLeft = 1.2;
     this.speed = 46;          // px/s
     this.locked = false;      // control externo (arrastre)
+    this.paused = false;      // parado porque el cursor está encima
     this.override = null;     // acción manual temporal (comer/jugar)
   }
 
   lock() { this.locked = true; this.duck.setState('drag'); }
+
+  /**
+   * Detiene al pato sin bloquearlo: se usa cuando el cursor está encima, para
+   * que se pare a atender en vez de seguir andando y escaparse del puntero.
+   */
+  setPaused(v) {
+    const value = !!v;
+    if (this.paused === value) return;
+    this.paused = value;
+    if (value && this.activity === 'walk') {
+      this.activity = 'idle';
+      this.duck.setState('idle');
+    }
+  }
   unlock() { this.locked = false; this.override = null; this._startIdle(0.4); }
 
   // Reproduce un estado durante `dur` segundos y luego vuelve al ciclo normal.
@@ -28,7 +43,7 @@ export class Behavior {
       if (this.override.timeLeft <= 0) { this.override = null; this._startIdle(0.3); }
       else return;
     }
-    if (this.locked) return;
+    if (this.locked || this.paused) return;
 
     this.timeLeft -= dt;
     if (this.timeLeft <= 0) this._decide();

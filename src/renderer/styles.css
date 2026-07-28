@@ -270,6 +270,59 @@ html, body {
   animation: pop 0.2s ease;
 }
 
+/* ---- Globo de estadísticas (al dejar el ratón sobre el pato) ------------- */
+.tooltip {
+  position: absolute;
+  z-index: 90;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
+  padding: 8px 10px;
+  min-width: 148px;
+  color: var(--ink);
+  font-size: 12px;
+  pointer-events: none;      /* informativo: no debe estorbar al arrastre */
+  animation: pop 0.12s ease;
+}
+.tooltip-title {
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 6px;
+  text-align: center;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  padding-bottom: 4px;
+}
+.tooltip-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+.tooltip-stat .ic { width: 15px; text-align: center; font-size: 12px; }
+.tooltip-stat .bar {
+  flex: 1;
+  height: 7px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.tooltip-stat .fill {
+  display: block;
+  height: 100%;
+  background: var(--accent-2);
+  border-radius: 4px;
+}
+.tooltip-stat.low .fill { background: #e63946; }
+.tooltip-stat .num { width: 20px; text-align: right; font-variant-numeric: tabular-nums; }
+.tooltip-mood {
+  margin-top: 5px;
+  text-align: center;
+  font-size: 11px;
+  color: #777;
+  font-style: italic;
+}
+
 .muted { color: #777; font-size: 11px; margin-top: 4px; }
 .muted.error { color: #c1121f; font-weight: 600; }
 .text-input.invalid, .panel input[type="text"].invalid { border-color: #c1121f; }

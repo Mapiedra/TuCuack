@@ -9,6 +9,7 @@ import { showContextMenu, closeContextMenu } from './ui/contextMenu.js';
 import { buildStatsPanel } from './ui/panels.js';
 import { buildSettingsPanel } from './ui/settings.js';
 import { openChatInput } from './ui/chatInput.js';
+import { showStatsTooltip, hideStatsTooltip } from './ui/tooltip.js';
 import { ChatClient } from './chat/chatClient.js';
 import { SpeechBubbles } from './chat/speechBubble.js';
 
@@ -25,7 +26,10 @@ let vx = 0;                  // velocidad en px/s
 let vy = 0;
 const trail = [];            // muestras recientes del cursor (para la inercia)
 const VELOCITY_WINDOW = 90;  // ms sobre los que se promedia la velocidad
-let overHot = false;
+let overHot = false;         // sobre el pato o sobre un panel/menú
+let overDuck = false;        // sobre el pato en concreto (para el cursor)
+let lastCursor = '';
+let hoverTimer = null;       // cuenta atrás para mostrar las stats en un tooltip
 let grab = { x: 0, y: 0 };
 const openOverlays = new Set(); // menús/paneles/inputs abiertos
 
@@ -34,6 +38,16 @@ function updateMouseCapture() {
   // cursor está sobre el pato o una zona interactiva. Si no, deja pasar clics.
   const capture = dragging || openOverlays.size > 0 || overHot;
   api.setIgnoreMouse(!capture);
+  updateCursor();
+}
+
+/** Mano abierta al pasar por encima del pato, cerrada mientras se arrastra. */
+function updateCursor() {
+  const c = dragging ? 'grabbing' : (overDuck ? 'grab' : 'default');
+  if (c !== lastCursor) {
+    lastCursor = c;
+    document.body.style.cursor = c;
+  }
 }
 
 function registerOverlay(el) {
@@ -140,6 +154,10 @@ async function main() {
         duck.setState('fall');
       },
       state: () => ({ x: duck.x, y: duck.y, vx, vy, flying }),
+      hover: () => ({ overDuck, overHot, dragging, cursor: lastCursor,
+                      paneles: openOverlays.size, timer: !!hoverTimer }),
+      verTooltip: () => showStatsTooltip(tam, duckName(), duckAnchor()),
+      verMenu: () => { const p = duckAnchor(); openDuckMenu(p.x, p.y); },
       act: doAction,
       chat,
       settings: () => settings,
@@ -196,7 +214,14 @@ function setupInteraction() {
       }
       return;
     }
-    overHot = computeOverHot(e.clientX, e.clientY);
+    const sobreElPato = duck.hitTest(e.clientX, e.clientY);
+    if (sobreElPato !== overDuck) {
+      overDuck = sobreElPato;
+      // El pato se para mientras lo señalas, para no escaparse del cursor.
+      if (behavior) behavior.setPaused(sobreElPato);
+      if (sobreElPato) armarTooltip(); else cancelarTooltip();
+    }
+    overHot = sobreElPato || computeOverHot(e.clientX, e.clientY);
     updateMouseCapture();
   });
 
@@ -211,7 +236,11 @@ function setupInteraction() {
   document.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     if (isOverHotElement(e.target)) return;
-    if (duck.hitTest(e.clientX, e.clientY)) openDuckMenu(e.clientX, e.clientY);
+    // El menú se ancla al pato (no al cursor) y se abre por encima de él.
+    if (duck.hitTest(e.clientX, e.clientY)) {
+      const p = duckAnchor();
+      openDuckMenu(p.x, p.y);
+    }
   });
 
   window.addEventListener('resize', () => {
@@ -222,6 +251,7 @@ function setupInteraction() {
 function startDrag(e) {
   dragging = true;
   flying = false;
+  cancelarTooltip();
   grab.x = e.clientX - duck.x;
   grab.y = duck.y - (window.innerHeight - e.clientY);
   trail.length = 0;
@@ -346,6 +376,7 @@ function land(nx) {
 }
 
 function openDuckMenu(x, y) {
+  cancelarTooltip();
   const items = [
     { label: '🍞 Alimentar', onClick: () => doAction('feed') },
     { label: '⚽ Jugar', onClick: () => doAction('play') },
@@ -360,6 +391,7 @@ function openDuckMenu(x, y) {
   ];
   let menuEl = null;
   showContextMenu(x, y, items, {
+    center: true,          // `x` es el centro del pato
     onClose: () => {
       if (menuEl) openOverlays.delete(menuEl);
       updateMouseCapture();
@@ -403,6 +435,35 @@ function openSettings(x, y) {
   mountPanel(el, x, y);
 }
 
+// ---- Globo de estadísticas al pasar el ratón ----------------------------
+const HOVER_MS = 800;   // lo que hay que quedarse quieto encima para que salga
+
+function armarTooltip() {
+  cancelarTooltip();
+  hoverTimer = setTimeout(() => {
+    // Si mientras tanto se ha empezado a arrastrar o hay un panel abierto, no
+    // se muestra: sería ruido encima de otra cosa.
+    if (!overDuck || dragging || openOverlays.size > 0) return;
+    showStatsTooltip(tam, duckName(), duckAnchor());
+  }, HOVER_MS);
+}
+
+function cancelarTooltip() {
+  if (hoverTimer) clearTimeout(hoverTimer);
+  hoverTimer = null;
+  hideStatsTooltip();
+}
+
+/**
+ * Punto de anclaje para menús y paneles: centrado sobre el pato y a la altura
+ * de su coronilla, para que se abran encima y no le tapen.
+ */
+function duckAnchor() {
+  const r = duck.rect();
+  const head = document.getElementById('statusBubbles').getBoundingClientRect();
+  return { x: Math.round(r.left + r.width / 2), y: Math.round(head.bottom) };
+}
+
 /** Nombre del pato (siempre hay uno: se genera en el primer arranque). */
 function duckName() {
   return (settings.displayName || '').trim() || 'Pato';
@@ -416,14 +477,15 @@ function openTalk(x, y) {
   registerOverlay(el); // openChatInput ya lo añade al DOM y lo posiciona
 }
 
-// Añade un panel al DOM, lo coloca dentro de la ventana (por encima del cursor)
-// y lo registra para la captura de ratón.
+// Añade un panel al DOM, lo centra sobre el punto indicado y por encima de él
+// (para no tapar al pato), y lo registra para la captura de ratón.
 function mountPanel(el, x, y) {
   el.style.visibility = 'hidden';
   document.body.appendChild(el);
   const rect = el.getBoundingClientRect();
-  const px = Math.min(x, window.innerWidth - rect.width - 8);
-  const py = Math.min(y - rect.height - 10, window.innerHeight - rect.height - 8);
+  const px = Math.min(x - rect.width / 2, window.innerWidth - rect.width - 8);
+  let py = y - rect.height - 12;
+  if (py < 8) py = Math.min(y + 12, window.innerHeight - rect.height - 8);
   el.style.left = `${Math.max(8, px)}px`;
   el.style.top = `${Math.max(8, py)}px`;
   el.style.visibility = 'visible';
@@ -452,8 +514,7 @@ function sendChat(text) {
 // ---- Bandeja ------------------------------------------------------------
 function setupTray() {
   api.onTrayCommand((cmd) => {
-    const cx = duck.rect().left;
-    const cy = duck.rect().top;
+    const { x: cx, y: cy } = duckAnchor();
     if (cmd === 'feed' || cmd === 'play' || cmd === 'clean' || cmd === 'sleep') {
       doAction(cmd);
     } else if (cmd === 'stats') openStats(cx, cy);
