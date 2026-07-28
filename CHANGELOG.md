@@ -7,6 +7,13 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Corregido
+
+- Los iconos de estado (hambre, sueño, higiene…) quedaban ocultos tras el pato: se
+  dibujaban antes que el sprite y a una altura que caía sobre su propio cuerpo. Ahora
+  van por delante y por encima del dibujo, con un contorno que los hace legibles sobre
+  cualquier fondo.
+
 ## [0.1.0] - 2026-07-28
 
 Primera versión.

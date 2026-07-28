@@ -5,14 +5,15 @@
   --sprite-w: 232px;
   --sprite-h: 240px;
   --sprite-foot: 14px;    /* margen bajo los pies dentro del sprite */
-  --sprite-head: 96px;    /* altura aprox. de la cabeza desde los pies */
+  --sprite-top: 139px;    /* alto del dibujo sobre los pies, bate incluido */
   --duck-scale: 0.62;
 
   --duck-w: calc(var(--sprite-w) * var(--duck-scale));
   --duck-h: calc(var(--sprite-h) * var(--duck-scale));
   --foot-inset: calc(var(--sprite-foot) * var(--duck-scale));
-  /* Altura a la que colocar burbujas y bocadillos: justo sobre la cabeza. */
-  --above-head: calc((var(--sprite-foot) + var(--sprite-head)) * var(--duck-scale));
+  /* Burbujas y bocadillos van por encima de TODO el dibujo (incluido el bate),
+     medido desde los pies; si no, se quedan sobre el propio pato. */
+  --above-head: calc(var(--sprite-top) * var(--duck-scale) + 6px);
   --ink: #2b2b3a;
   --paper: #fffdf7;
   --accent: #ffb703;
@@ -56,10 +57,14 @@ html, body {
   pointer-events: none; /* el hit-test lo gestiona app.js a nivel de ventana */
 }
 
+/* Orden de capas dentro del pato: sombra al fondo, el sprite encima, y las
+   burbujas y bocadillos por delante de todo (sin esto quedan tapados por el
+   propio pato, porque el lienzo se pinta después en el DOM). */
 .duck-canvas {
   position: absolute;
   left: 0;
   bottom: 0;
+  z-index: 1;
   width: var(--duck-w);
   height: var(--duck-h);
   /* Centro del cuerpo del pato dentro del lienzo: es el punto sobre el que
@@ -82,6 +87,7 @@ html, body {
 
 .duck-shadow {
   position: absolute;
+  z-index: 0;
   bottom: var(--foot-inset);
   left: 50%;
   width: calc(var(--duck-w) * 0.5);
@@ -102,19 +108,29 @@ html, body {
 /* ---- Burbujas de emoción ------------------------------------------------ */
 .status-bubbles {
   position: absolute;
+  z-index: 3;
   bottom: var(--above-head);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   gap: 4px;
-  font-size: 22px;
+  font-size: 24px;
+  line-height: 1;
+  /* Contorno claro para que el emoji se lea sobre cualquier fondo. */
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.9))
+          drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
   pointer-events: none;
 }
 .status-bubbles .emo { animation: pop 0.3s ease; }
 @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
 
 /* ---- Bocadillo de cómic (chat) ------------------------------------------ */
-.speech-layer { position: absolute; bottom: calc(var(--above-head) + 26px); left: 50%; }
+.speech-layer {
+  position: absolute;
+  z-index: 4;
+  bottom: calc(var(--above-head) + 30px);
+  left: 50%;
+}
 .speech {
   position: absolute;
   bottom: 0;
