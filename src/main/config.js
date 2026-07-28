@@ -45,6 +45,28 @@ function pickKey(obj) {
   return String(obj.publishableKey || obj.anonKey || '').trim();
 }
 
+/**
+ * Deja la URL en la raíz del proyecto (`https://xxxx.supabase.co`).
+ *
+ * En el panel de Supabase es fácil copiar la URL del endpoint REST
+ * (`.../rest/v1`) en lugar del Project URL; con ese sufijo, Realtime responde
+ * 401 y el chat no conecta, así que se recorta cualquier ruta sobrante.
+ */
+function normalizeUrl(raw) {
+  const value = String(raw || '').trim();
+  if (!value) return '';
+  try {
+    const u = new URL(value);
+    if (u.pathname && u.pathname !== '/') {
+      console.warn(`[config] La URL de Supabase llevaba la ruta "${u.pathname}"; `
+        + 'se usa sólo el dominio. Copia el "Project URL", no el del endpoint REST.');
+    }
+    return u.origin;
+  } catch {
+    return value.replace(/\/+$/, '');
+  }
+}
+
 /** ¿Sigue con el texto de ejemplo sin rellenar? */
 function isPlaceholder(value) {
   if (!value) return true;
@@ -56,7 +78,7 @@ function readFileConfig() {
     try {
       if (!fs.existsSync(p)) continue;
       const raw = JSON.parse(fs.readFileSync(p, 'utf8'));
-      const url = String((raw && raw.url) || '').trim();
+      const url = normalizeUrl(raw && raw.url);
       const key = pickKey(raw);
       if (isPlaceholder(url) || isPlaceholder(key)) continue;  // sin rellenar
       return { url, key, source: p, legacy: Boolean(raw.anonKey && !raw.publishableKey) };
@@ -71,7 +93,7 @@ function resolve() {
   const envKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
   if (process.env.SUPABASE_URL && envKey) {
     return {
-      url: process.env.SUPABASE_URL,
+      url: normalizeUrl(process.env.SUPABASE_URL),
       key: envKey,
       source: 'env',
       legacy: !process.env.SUPABASE_PUBLISHABLE_KEY

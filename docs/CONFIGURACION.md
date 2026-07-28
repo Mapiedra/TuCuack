@@ -24,8 +24,14 @@ Se hace una sola vez, y sirve para todos los entornos.
    | **Project URL** | `https://abcdefghijklmnop.supabase.co` |
    | **Publishable key** | `sb_publishable_xxxxxxxxxxxxxxxx` |
 
+> ⚠️ Copia el **Project URL** (`https://xxxx.supabase.co`), **no** la del endpoint REST
+> (`https://xxxx.supabase.co/rest/v1`). Con el sufijo, Realtime responde 401 y el chat
+> no conecta. La app recorta la ruta sobrante y avisa por consola, pero mejor pegarla
+> bien.
+>
 > **No** hace falta crear tablas, ni activar Realtime, ni tocar RLS: el chat usa
-> *broadcast*, que son mensajes efímeros y el canal se crea solo al conectarse.
+> *broadcast*, que son mensajes efímeros que viajan por WebSocket sin pasar por la base
+> de datos. Por eso **el Table Editor se queda vacío**: es lo esperado, no un fallo.
 >
 > La *publishable key* sustituye a la antigua *anon key*. Si tu proyecto es viejo y
 > sólo tienes la `anon key`, sirve igual (ponla como `"anonKey"`), pero la app avisará
@@ -148,13 +154,32 @@ ignoran, así que no dan errores de conexión falsos.
 
 ## Comprobar que dos patos se hablan
 
-1. Abre TuCuack en dos equipos (o en dos cuentas de Windows) con las mismas
-   credenciales.
+### En dos equipos
+
+1. Abre TuCuack en ambos, con las mismas credenciales.
 2. En cada uno, clic derecho → **Ajustes** y pon un **nombre distinto**. Si eliges uno
    ya ocupado, el panel avisa: *«Ya hay un pato llamado X»*.
 3. Clic derecho → **Hablar…**, escribe y pulsa Enter.
 4. El mensaje aparece en un bocadillo sobre tu pato **y** sobre el del otro equipo, con
    el nombre de quien lo envió.
+
+### En un solo equipo (dos patos a la vez)
+
+La app sólo permite una instancia por carpeta de datos, así que para el segundo pato hay
+que darle la suya. En dos terminales:
+
+```bash
+# terminal 1 — pato normal
+npm start
+```
+
+```bash
+# terminal 2 — segundo pato, con datos aparte
+npx electron . --user-data-dir=%TEMP%\tucuack-pato2
+```
+
+Aparecerán dos patos y podrás escribir de uno a otro. El segundo tendrá su propio
+nombre y sus propias estadísticas; para dejarlo todo limpio, borra esa carpeta.
 
 ---
 
@@ -162,6 +187,8 @@ ignoran, así que no dan errores de conexión falsos.
 
 | Síntoma | Causa probable |
 |---|---|
+| No aparece ninguna tabla en Supabase | Correcto: el chat usa *broadcast* y no toca la base de datos. |
+| La consola muestra `canal: CHANNEL_ERROR` o *transport failure* | Credenciales rechazadas por Realtime. Lo más habitual: la URL lleva `/rest/v1` al final, o la clave está incompleta. |
 | Ajustes dice *«Chat sin configurar»* | El fichero no se encuentra o sigue con los valores de ejemplo. Revisa la ruta y que el JSON sea válido. |
 | Configurado, pero no llegan mensajes | Las dos instalaciones apuntan a proyectos de Supabase distintos. |
 | No avisa de nombres repetidos | La comprobación necesita conexión: sin chat no se puede saber qué nombres hay. |

@@ -420,6 +420,8 @@ function setupChat() {
     if (behavior) behavior.playOnce('talk', 2.2);
   });
   chat.onStatus(() => { /* opcional: indicador de conexión */ });
+  // El canal ya puede estar conectado antes de llegar aquí.
+  chat.sync();
 }
 
 function sendChat(text) {

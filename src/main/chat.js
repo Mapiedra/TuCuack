@@ -74,8 +74,9 @@ function initChat(getWin, initialName) {
     notify(getWin, { type: 'presence', names: presentNames() });
   });
 
-  channel.subscribe(async (status) => {
+  channel.subscribe(async (status, err) => {
     connected = status === 'SUBSCRIBED';
+    console.log('[chat] canal:', status, err ? `(${err.message || err})` : '');
     notify(getWin, { type: 'status', connected, reason: status });
     if (connected) {
       try {

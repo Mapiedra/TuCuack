@@ -134,6 +134,13 @@ ipcMain.on('chat:set-name', (_evt, name) => {
 
 ipcMain.handle('chat:names', () => (chat ? chat.names() : []));
 
+// El canal suele conectarse antes de que el renderer registre sus listeners,
+// así que éste consulta el estado al arrancar en vez de esperar al evento.
+ipcMain.handle('chat:status', () => ({
+  connected: chat ? chat.isReady() : false,
+  names: chat ? chat.names() : []
+}));
+
 ipcMain.on('app:quit', () => app.quit());
 ipcMain.on('open-external', (_evt, url) => {
   if (typeof url === 'string' && /^https?:\/\//.test(url)) shell.openExternal(url);

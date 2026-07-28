@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('pato', {
   onChatEvent: (cb) => ipcRenderer.on('chat:event', (_e, evt) => cb(evt)),
   setChatName: (name) => ipcRenderer.send('chat:set-name', name),
   chatNames: () => ipcRenderer.invoke('chat:names'),
+  chatStatus: () => ipcRenderer.invoke('chat:status'),
 
   // Acciones de app.
   quit: () => ipcRenderer.send('app:quit'),

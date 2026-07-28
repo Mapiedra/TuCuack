@@ -28,6 +28,25 @@ export class ChatClient {
   onStatus(cb) { this._onStatus = cb; }
   onPresence(cb) { this._onPresence = cb; }
 
+  /**
+   * Pregunta el estado actual al proceso principal.
+   *
+   * Hace falta porque el canal se conecta mientras el renderer aún está
+   * cargando: el evento de estado se emite antes de que haya nadie
+   * escuchando y se perdería, dejando el chat como "desconectado" pese a
+   * estar funcionando.
+   */
+  async sync() {
+    try {
+      const st = await window.pato.chatStatus();
+      if (!st) return;
+      this.connected = !!st.connected;
+      this.names = Array.isArray(st.names) ? st.names : [];
+      this._onStatus({ connected: this.connected, reason: 'sync' });
+      this._onPresence(this.names);
+    } catch { /* el chat puede no estar disponible */ }
+  }
+
   send(from, text) {
     window.pato.sendChat({ from, text });
   }
