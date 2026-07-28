@@ -7,6 +7,14 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Cambiado
+
+- Los iconos que aparecen sobre el pato son ahora los mismos que los de sus barras de
+  estado, para saber de un vistazo qué necesita. El de "triste" era una gota, que se
+  confundía con suciedad; ahora es un corazón roto. El de hambre pasa de pan a carne,
+  igual que en el panel.
+
+
 ## [0.1.3] - 2026-07-28
 
 ### Añadido
