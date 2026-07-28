@@ -38,7 +38,7 @@ const SETTINGS_FILE = 'settings.json';
 const DEFAULT_STATE = {
   stats: { hunger: 80, energy: 80, hygiene: 80, happiness: 80 },
   // Experiencia y racha de días (ver renderer/game/Level.js).
-  level: { xp: 0, racha: 0, ultimoDia: '', chatHoy: 0 },
+  level: { xp: 0, racha: 0, ultimoDia: "", diaDelChat: "", chatHoy: 0 },
   savedAt: 0
 };
 

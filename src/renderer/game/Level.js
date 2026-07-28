@@ -52,7 +52,8 @@ export class Level {
     const g = guardado || {};
     this.xp = Number(g.xp) || 0;
     this.racha = Number(g.racha) || 0;
-    this.ultimoDia = g.ultimoDia || '';
+    this.ultimoDia = g.ultimoDia || '';      // último día que se atendió al pato
+    this.diaDelChat = g.diaDelChat || '';    // último día que se contaron mensajes
     this.chatHoy = Number(g.chatHoy) || 0;
     this._acumuladoMin = 0;
     this._listeners = { xp: [], nivel: [] };
@@ -119,13 +120,16 @@ export class Level {
     return true;
   }
 
+  /** Pone a cero el contador de mensajes cuando cambia el día. */
   _nuevoDia() {
     const hoy = new Date().toISOString().slice(0, 10);
-    if (this.ultimoDia !== hoy) {
-      this.chatHoy = 0;
-      return hoy;
-    }
-    return null;
+    if (this.diaDelChat === hoy) return false;
+    // Se lleva aparte del día de la racha: ese sólo se marca al atender al
+    // pato, así que quien únicamente chatea nunca lo actualizaba y el contador
+    // se reiniciaba en cada mensaje, dejando la experiencia por chat sin tope.
+    this.diaDelChat = hoy;
+    this.chatHoy = 0;
+    return true;
   }
 
   _rachaDelDia() {
@@ -135,14 +139,14 @@ export class Level {
     const ayer = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     this.racha = this.ultimoDia === ayer ? this.racha + 1 : 1;
     this.ultimoDia = hoy;
-    this.chatHoy = 0;
     this._sumar(XP.RACHA + Math.min(this.racha - 1, 5) * 10, 'racha');
   }
 
   toJSON() {
     return {
       xp: this.xp, racha: this.racha,
-      ultimoDia: this.ultimoDia, chatHoy: this.chatHoy
+      ultimoDia: this.ultimoDia,
+      diaDelChat: this.diaDelChat, chatHoy: this.chatHoy
     };
   }
 }

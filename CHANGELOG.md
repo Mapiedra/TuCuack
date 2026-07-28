@@ -7,6 +7,15 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Corregido
+
+- La experiencia por chatear no tenía tope: el contador diario de mensajes se ponía a
+  cero en cada envío, porque compartía la marca de día con la racha y esa sólo se
+  actualiza al atender al pato. Quien únicamente chateaba subía de nivel sin límite.
+- La ventana de escribir se abría desplazada a un lado del pato, en vez de centrada
+  sobre él como el menú y los paneles.
+
+
 ### Añadido
 
 - **Los cinco diseños tienen ya arte propio**: Patito, Patita, Pato duro, Pato gánster

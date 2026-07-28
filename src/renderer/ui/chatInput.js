@@ -32,9 +32,13 @@ export function openChatInput(x, y, handlers) {
   el.append(input, send);
   document.body.appendChild(el);
 
-  const rect = el.getBoundingClientRect();
-  const px = Math.min(x, window.innerWidth - rect.width - 4);
-  const py = Math.min(y, window.innerHeight - rect.height - 4);
+  // Centrado sobre el pato y por encima, igual que el menú y los paneles: `x`
+  // es el centro, no el borde izquierdo.
+  const w = el.offsetWidth;
+  const h = el.offsetHeight;
+  const px = Math.min(x - w / 2, window.innerWidth - w - 4);
+  let py = y - h - 10;
+  if (py < 4) py = Math.min(y + 10, window.innerHeight - h - 4);
   el.style.left = `${Math.max(4, px)}px`;
   el.style.top = `${Math.max(4, py)}px`;
 

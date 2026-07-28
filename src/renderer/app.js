@@ -550,7 +550,7 @@ function avisoNivel(html) {
 }
 
 function openTalk(x, y) {
-  const { el } = openChatInput(x, Math.max(8, y - 60), {
+  const { el } = openChatInput(x, y, {
     onSend: (text) => sendChat(text),
     onClose: () => unregisterOverlay(el)
   });
