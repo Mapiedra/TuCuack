@@ -61,70 +61,32 @@ pato, así que los clics alrededor siguen llegando al escritorio.
 
 Sin esto la app funciona igual, pero el chat queda deshabilitado.
 
-1. Crea una cuenta en [supabase.com](https://supabase.com) y un **proyecto nuevo**
-   (el plan gratuito sobra: sólo se usa Realtime, no base de datos).
-2. En el panel del proyecto, ve a **Project Settings → API Keys** y copia:
-   - **Project URL** → algo como `https://abcdefgh.supabase.co`
-   - **Publishable key** → empieza por `sb_publishable_…`
-3. Edita el fichero `supabase.json` de la raíz (ya viene creado) con esos dos valores:
+**Guía completa: [docs/CONFIGURACION.md](docs/CONFIGURACION.md)** — cubre los cuatro
+entornos (tu equipo, el CI, el instalador que reparten y una instalación ya hecha).
+
+Resumen para desarrollo:
+
+1. Crea un proyecto en [supabase.com](https://supabase.com) (plan gratuito; sólo se usa
+   Realtime, no hace falta crear tablas).
+2. En **Project Settings → API Keys** copia la **Project URL** y la **Publishable key**.
+3. Edita el `supabase.json` de la raíz (ya viene creado):
 
    ```json
    {
-     "url": "https://abcdefgh.supabase.co",
-     "publishableKey": "sb_publishable_..."
+     "url": "https://abcdefghijklmnop.supabase.co",
+     "publishableKey": "sb_publishable_xxxxxxxxxxxxxxxx"
    }
    ```
 
-4. Reinicia la app. Abre **Ajustes** y ponle nombre a tu pato.
+4. Reinicia la app y ponle nombre a tu pato en **Ajustes**.
 
-`supabase.json` está en `.gitignore`: **no se sube al repositorio**. Como alternativa
-puedes usar las variables de entorno `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY`.
+`supabase.json` está en `.gitignore`, así que **no se sube al repositorio**. Para que
+los instaladores publicados lleven el chat, define los secrets `SUPABASE_URL` y
+`SUPABASE_PUBLISHABLE_KEY` en el repositorio: el workflow genera el fichero al compilar
+(no hace falta compilar en local).
 
-**Para que varias personas chateen entre sí**, todas deben usar **las mismas
-credenciales** (mismo proyecto de Supabase). Al compilar el instalador, el fichero
-`supabase.json` se empaqueta dentro, así que quien lo instale ya lo tiene configurado.
+**Para que varias personas chateen entre sí**, todas deben usar las mismas credenciales.
 
-### ¿Y si el fichero está ignorado, cómo lo lleva el instalador?
-
-No hace falta compilar en local. La clave vive en los **secrets del repositorio** y el
-workflow **crea `supabase.json` en el runner** justo antes de compilar, así que acaba
-dentro del instalador sin pasar nunca por el repositorio:
-
-| Dónde | Está el fichero | De dónde sale |
-|---|---|---|
-| Repositorio | ❌ no | ignorado por `.gitignore` |
-| Tu equipo (desarrollo) | ✅ sí | lo creas tú a mano |
-| Runner de CI | ✅ sí | lo genera el workflow desde los secrets |
-| Instalador publicado | ✅ sí | empaquetado en `extraResources` |
-
-Configúralo una vez en **Settings → Secrets and variables → Actions → New repository
-secret**:
-
-- `SUPABASE_URL`
-- `SUPABASE_PUBLISHABLE_KEY`
-
-Sin esos secrets el build no falla: simplemente publica una versión sin chat.
-
-> Ojo: la clave viaja **dentro** del instalador, así que quien lo descargue puede
-> extraerla. Es aceptable porque es pública por diseño (para eso está pensada), pero
-> implica que cualquiera con ella puede entrar al canal. Si algún día necesitas
-> restringir el acceso, el paso siguiente es añadir autenticación de Supabase y
-> Realtime Authorization en el canal.
-
-### Notas
-
-- La **publishable key** sustituye a la antigua `anon key`, que Supabase mantiene como
-  *legacy*. Si tu proyecto es anterior y sólo tienes la `anon key`, sirve igual: ponla
-  como `"anonKey"` en vez de `"publishableKey"` (la app avisa por consola de que
-  conviene migrar).
-- Está pensada para usarse en clientes y es pública por diseño. Aun así, no conviene
-  versionarla.
-- El chat usa **broadcast**: los mensajes son efímeros, no se guardan en ninguna tabla.
-  Si algún día quieres historial, crea la tabla y protégela con **RLS**.
-- Realtime no necesita configuración extra: el canal se crea solo al conectarse.
-- Privacidad: los mensajes pasan por los servidores de Supabase.
-
----
 
 ## Sprites y animaciones
 

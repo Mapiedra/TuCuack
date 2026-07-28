@@ -20,17 +20,21 @@ const path = require('path');
 // Canal único común: todos los patos comparten la misma conversación.
 const CHANNEL = 'patos-global';
 
+// Orden de búsqueda, de mayor a menor prioridad. El de la carpeta de datos del
+// usuario va ANTES que el empaquetado para que se puedan cambiar las
+// credenciales de una instalación ya hecha sin reinstalar.
 function candidatePaths() {
   const out = [];
-  // Junto al ejecutable instalado (extraResources) y en la carpeta de la app.
-  if (process.resourcesPath) out.push(path.join(process.resourcesPath, 'supabase.json'));
   try {
     const { app } = require('electron');
     if (app) {
-      out.push(path.join(app.getAppPath(), 'supabase.json'));
       out.push(path.join(app.getPath('userData'), 'supabase.json'));
+      out.push(path.join(app.getAppPath(), 'supabase.json'));
     }
   } catch { /* fuera de Electron (p. ej. en pruebas) */ }
+  // Empaquetado junto al ejecutable instalado (extraResources).
+  if (process.resourcesPath) out.push(path.join(process.resourcesPath, 'supabase.json'));
+  // Raíz del proyecto (desarrollo).
   out.push(path.join(__dirname, '..', '..', 'supabase.json'));
   return out;
 }
@@ -78,9 +82,15 @@ function resolve() {
 
 const resolved = resolve();
 
-if (resolved.legacy && resolved.url) {
-  console.warn('[config] Usando la "anon key" antigua. Supabase recomienda migrar a '
-    + 'la clave publicable (sb_publishable_...): cámbiala por "publishableKey".');
+if (resolved.url) {
+  console.log(`[config] Chat configurado desde: ${resolved.source}`);
+  if (resolved.legacy) {
+    console.warn('[config] Usando la "anon key" antigua. Supabase recomienda migrar a '
+      + 'la clave publicable (sb_publishable_...): cámbiala por "publishableKey".');
+  }
+} else {
+  console.log('[config] Chat sin configurar (no se encontró supabase.json con datos '
+    + 'válidos). Ver docs/CONFIGURACION.md');
 }
 
 module.exports = {
