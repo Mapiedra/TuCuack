@@ -7,11 +7,42 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.3.0] - 2026-07-29
+
+Los cinco diseños de pato tienen ya su propio arte, y el formato del sprite queda
+cerrado y documentado.
+
 ### Añadido
 
-- El chat **se reconecta solo** si se cae la conexión, con esperas crecientes (5s, 10s,
-  20s… hasta 5 min). Antes, un corte de red o una caída del servicio dejaban el chat
-  muerto hasta reiniciar la app, aunque el servicio volviera al momento.
+- **Arte propio para los cinco diseños**: Patito, Patita, Pato duro, Pato gánster y
+  Capo de la mafia. Se acabaron los provisionales teñidos, que eran el mismo pato con
+  otro color.
+- El chat **se reconecta solo** si se cae la conexión, con esperas crecientes (5 s,
+  10 s, 20 s… hasta 5 min). Antes, un corte de red o una caída del servicio dejaban el
+  chat mudo hasta reiniciar la app, aunque el servicio volviera al momento.
+- Herramientas para preparar el arte de un diseño nuevo, documentadas en
+  [`docs/DISENOS.md`](docs/DISENOS.md):
+  - `npm run sprites:check` — avisa de rejillas que no cuadran, filas que faltan,
+    personajes que se salen de su celda o cambian de tamaño entre frames.
+  - `npm run sprites:repair` — reconstruye los frames a los que les falta un trozo por
+    el borde, copiándolo de un frame sano de la misma fila.
+  - `npm run sprites:import` — recupera un sheet exportado sin transparencia,
+    quitando el fondo de cuadros y limpiando los restos de la compresión.
+
+### Cambiado
+
+- **El formato del arte queda en 11 filas, una por animación**, todas dibujadas.
+  Aletear y colgar del cursor se derivaban de la fila de "contento", así que tres
+  acciones compartían dibujo y los diseños salían repetidos.
+- El arte del pato duro se reordena a ese formato: venía con las acciones repartidas
+  de forma irregular y tres filas sin usar. Ahora sirve de referencia para generar los
+  demás.
+- Cada diseño lleva **sus propios metadatos** (filas, frames y fps), en vez de ir
+  escritos en el código: no todos tienen el mismo número de frames por animación.
+- El generador cuenta solo los frames de cada fila, así que el arte no tiene que
+  ajustarse a un número exacto por acción.
+- El lienzo del sprite crece a 248x268, con más margen por abajo: el capo duerme en un
+  sillón que sobresale por debajo de sus pies y se cortaba.
 
 ### Corregido
 
@@ -20,52 +51,6 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   actualiza al atender al pato. Quien únicamente chateaba subía de nivel sin límite.
 - La ventana de escribir se abría desplazada a un lado del pato, en vez de centrada
   sobre él como el menú y los paneles.
-
-
-### Añadido
-
-- **Los cinco diseños tienen ya arte propio**: Patito, Patita, Pato duro, Pato gánster
-  y Capo de la mafia. Se acabaron los provisionales teñidos.
-- Importador de arte (`npm run sprites:import`): recupera un sheet exportado sin
-  transparencia, quitando el fondo de cuadros, ajustando la rejilla y limpiando los
-  restos que deja la compresión.
-
-### Cambiado
-
-- Cada diseño lleva **sus propios metadatos** (filas, frames y fps): antes iban escritos
-  en el código, y los diseños nuevos no tienen el mismo número de frames por animación
-  que el pato duro.
-- El lienzo del sprite crece a 248x268 con más margen por abajo: el capo duerme en un
-  sillón que sobresale bastante por debajo de sus pies y se cortaba.
-
-
-### Cambiado
-
-- El arte del pato duro se **reordena al formato estándar**: pasa de 11 filas
-  irregulares (tres sin usar) a las 9 documentadas, una acción por fila. Sirve de
-  referencia para generar los demás diseños y deja un único formato en el proyecto.
-  La fila de jugar queda resuelta en el arte, ordenada por el ángulo del bate, en vez
-  de componerse en cada empaquetado. Se reparan además los dos frames que venían
-  recortados, así que el arte de referencia queda limpio y el empaquetado ya no tiene
-  que reconstruir nada.
-
-### Añadido
-
-- El formato del arte pasa a **11 filas**, una por animación: aletear y colgar del
-  cursor también se dibujan, en vez de derivarse de la fila de "contento". Reutilizar
-  un dibujo para dos acciones hacía que los diseños se notaran repetidos, y lo que se
-  busca al añadir diseños es justo lo contrario.
-- Al empaquetar se indica cuántas animaciones vienen del arte y cuántas se componen.
-- Reparador de arte fuente (`npm run sprites:repair`): reconstruye los frames a los
-  que les falta un trozo por el borde, copiándolo de un frame sano de la misma fila.
-- El arte de un diseño nuevo usa una **distribución de filas documentada**: una acción
-  por fila, seguidas y sin huecos (quieto, andar, comer, jugar, dormir, contento,
-  hablar, triste, chulesco). La del pato duro venía de antes, con filas que no se
-  aprovechaban, y se conserva para no rehacer un arte que funciona.
-- El generador **cuenta solo los frames de cada fila**, así que el arte no tiene que
-  ajustarse a un número exacto por acción.
-- Si el arte trae dibujadas las animaciones de **jugar** y **dormir**, se usan tal cual
-  en vez de componerlas a partir de otras filas.
 
 
 ## [0.2.2] - 2026-07-28
@@ -237,7 +222,8 @@ Primera versión.
   funciona con normalidad pero sin chat.
 - El instalador no está firmado, así que Windows SmartScreen mostrará un aviso.
 
-[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.2.2...HEAD
+[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.3.0
 [0.2.2]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.2.2
 [0.2.1]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.2.1
 [0.2.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.2.0
