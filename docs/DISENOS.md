@@ -48,9 +48,32 @@ Son **9 filas seguidas, sin huecos**. Las animaciones de **aletear** (cuando se 
 lanza por la pantalla) y **colgar del cursor** se componen solas a partir de la fila
 6, así que no hay que dibujarlas.
 
-> El arte del pato duro es anterior a este formato y usa otra distribución, con filas
-> que no se aprovechan. Se conserva tal cual porque ya funciona; el generador sabe
-> cuál toca según el diseño.
+### Por qué el pato duro tiene 11 filas y aquí sólo hay 9
+
+El arte del pato duro es anterior a este formato. Tiene **11 filas, de las que se usan
+8**: las otras tres son duplicados, no acciones nuevas.
+
+| Fila | Uso en el pato duro |
+|---:|---|
+| 1 | quieto |
+| 2 | andar |
+| 3 | *sin usar* — otro ciclo de caminar, descartado porque viene recortado |
+| 4 | contento |
+| 5 | *sin usar* — variante de quieto |
+| 6 | *sin usar* — variante de quieto |
+| 7 | hablar |
+| 8 | chulesco |
+| 9 | triste |
+| 10 | comer |
+| 11 | agachado (de ahí sale el dormir) |
+
+El formato estándar tiene **9 filas y no 8** porque añade **jugar** y **dormir** como
+filas propias. Con el arte del pato duro no existían y hay que apañarlas: el swing del
+bate se compone reordenando la fila "chulesco" por el ángulo del bate, y el dormir es
+la fila "agachado" con una respiración simulada. Dibujadas quedan mejor.
+
+Se conserva esa distribución para el pato duro porque el arte ya funciona; el
+generador sabe cuál toca según el diseño.
 
 ### Prompt para generarlo
 
