@@ -7,6 +7,19 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Añadido
+
+- **Sonidos**: un cuack al hablar por el chat (más grave cuando habla otro pato), un
+  boing de muelle al rebotar —más agudo cuanto más fuerte el golpe— y un aleteo
+  mientras planea. Al subir de nivel, dos cuacks encadenados.
+- **Control de sonido en Ajustes**: volumen y botón de silencio, que se aplican al
+  momento para poder ajustarlos de oído.
+
+Los sonidos se sintetizan por código, así que no añaden ni un byte de audio al
+instalador y se afinan cambiando números. Cada uno tiene un tiempo mínimo entre
+repeticiones para que una ráfaga de mensajes o de rebotes no sea una tortura.
+
+
 ## [0.3.0] - 2026-07-29
 
 Los cinco diseños de pato tienen ya su propio arte, y el formato del sprite queda

@@ -279,6 +279,20 @@ html, body {
 .btn:hover { background: var(--accent-2); }
 .btn:disabled { opacity: 0.45; cursor: default; }
 
+/* Fila de sonido en Ajustes: botón de silencio + volumen. */
+.fila-sonido { display: flex; align-items: center; gap: 8px; }
+.fila-sonido input[type="range"] { flex: 1; accent-color: var(--accent-2); }
+.btn-icono {
+  background: none;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 4px 7px;
+}
+.btn-icono:hover { background: var(--accent); }
+
 .text-input, .panel input[type="text"] {
   width: 100%;
   padding: 8px 10px;

@@ -33,6 +33,39 @@ export function buildSettingsPanel(settings, version, handlers) {
   row1.append(lbl1, name, hint);
   el.appendChild(row1);
 
+  // Sonido
+  const rowSnd = document.createElement('div');
+  rowSnd.className = 'row';
+  const lblSnd = document.createElement('label');
+  lblSnd.textContent = 'Sonido';
+  const linea = document.createElement('div');
+  linea.className = 'fila-sonido';
+  const mute = document.createElement('button');
+  mute.type = 'button';
+  mute.className = 'btn-icono';
+  const vol = document.createElement('input');
+  vol.type = 'range';
+  vol.min = '0';
+  vol.max = '100';
+  vol.value = String(Math.round((settings.volumen != null ? settings.volumen : 0.5) * 100));
+  const pintaMute = () => {
+    mute.textContent = settings.silenciado ? '🔇' : '🔊';
+    mute.title = settings.silenciado ? 'Activar sonido' : 'Silenciar';
+    vol.disabled = !!settings.silenciado;
+  };
+  mute.addEventListener('click', () => {
+    settings.silenciado = !settings.silenciado;
+    pintaMute();
+    handlers.onSonido({ silenciado: settings.silenciado, volumen: vol.value / 100 });
+  });
+  vol.addEventListener('input', () => {
+    handlers.onSonido({ silenciado: settings.silenciado, volumen: vol.value / 100 });
+  });
+  pintaMute();
+  linea.append(mute, vol);
+  rowSnd.append(lblSnd, linea);
+  el.appendChild(rowSnd);
+
   // Auto-arranque
   const row2 = document.createElement('div');
   row2.className = 'row';
@@ -80,7 +113,12 @@ export function buildSettingsPanel(settings, version, handlers) {
       setError(`Ya hay un pato llamado "${value}". Prueba con otro.`);
       return;
     }
-    handlers.onSave({ displayName: value, autoLaunch: chk.checked });
+    handlers.onSave({
+      displayName: value,
+      autoLaunch: chk.checked,
+      volumen: vol.value / 100,
+      silenciado: !!settings.silenciado
+    });
     handlers.onClose();
   });
 

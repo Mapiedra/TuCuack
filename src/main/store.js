@@ -45,7 +45,9 @@ const DEFAULT_STATE = {
 const DEFAULT_SETTINGS = {
   displayName: '',
   autoLaunch: false,
-  skin: 'normal'        // diseño de pato elegido (renderer/game/skins.js)
+  skin: 'normal',       // diseño de pato elegido (renderer/game/skins.js)
+  volumen: 0.5,
+  silenciado: false
 };
 
 module.exports = {

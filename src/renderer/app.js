@@ -15,6 +15,7 @@ import { Level } from './game/Level.js';
 import { SKINS, skinPorId, estaDesbloqueada, SKIN_POR_DEFECTO } from './game/skins.js';
 import { ChatClient } from './chat/chatClient.js';
 import { SpeechBubbles } from './chat/speechBubble.js';
+import * as sonido from './audio/sounds.js';
 
 const api = window.pato;
 
@@ -95,6 +96,9 @@ async function main() {
     api.saveSettings(settings);
   }
 
+  sonido.setVolumen(settings.volumen != null ? settings.volumen : 0.5);
+  sonido.setSilenciado(!!settings.silenciado);
+
   // El suelo es la parte superior de la barra de tareas: el pato camina ahí y
   // el overlay ocupa toda la pantalla para poder arrastrarlo a cualquier punto.
   // Experiencia y diseño elegido (si el guardado apunta a uno que ya no está
@@ -149,6 +153,7 @@ async function main() {
       ? `<br>Nuevo diseño: <b>${nuevas.map((s) => s.nombre).join(', ')}</b>`
       : '';
     avisoNivel(`¡Nivel <b>${nivel}</b>! · ${rango}${extra}`);
+    sonido.fanfarria();
     behavior.playOnce('happy', 1.6);
   });
 
@@ -189,6 +194,7 @@ async function main() {
       act: doAction,
       chat,
       speech,
+      sonido,
       decir: (from, text) => speech.show(from, text, { self: false }),
       settings: () => settings,
       name: duckName
@@ -361,6 +367,7 @@ function updateFlight(dt) {
   // conserva su parábola.
   if (Math.hypot(vx, vy) < GLIDE_THRESHOLD && vy < -GLIDE_SPEED) {
     vy = -GLIDE_SPEED;
+    sonido.aleteo();          // sólo suena mientras aletea para frenar
   }
 
   let nx = duck.x + vx * dt;
@@ -368,8 +375,11 @@ function updateFlight(dt) {
 
   // Rebote en los lados.
   const maxX = window.innerWidth - duck.width;
-  if (nx <= 0) { nx = 0; vx = Math.abs(vx) * WALL_BOUNCE; }
-  else if (nx >= maxX) { nx = maxX; vx = -Math.abs(vx) * WALL_BOUNCE; }
+  if (nx <= 0 || nx >= maxX) {
+    nx = nx <= 0 ? 0 : maxX;
+    vx = (nx === 0 ? Math.abs(vx) : -Math.abs(vx)) * WALL_BOUNCE;
+    sonido.boing(Math.abs(vx) / MAX_THROW);
+  }
 
   // Techo: no se escapa por arriba.
   const maxY = window.innerHeight - duck.height;
@@ -379,6 +389,7 @@ function updateFlight(dt) {
   if (ny <= duck.ground) {
     ny = duck.ground;
     if (Math.abs(vy) > REST_SPEED) {
+      sonido.boing(Math.abs(vy) / MAX_THROW);
       vy = Math.abs(vy) * GROUND_BOUNCE;
       vx *= GROUND_FRICTION;
     } else {
@@ -478,6 +489,14 @@ function openSettings(x, y) {
   const { el } = buildSettingsPanel(settings, config.version, {
     isNameTaken: (n) => chat.isNameTaken(n),
     chatReady: chat.connected,
+    // El volumen se aplica al momento, para poder ajustarlo de oído.
+    onSonido: ({ volumen, silenciado }) => {
+      sonido.setVolumen(volumen);
+      sonido.setSilenciado(silenciado);
+      settings = { ...settings, volumen, silenciado };
+      api.saveSettings(settings);
+      if (!silenciado) sonido.cuack();     // muestra de cómo suena
+    },
     onSave: (s) => {
       settings = { ...settings, ...s };
       api.saveSettings(settings);
@@ -593,6 +612,8 @@ function setupChat() {
   chat = new ChatClient();
   chat.onMessage((m) => {
     speech.show(m.from, m.text, { self: false });
+    // Un poco más grave que el propio, para distinguir quién habla.
+    sonido.cuack({ agudo: 0.9 });
     if (behavior) behavior.playOnce('talk', 2.2);
   });
   chat.onStatus(() => { /* opcional: indicador de conexión */ });
@@ -606,6 +627,7 @@ function sendChat(text) {
   const name = `${duckName()} · Nv ${level.nivel}`;
   chat.send(name, text);
   speech.show(name, text, { self: true });
+  sonido.cuack();
   level.chat();
   if (behavior) behavior.playOnce('talk', 2.2);
 }
