@@ -186,10 +186,23 @@ ipcMain.on('settings:save', (_evt, data) => {
   applyAutoLaunch(data);
 });
 
+// Metadatos de los sprites: cada diseño tiene sus propias filas y frames, así
+// que el renderer los lee de aquí en vez de llevarlos escritos.
+function leerSprites() {
+  try {
+    const ruta = path.join(__dirname, '..', '..', 'assets', 'sprites', 'index.json');
+    return JSON.parse(require('fs').readFileSync(ruta, 'utf8'));
+  } catch (err) {
+    console.error('[sprites] no se pudo leer el índice:', err.message);
+    return {};
+  }
+}
+
 ipcMain.handle('config:get', () => ({
   version: app.getVersion(),
   isDev,
-  ground: groundFromBottom()
+  ground: groundFromBottom(),
+  sprites: leerSprites()
 }));
 
 // Chat entre patos.

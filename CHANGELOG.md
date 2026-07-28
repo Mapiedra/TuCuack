@@ -7,6 +7,23 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Añadido
+
+- **Los cinco diseños tienen ya arte propio**: Patito, Patita, Pato duro, Pato gánster
+  y Capo de la mafia. Se acabaron los provisionales teñidos.
+- Importador de arte (`npm run sprites:import`): recupera un sheet exportado sin
+  transparencia, quitando el fondo de cuadros, ajustando la rejilla y limpiando los
+  restos que deja la compresión.
+
+### Cambiado
+
+- Cada diseño lleva **sus propios metadatos** (filas, frames y fps): antes iban escritos
+  en el código, y los diseños nuevos no tienen el mismo número de frames por animación
+  que el pato duro.
+- El lienzo del sprite crece a 248x268 con más margen por abajo: el capo duerme en un
+  sillón que sobresale bastante por debajo de sus pies y se cortaba.
+
+
 ### Cambiado
 
 - El arte del pato duro se **reordena al formato estándar**: pasa de 11 filas

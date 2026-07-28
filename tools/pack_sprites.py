@@ -40,11 +40,14 @@ OUT_JSON = None
 
 FW, FH = 192, 208          # rejilla del arte fuente
 
-# Lienzo de salida. Con margen suficiente para que el bate, al rotar en el
-# swing, no se salga por los bordes.
-OUT_W, OUT_H = 232, 240
-TARGET_BODY_H = 132        # altura constante del cuerpo (sin bate) en px
-GROUND_Y = OUT_H - 14      # línea del suelo dentro del lienzo de salida
+# Lienzo de salida. Necesita margen alrededor del pato: por arriba para el bate
+# del pato duro, y sobre todo por abajo para lo que algunos diseños llevan al
+# suelo (el capo duerme en un sillón, que sobresale bastante por debajo de sus
+# pies). Como la escala se normaliza por el cuerpo del pato, esos añadidos se
+# salen del lienzo si va justo.
+OUT_W, OUT_H = 248, 268
+TARGET_BODY_H = 132        # altura constante del cuerpo (sin extras) en px
+GROUND_Y = OUT_H - 42      # línea del suelo dentro del lienzo de salida
 
 # Todas las filas del arte fuente miran a la DERECHA -> dirección canónica.
 CANON_FACING = 'right'
@@ -477,7 +480,28 @@ def main():
         OUT_JSON = os.path.join(SPRITES, f'duck-{ident}.json')
         print(f'\n=== diseño "{ident}" ===')
         problemas += pack_one(ident)
+
+    escribir_indice(artes)
     return problemas
+
+
+def escribir_indice(artes):
+    """Deja en un solo fichero los metadatos de todos los diseños.
+
+    Cada diseño puede tener distinto número de frames por animación, así que el
+    juego no puede llevarlos escritos: los lee de aquí.
+    """
+    indice = {}
+    for arte in artes:
+        ident = os.path.splitext(arte)[0]
+        ruta = os.path.join(SPRITES, f'duck-{ident}.json')
+        if os.path.exists(ruta):
+            with open(ruta, encoding='utf8') as fh:
+                indice[ident] = json.load(fh)
+    destino = os.path.join(SPRITES, 'index.json')
+    with open(destino, 'w', encoding='utf8') as fh:
+        json.dump(indice, fh, indent=2)
+    print(f'\níndice de {len(indice)} diseño(s) -> {destino}')
 
 
 def pack_one(ident):

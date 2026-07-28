@@ -1,12 +1,12 @@
 {
-  "frameW": 232,
-  "frameH": 240,
+  "frameW": 248,
+  "frameH": 268,
   "facing": "right",
   "groundY": 226,
   "animations": {
     "idle": {
       "row": 0,
-      "frames": 7,
+      "frames": 8,
       "fps": 6,
       "loop": true
     },
@@ -36,7 +36,7 @@
     },
     "happy": {
       "row": 5,
-      "frames": 4,
+      "frames": 6,
       "fps": 8,
       "loop": true
     },

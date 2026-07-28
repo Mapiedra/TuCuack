@@ -4,23 +4,27 @@
 
 import { SpriteAnimator } from './SpriteAnimator.js';
 
-// Metadatos del sprite sheet empaquetado por tools/pack_sprites.py
-// (ver assets/sprites/duck.json). Todas las animaciones miran a la DERECHA.
-const SHEET = {
-  frameW: 232,
-  frameH: 240,
+// Los metadatos del sheet (filas, frames y fps de cada animación) los genera
+// tools/pack_sprites.py y llegan desde el proceso principal: cada diseño tiene
+// los suyos, así que no pueden ir escritos aquí. Todas las animaciones miran a
+// la DERECHA.
+//
+// Este es el respaldo por si el índice no estuviera disponible.
+const SHEET_POR_DEFECTO = {
+  frameW: 248,
+  frameH: 268,
   animations: {
-    idle:  { row: 0,  frames: 7,  fps: 6,  loop: true },
-    walk:  { row: 1,  frames: 8,  fps: 12, loop: true },
-    play:  { row: 2,  frames: 11, fps: 15, loop: true },
-    eat:   { row: 3,  frames: 8,  fps: 10, loop: true },
-    sleep: { row: 4,  frames: 8,  fps: 5,  loop: true },
-    happy: { row: 5,  frames: 4,  fps: 8,  loop: true },
-    talk:  { row: 6,  frames: 6,  fps: 8,  loop: true },
-    cool:  { row: 7,  frames: 6,  fps: 8,  loop: true },
-    sad:   { row: 8,  frames: 6,  fps: 5,  loop: true },
-    flap:  { row: 9,  frames: 6,  fps: 14, loop: true },
-    drag:  { row: 10, frames: 6,  fps: 10, loop: true }
+    idle:  { row: 0,  frames: 7, fps: 6,  loop: true },
+    walk:  { row: 1,  frames: 8, fps: 12, loop: true },
+    play:  { row: 2,  frames: 8, fps: 12, loop: true },
+    eat:   { row: 3,  frames: 8, fps: 10, loop: true },
+    sleep: { row: 4,  frames: 8, fps: 5,  loop: true },
+    happy: { row: 5,  frames: 4, fps: 8,  loop: true },
+    talk:  { row: 6,  frames: 6, fps: 8,  loop: true },
+    cool:  { row: 7,  frames: 6, fps: 8,  loop: true },
+    sad:   { row: 8,  frames: 6, fps: 5,  loop: true },
+    flap:  { row: 9,  frames: 6, fps: 14, loop: true },
+    drag:  { row: 10, frames: 6, fps: 10, loop: true }
   }
 };
 
@@ -34,8 +38,10 @@ const STATE_ANIM = {
 const CANON_DIR = 1; // el arte mira a la derecha
 
 export class Duck {
-  constructor(root, canvas, groundOffset = 0, skinId = 'normal') {
+  constructor(root, canvas, groundOffset = 0, skinId = 'normal', metadatos = null) {
     this.skinId = skinId;
+    // { <id>: {frameW, frameH, animations} } — uno por diseño.
+    this.metadatos = metadatos || {};
     this.el = root;              // #duck
     this.canvas = canvas;        // #duckCanvas
     this.x = 200;
@@ -53,10 +59,17 @@ export class Duck {
     this._apply();
   }
 
+  /** Metadatos del diseño puesto, o los de respaldo si no se conocen. */
+  _sheet() {
+    return this.metadatos[this.skinId] || SHEET_POR_DEFECTO;
+  }
+
   _loadSheet() {
+    const meta = this._sheet();
     const img = new Image();
     img.onload = () => {
-      const sheet = { image: img, frameW: SHEET.frameW, frameH: SHEET.frameH, animations: SHEET.animations };
+      const sheet = { image: img, frameW: meta.frameW, frameH: meta.frameH,
+                      animations: meta.animations };
       if (this.animator) this.animator.stop();
       this.animator = new SpriteAnimator(this.canvas, sheet);
       this.ready = true;
@@ -143,7 +156,11 @@ export class Duck {
     if (this.state === state || !STATE_ANIM[state]) return;
     this.state = state;
     this.el.dataset.state = state;
-    if (this.ready && this.animator) this.animator.play(STATE_ANIM[state]);
+    // Si el diseño no tiene esa animación, se queda en la que estuviera.
+    const anim = STATE_ANIM[state];
+    if (this.ready && this.animator && this._sheet().animations[anim]) {
+      this.animator.play(anim);
+    }
   }
 
   centerX() { return this.x + this.width / 2; }

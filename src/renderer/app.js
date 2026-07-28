@@ -107,7 +107,8 @@ async function main() {
     document.getElementById('duck'),
     document.getElementById('duckCanvas'),
     config.ground || 0,
-    skinValida
+    skinValida,
+    config.sprites            // metadatos de cada diseño
   );
   duck.setX(Math.min(window.innerWidth - duck.width - 40, 260));
   api.onLayoutChanged((d) => duck.setGround(d && d.ground));

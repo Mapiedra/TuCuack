@@ -2,10 +2,11 @@
   /* Medidas del sprite (tools/pack_sprites.py) y escala a la que se muestra.
      Todo lo demás se deriva de aquí, así que basta tocar --duck-scale para
      cambiar el tamaño del pato en pantalla. */
-  --sprite-w: 232px;
-  --sprite-h: 240px;
-  --sprite-foot: 14px;    /* margen bajo los pies dentro del sprite */
-  --sprite-top: 139px;    /* alto del dibujo sobre los pies, bate incluido */
+  /* Deben coincidir con OUT_W/OUT_H/GROUND_Y de tools/pack_sprites.py. */
+  --sprite-w: 248px;
+  --sprite-h: 268px;
+  --sprite-foot: 42px;    /* margen bajo los pies dentro del sprite */
+  --sprite-top: 139px;    /* alto del dibujo sobre los pies */
   --duck-scale: 0.62;
 
   --duck-w: calc(var(--sprite-w) * var(--duck-scale));
