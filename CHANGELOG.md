@@ -7,21 +7,6 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
-### Corregido
-
-- El chat aparecía como desconectado aunque el canal sí lo estuviera: el estado se
-  emitía antes de que el renderer registrase sus listeners y se perdía. Ahora lo
-  consulta al arrancar.
-- La URL de Supabase se recorta a la raíz del proyecto. Es fácil copiar la del endpoint
-  REST (`.../rest/v1`), y con ese sufijo Realtime devuelve 401 y el chat no conecta.
-
-### Añadido
-
-- Registro del estado del canal y del origen de las credenciales al arrancar, para
-  poder diagnosticar la conexión sin adivinar.
-- Guía de configuración por entornos en [`docs/CONFIGURACION.md`](docs/CONFIGURACION.md),
-  con cómo probar dos patos en un mismo equipo.
-
 ## [0.1.0] - 2026-07-28
 
 Primera versión.
@@ -48,6 +33,11 @@ Primera versión.
   tag `v*`.
 - **Generación de sprites e iconos** desde el arte fuente (`tools/pack_sprites.py`,
   `tools/make_icons.py`), con verificación automática de alineación y recortes.
+- **Guía de configuración** por entornos en
+  [`docs/CONFIGURACION.md`](docs/CONFIGURACION.md), incluido cómo levantar dos patos
+  en un mismo equipo para probar el chat.
+- Registro, al arrancar, del estado del canal y del origen de las credenciales, para
+  poder diagnosticar la conexión sin adivinar.
 
 ### Notas
 
