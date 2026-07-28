@@ -15,7 +15,9 @@
     "sprites": "python tools/pack_sprites.py",
     "pack": "electron-builder --dir",
     "build": "electron-builder",
-    "release": "electron-builder --publish always"
+    "release": "electron-builder --publish always",
+    "sprites:check": "python tools/check_source.py",
+    "sprites:placeholders": "python tools/make_placeholder_skins.py"
   },
   "build": {
     "appId": "com.mapiedra.tucuack",

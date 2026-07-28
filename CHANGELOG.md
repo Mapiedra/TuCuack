@@ -7,6 +7,14 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Añadido
+
+- Comprobador de arte fuente (`npm run sprites:check`): antes de empaquetar un diseño
+  nuevo, avisa de si la rejilla no cuadra, falta alguna fila, el personaje se sale de
+  su celda o cambia demasiado de tamaño entre frames. Con `--guardar-contacto` deja
+  además una hoja con todas las celdas numeradas.
+
+
 ## [0.2.0] - 2026-07-28
 
 ### Añadido

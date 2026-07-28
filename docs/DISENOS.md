@@ -69,6 +69,32 @@ Descripciones sugeridas para los que faltan:
 - **Pato gánster**: traje a rayas, sombrero fedora, gesto de pocos amigos.
 - **Capo de la mafia**: traje oscuro elegante, puro, anillo de oro, aire de jefe.
 
+## Cómo generarlos
+
+Ninguna IA respeta bien una rejilla, así que el flujo es **de uno en uno**: generar,
+comprobar, integrar y mirarlo en pantalla. Así se aprende qué hay que pedirle antes de
+gastar cuatro intentos.
+
+1. **Genera un diseño** con el prompt de arriba. Lo más importante: pásale **el arte
+   del pato duro como imagen de referencia** para que el estilo, el grosor de línea y
+   el tamaño casen entre diseños. Sin esa referencia, cada pato parece de un juego
+   distinto.
+2. **Compruébalo** antes de nada:
+
+   ```bash
+   npm run sprites:check -- assets/sprites/fuentes/ganster.webp
+   ```
+
+   Dice si la rejilla cuadra, si falta alguna fila, si el personaje se sale de su celda
+   y cuánto cambia de tamaño entre frames. Con `--guardar-contacto` deja además una
+   hoja con todas las celdas numeradas, para ver de un vistazo qué salió mal.
+3. **Repite el prompt** hasta que no haya problemas graves. Los avisos de "toca el
+   borde" son corregibles automáticamente, pero cuantos menos, mejor sale.
+4. **Empaqueta e integra** (siguiente apartado) y arranca la app para verlo andar.
+
+Qué esperar: hasta el arte del pato duro, que es bueno, tiene dos frames recortados y
+un 23 % de variación de tamaño entre celdas. Es normal; el empaquetador lo compensa.
+
 ### Después de añadirlo
 
 ```bash
