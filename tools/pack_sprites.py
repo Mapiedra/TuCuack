@@ -404,6 +404,68 @@ def swing_from_row(src, row, n):
 
 
 
+# --- Distribución de filas del arte fuente -------------------------------
+#
+# LAYOUT_ESTANDAR es el formato para arte nuevo: una fila por acción, seguidas y
+# sin huecos, con las animaciones que el juego necesita. Está documentado en
+# docs/DISENOS.md, que es lo que se le pasa a quien dibuje o genere el arte.
+#
+# (fila, nombre, fps, voltear)  — `voltear` para las filas dibujadas mirando a
+# la izquierda; el resto del arte mira a la derecha, la dirección canónica.
+LAYOUT_ESTANDAR = [
+    (0, 'idle',  6,  False),
+    (1, 'walk',  12, False),
+    (2, 'eat',   10, False),
+    (3, 'play',  12, False),
+    (4, 'sleep', 5,  False),
+    (5, 'happy', 8,  False),
+    (6, 'talk',  8,  False),
+    (7, 'sad',   5,  False),
+    (8, 'cool',  8,  False),
+]
+
+# El arte del pato duro es anterior a ese formato: tiene las acciones repartidas
+# de otra manera y con filas que no se aprovechan. Se conserva su distribución
+# para no rehacer un arte que ya funciona.
+LAYOUT_DURO = [
+    (0, 'idle',  6,  False),
+    # Se usa la fila 1 y no la 2 porque en la 2 el pato no cabe en su celda y
+    # varios frames vienen recortados por el costado (pierde la cola).
+    (1, 'walk',  12, True),
+    (3, 'happy', 8,  False),
+    (6, 'talk',  8,  False),
+    (7, 'cool',  8,  False),
+    (8, 'sad',   5,  False),
+    (9, 'eat',   10, False),
+    (10, 'crouch', 6, False),   # agachado: base de la animación de dormir
+]
+
+LAYOUTS = {'duro': LAYOUT_DURO}
+
+
+def layout_de(ident):
+    return LAYOUTS.get(ident, LAYOUT_ESTANDAR)
+
+
+def frames_en_fila(img, fila):
+    """Cuántas celdas seguidas de esa fila tienen dibujo.
+
+    Se cuenta en vez de declararlo para que el arte nuevo no tenga que ajustarse
+    a un número exacto de frames por acción: basta con que estén seguidos.
+    """
+    a = np.array(img)
+    cols = img.width // FW
+    n = 0
+    for c in range(cols):
+        celda = a[fila * FH:(fila + 1) * FH, c * FW:(c + 1) * FW]
+        if celda.shape[0] < FH:
+            break
+        if (celda[:, :, 3] > 20).sum() < 200:   # celda vacía o casi
+            break
+        n += 1
+    return n
+
+
 def main():
     """Procesa todos los diseños que haya en assets/sprites/fuentes/."""
     global SRC, OUT_PNG, OUT_JSON
@@ -423,30 +485,22 @@ def main():
         OUT_PNG = os.path.join(SPRITES, f'duck-{ident}.png')
         OUT_JSON = os.path.join(SPRITES, f'duck-{ident}.json')
         print(f'\n=== diseño "{ident}" ===')
-        problemas += pack_one()
+        problemas += pack_one(ident)
     return problemas
 
 
-def pack_one():
+def pack_one(ident):
     src = load_source()
+    layout = layout_de(ident)
+    print(f'  distribución: {"heredada" if ident in LAYOUTS else "estándar"}')
 
-    # --- Animaciones tomadas del arte fuente -----------------------------
-    # (nombre, fila, nº frames, fps, loop, voltear)
-    # `voltear` es para las filas dibujadas mirando a la izquierda: el resto del
-    # arte mira a la derecha, que es la dirección canónica.
-    base = [
-        ('idle',  0, 7,  6,  True,  False),
-        # Ciclo de caminar: se usa la fila 1 y no la 2 porque en la 2 el pato no
-        # cabe en su celda y varios frames vienen recortados en vertical por el
-        # costado (pierde la cola). La fila 1 es el mismo ciclo, completo.
-        ('walk',  1, 8,  12, True,  True),
-        ('happy', 3, 4,  8,  True,  False),   # saluda con el ala
-        ('talk',  6, 6,  8,  True,  False),
-        ('cool',  7, 6,  8,  True,  False),
-        ('sad',   8, 6,  5,  True,  False),
-        ('eat',   9, 8,  10, True,  False),   # cabeza atrás, traga
-        ('crouch', 10, 8, 6, True,  False),   # agachado (base para dormir)
-    ]
+    base = []
+    for row, name, fps, flip in layout:
+        n = frames_en_fila(src, row)
+        if n == 0:
+            print(f'  [!] la fila {row} ({name}) está vacía: se omite')
+            continue
+        base.append((name, row, n, fps, True, flip))
 
     anims = {}   # nombre -> lista de PIL.Image ya normalizados
     for name, row, n, fps, loop, flip in base:
@@ -542,21 +596,28 @@ def verify(anims, order):
 
 
 def build_synthetic(anims, src):
-    """Crea dormir, aletear, swing del bate y arrastre a partir de frames base."""
-    # -- DORMIR: el pato agachado respirando lentamente -------------------
-    crouch = anims.pop('crouch')['frames']
-    base = crouch[0]
-    sleep = []
-    for i in range(8):
-        amp = np.sin(i / 8.0 * 2 * np.pi)
-        # Respiración muy sutil: si se exagera parece que cambia de tamaño.
-        sleep.append(scale_about_feet(base, 1.0 + 0.008 * amp, 1.0 + 0.014 * amp))
-    anims['sleep'] = {'frames': sleep, 'fps': 5, 'loop': True}
+    """Completa las animaciones que el arte no trae dibujadas.
 
-    # -- JUGAR: swing del bate --------------------------------------------
+    Con el formato estándar, `sleep` y `play` vienen del propio arte y aquí sólo
+    se generan `flap` y `drag`. El arte del pato duro no las tiene, así que se
+    componen a partir de otras filas.
+    """
+    # -- DORMIR: si no viene dibujada, el pato agachado respirando ---------
+    crouch = anims.pop('crouch', None)
+    if 'sleep' not in anims and crouch:
+        base = crouch['frames'][0]
+        sleep = []
+        for i in range(8):
+            amp = np.sin(i / 8.0 * 2 * np.pi)
+            # Respiración muy sutil: si se exagera parece que cambia de tamaño.
+            sleep.append(scale_about_feet(base, 1.0 + 0.008 * amp, 1.0 + 0.014 * amp))
+        anims['sleep'] = {'frames': sleep, 'fps': 5, 'loop': True}
+
+    # -- JUGAR: si no viene dibujada, se compone el swing del bate ---------
     # Frames reales de la fila "cool" (la de mayor recorrido del bate: ~40°),
     # reordenados por ángulo y recorridos en vaivén.
-    anims['play'] = {'frames': swing_from_row(src, 7, 6), 'fps': 12, 'loop': True}
+    if 'play' not in anims:
+        anims['play'] = {'frames': swing_from_row(src, 7, 6), 'fps': 12, 'loop': True}
 
     # -- ALETEAR: para la caída lenta -------------------------------------
     # El ala sube y baja (base: la fila del saludo) y el cuerpo se sostiene.

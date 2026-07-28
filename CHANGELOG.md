@@ -7,6 +7,18 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Cambiado
+
+- El arte de un diseño nuevo usa una **distribución de filas documentada**: una acción
+  por fila, seguidas y sin huecos (quieto, andar, comer, jugar, dormir, contento,
+  hablar, triste, chulesco). La del pato duro venía de antes, con filas que no se
+  aprovechaban, y se conserva para no rehacer un arte que funciona.
+- El generador **cuenta solo los frames de cada fila**, así que el arte no tiene que
+  ajustarse a un número exacto por acción.
+- Si el arte trae dibujadas las animaciones de **jugar** y **dormir**, se usan tal cual
+  en vez de componerlas a partir de otras filas.
+
+
 ## [0.2.2] - 2026-07-28
 
 ### Corregido

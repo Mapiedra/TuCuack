@@ -17,19 +17,27 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pack_sprites import FW, FH, clip_info  # noqa: E402
+from pack_sprites import FW, FH, clip_info, LAYOUT_ESTANDAR, layout_de  # noqa: E402
 
-# Filas que el juego necesita: (índice, frames, para qué)
-REQUERIDAS = [
-    (0, 7, 'quieto'),
-    (1, 8, 'caminando (mirando a la izquierda)'),
-    (3, 4, 'saludando con el ala'),
-    (6, 6, 'hablando'),
-    (7, 6, 'ajustándose las gafas'),
-    (8, 6, 'triste'),
-    (9, 8, 'comiendo'),
-    (10, 8, 'agachado'),
-]
+# Qué se espera en cada fila del formato estándar (ver docs/DISENOS.md).
+DESCRIPCIONES = {
+    'idle': 'quieto, de pie',
+    'walk': 'caminando (ciclo completo)',
+    'eat': 'comiendo',
+    'play': 'jugando (moviendo lo que lleve en las alas)',
+    'sleep': 'durmiendo, acurrucado',
+    'happy': 'contento, saludando con el ala',
+    'talk': 'hablando, gesticulando',
+    'sad': 'triste, cabizbajo',
+    'cool': 'chulesco, ajustándose las gafas',
+    'crouch': 'agachado, en reposo',
+}
+
+
+def requeridas(ident):
+    """Filas que se esperan para ese diseño, con su descripción."""
+    return [(fila, nombre, DESCRIPCIONES.get(nombre, nombre))
+            for fila, nombre, _fps, _flip in layout_de(ident)]
 
 
 def celda(img, fila, col):
@@ -67,11 +75,15 @@ def main():
         print(f'No existe: {ruta}')
         return 2
 
+    ident = os.path.splitext(os.path.basename(ruta))[0]
     img = Image.open(ruta).convert('RGBA')
     W, H = img.size
     cols, filas = W // FW, H // FH
     print(f'Arte: {os.path.basename(ruta)}  ({W}x{H})')
     print(f'Rejilla de {FW}x{FH} -> {cols} columnas x {filas} filas')
+    esperado = requeridas(ident)
+    print(f'Distribución esperada: '
+          f'{"la heredada de este diseño" if len(esperado) != len(LAYOUT_ESTANDAR) else "estándar"}')
 
     problemas, avisos = [], []
     if W % FW or H % FH:
@@ -82,17 +94,25 @@ def main():
 
     print('\nFilas que necesita el juego:')
     altos = []
-    for fila, n, para_que in REQUERIDAS:
+    for fila, nombre, para_que in esperado:
         if fila >= filas:
-            problemas.append(f'Falta la fila {fila} ({para_que}).')
-            print(f'  fila {fila:2d}  FALTA           {para_que}')
+            problemas.append(f'Falta la fila {fila + 1} ({para_que}).')
+            print(f'  fila {fila + 1:2d}  FALTA           {para_que}')
             continue
+
+        # Se cuentan los frames que hay, no se exige un número concreto.
+        n = 0
+        for c in range(cols):
+            cel = celda(img, fila, c)
+            if alto_cuerpo(cel) is None:
+                break
+            n += 1
+        if n < 3:
+            problemas.append(f'La fila {fila + 1} ({para_que}) tiene {n} frame(s); '
+                             'hacen falta al menos 3 para que la animación se note.')
 
         vacias, cortadas, recortes = 0, [], []
         for c in range(n):
-            if c >= cols:
-                vacias += 1
-                continue
             cel = celda(img, fila, c)
             h = alto_cuerpo(cel)
             if h is None:
@@ -105,18 +125,15 @@ def main():
             if clip_info(cel) is not None:
                 recortes.append(str(c))
 
-        estado = 'ok'
-        if vacias:
-            problemas.append(f'La fila {fila} ({para_que}) tiene {vacias} de {n} celdas vacías.')
-            estado = f'{vacias} vacías'
+        estado = f'{n} frames'
         if cortadas:
-            avisos.append(f'Fila {fila}: el dibujo toca el borde en {", ".join(cortadas)}.')
+            avisos.append(f'Fila {fila + 1}: el dibujo toca el borde en {", ".join(cortadas)}.')
             estado = 'toca el borde'
         if recortes:
-            avisos.append(f'Fila {fila}: el contorno sale plano en {", ".join(recortes)} '
+            avisos.append(f'Fila {fila + 1}: el contorno sale plano en {", ".join(recortes)} '
                           '(al personaje le falta un trozo).')
             estado = 'recortado'
-        print(f'  fila {fila:2d}  {estado:14s}  {para_que}')
+        print(f'  fila {fila + 1:2d}  {estado:14s}  {para_que}')
 
     if altos:
         lo, hi = min(altos), max(altos)
