@@ -7,6 +7,15 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.1.1] - 2026-07-28
+
+### Añadido
+
+- **Versión para macOS**: el workflow compila también en macOS y publica un DMG y un
+  ZIP (Intel y Apple Silicon) en el mismo Release. La app vive en la barra de menús y
+  no ocupa sitio en el Dock. No está firmada, así que la primera vez hay que abrirla
+  con clic derecho → Abrir.
+
 ### Corregido
 
 - Los iconos de estado (hambre, sueño, higiene…) quedaban ocultos tras el pato: se
@@ -52,5 +61,6 @@ Primera versión.
   funciona con normalidad pero sin chat.
 - El instalador no está firmado, así que Windows SmartScreen mostrará un aviso.
 
-[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.1.0...HEAD
+[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.1.0

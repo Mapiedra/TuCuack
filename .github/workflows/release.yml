@@ -1,8 +1,9 @@
 name: Release
 
-# Se dispara al subir un tag de versión (p. ej. v0.1.0). Compila el instalador
-# con electron-builder y lo publica, junto con latest.yml, en un GitHub Release:
-# ese Release es el feed que electron-updater consulta para autoactualizarse.
+# Se dispara al subir un tag de versión (p. ej. v0.1.0). Compila en Windows y en
+# macOS y publica los instaladores, junto con latest.yml / latest-mac.yml, en un
+# GitHub Release: ese Release es el feed que electron-updater consulta para
+# autoactualizarse.
 #
 # Para publicar una versión:
 #   1. sube "version" en package.json y añade la entrada en CHANGELOG.md
@@ -18,7 +19,17 @@ permissions:
 
 jobs:
   release:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false    # que un fallo en un sistema no cancele el otro
+      matrix:
+        include:
+          - os: windows-latest
+            nombre: Windows
+          - os: macos-latest
+            nombre: macOS
+
+    name: ${{ matrix.nombre }}
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
@@ -35,21 +46,17 @@ jobs:
 
       # Credenciales del chat. Se generan aquí desde los secrets del repositorio
       # para no versionarlas; si no están definidas, se compila sin chat.
+      # Se hace con node para que valga igual en Windows y en macOS.
       - name: Configure Supabase
-        shell: pwsh
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
-        run: |
-          if ($env:SUPABASE_URL -and $env:SUPABASE_PUBLISHABLE_KEY) {
-            @{ url = $env:SUPABASE_URL; publishableKey = $env:SUPABASE_PUBLISHABLE_KEY } |
-              ConvertTo-Json | Set-Content -Path supabase.json -Encoding utf8
-            Write-Host "supabase.json generado: el instalador llevara el chat activado."
-          } else {
-            Write-Host "Sin secrets de Supabase: se compila sin chat."
-          }
+        run: node tools/write-supabase-config.js
 
       - name: Build and publish
         run: npm run release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Sin certificado de Apple no se firma ni se notariza; evita que
+          # electron-builder intente firmar y falle.
+          CSC_IDENTITY_AUTO_DISCOVERY: false

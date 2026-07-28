@@ -139,8 +139,24 @@ python tools/make_icons.py
 ## Empaquetar y publicar
 
 ```bash
-npm run build     # instalador NSIS en dist/
+npm run build     # instalador para tu sistema, en dist/
 ```
+
+Cada sistema se compila en el suyo: Windows produce el instalador **NSIS**, y macOS
+un **DMG** y un **ZIP** (universales, Intel y Apple Silicon). El workflow de release
+los genera en paralelo y los sube al mismo Release.
+
+### Sobre la versión de macOS
+
+Funciona, pero con dos avisos:
+
+- **No está firmada ni notarizada** (haría falta una cuenta de Apple Developer). La
+  primera vez, macOS la bloqueará: hay que abrirla con **clic derecho → Abrir**, o
+  ejecutar `xattr -cr /Applications/TuCuack.app`.
+- El pato camina por el borde inferior de la pantalla, donde en macOS suele estar el
+  **Dock**. La app vive en la barra de menús (no aparece en el Dock).
+
+No se ha probado en un Mac real; si algo se comporta raro, abre una incidencia.
 
 Para publicar una versión y que las instalaciones se actualicen solas:
 
