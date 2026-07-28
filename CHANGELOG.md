@@ -7,6 +7,12 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Añadido
+
+- El chat **se reconecta solo** si se cae la conexión, con esperas crecientes (5s, 10s,
+  20s… hasta 5 min). Antes, un corte de red o una caída del servicio dejaban el chat
+  muerto hasta reiniciar la app, aunque el servicio volviera al momento.
+
 ### Corregido
 
 - La experiencia por chatear no tenía tope: el contador diario de mensajes se ponía a

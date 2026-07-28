@@ -46,47 +46,8 @@ function initChat(getWin, initialName) {
     realtime: { transport: WebSocketImpl, params: { eventsPerSecond: 10 } }
   });
 
-  channel = supabase.channel(config.CHANNEL, {
-    config: {
-      broadcast: { self: false },
-      presence: { key: myKey }
-    }
-  });
-
-  channel.on('broadcast', { event: 'chat' }, ({ payload }) => {
-    if (!payload) return;
-    notify(getWin, {
-      type: 'message',
-      from: String(payload.from || 'Pato'),
-      text: String(payload.text || ''),
-      ts: payload.ts || Date.now()
-    });
-  });
-
-  // Presencia: quién está conectado y con qué nombre.
-  channel.on('presence', { event: 'sync' }, () => {
-    notify(getWin, { type: 'presence', names: presentNames() });
-  });
-  channel.on('presence', { event: 'join' }, () => {
-    notify(getWin, { type: 'presence', names: presentNames() });
-  });
-  channel.on('presence', { event: 'leave' }, () => {
-    notify(getWin, { type: 'presence', names: presentNames() });
-  });
-
-  channel.subscribe(async (status, err) => {
-    connected = status === 'SUBSCRIBED';
-    console.log('[chat] canal:', status, err ? `(${err.message || err})` : '');
-    notify(getWin, { type: 'status', connected, reason: status });
-    if (connected) {
-      try {
-        await channel.track({ name: myName, at: Date.now() });
-      } catch (err) {
-        console.error('[chat] no se pudo anunciar la presencia:', err);
-      }
-      notify(getWin, { type: 'presence', names: presentNames() });
-    }
-  });
+  channel = crearCanal(getWin);
+  suscribir(getWin);
 
   return {
     send(from, text) {
@@ -116,6 +77,93 @@ function initChat(getWin, initialName) {
     names: () => presentNames(),
     isReady: () => connected
   };
+}
+
+/** Crea el canal con sus escuchas. Se rehace entero en cada reconexión. */
+function crearCanal(getWin) {
+  const ch = supabase.channel(config.CHANNEL, {
+    config: {
+      broadcast: { self: false },
+      presence: { key: myKey }
+    }
+  });
+
+  ch.on('broadcast', { event: 'chat' }, ({ payload }) => {
+    if (!payload) return;
+    notify(getWin, {
+      type: 'message',
+      from: String(payload.from || 'Pato'),
+      text: String(payload.text || ''),
+      ts: payload.ts || Date.now()
+    });
+  });
+
+  // Presencia: quién está conectado y con qué nombre.
+  for (const evento of ['sync', 'join', 'leave']) {
+    ch.on('presence', { event: evento }, () => {
+      notify(getWin, { type: 'presence', names: presentNames() });
+    });
+  }
+  return ch;
+}
+
+// --- Conexión con reintentos ---------------------------------------------
+//
+// El canal puede caerse por algo ajeno a la app (una caída del servicio, la red
+// del portátil al suspenderse, un cambio de wifi). Sin reintentar, el chat se
+// quedaba muerto hasta reiniciar la app, aunque el servicio volviera enseguida.
+
+let reintentos = 0;
+let temporizador = null;
+const ESPERA_MIN = 5000;
+const ESPERA_MAX = 5 * 60 * 1000;
+
+function suscribir(getWin) {
+  if (!channel) return;
+  channel.subscribe(async (status, err) => {
+    const antes = connected;
+    connected = status === 'SUBSCRIBED';
+    const detalle = err ? ` (${err.message || err})` : '';
+    if (connected) {
+      reintentos = 0;
+      if (!antes) console.log('[chat] canal: conectado');
+      notify(getWin, { type: 'status', connected: true, reason: status });
+      try {
+        await channel.track({ name: myName, at: Date.now() });
+      } catch (e) {
+        console.error('[chat] no se pudo anunciar la presencia:', e);
+      }
+      notify(getWin, { type: 'presence', names: presentNames() });
+      return;
+    }
+
+    console.log(`[chat] canal: ${status}${detalle}`);
+    notify(getWin, { type: 'status', connected: false, reason: status });
+    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+      programarReintento(getWin);
+    }
+  });
+}
+
+function programarReintento(getWin) {
+  if (temporizador) return;   // ya hay uno en marcha
+  const espera = Math.min(ESPERA_MAX, ESPERA_MIN * Math.pow(2, reintentos));
+  reintentos++;
+  console.log(`[chat] reintentando en ${Math.round(espera / 1000)}s `
+    + `(intento ${reintentos})`);
+  temporizador = setTimeout(() => {
+    temporizador = null;
+    if (!supabase || !channel) return;
+    try {
+      // Se rehace el canal: reutilizar uno que ya falló no vuelve a conectar.
+      supabase.removeChannel(channel);
+      channel = crearCanal(getWin);
+      suscribir(getWin);
+    } catch (e) {
+      console.error('[chat] fallo al reconectar:', e.message);
+      programarReintento(getWin);
+    }
+  }, espera);
 }
 
 function disabledChat() {
