@@ -9,6 +9,11 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ### Cambiado
 
+- El arte del pato duro se **reordena al formato estándar**: pasa de 11 filas
+  irregulares (tres sin usar) a las 9 documentadas, una acción por fila. Sirve de
+  referencia para generar los demás diseños y deja un único formato en el proyecto.
+  La fila de jugar queda resuelta en el arte, ordenada por el ángulo del bate, en vez
+  de componerse en cada empaquetado.
 - El arte de un diseño nuevo usa una **distribución de filas documentada**: una acción
   por fila, seguidas y sin huecos (quieto, andar, comer, jugar, dormir, contento,
   hablar, triste, chulesco). La del pato duro venía de antes, con filas que no se

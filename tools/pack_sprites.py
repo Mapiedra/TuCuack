@@ -424,23 +424,9 @@ LAYOUT_ESTANDAR = [
     (8, 'cool',  8,  False),
 ]
 
-# El arte del pato duro es anterior a ese formato: tiene las acciones repartidas
-# de otra manera y con filas que no se aprovechan. Se conserva su distribución
-# para no rehacer un arte que ya funciona.
-LAYOUT_DURO = [
-    (0, 'idle',  6,  False),
-    # Se usa la fila 1 y no la 2 porque en la 2 el pato no cabe en su celda y
-    # varios frames vienen recortados por el costado (pierde la cola).
-    (1, 'walk',  12, True),
-    (3, 'happy', 8,  False),
-    (6, 'talk',  8,  False),
-    (7, 'cool',  8,  False),
-    (8, 'sad',   5,  False),
-    (9, 'eat',   10, False),
-    (10, 'crouch', 6, False),   # agachado: base de la animación de dormir
-]
-
-LAYOUTS = {'duro': LAYOUT_DURO}
+# Todos los diseños usan la distribución estándar. `LAYOUTS` queda por si algún
+# arte necesitara una propia.
+LAYOUTS = {}
 
 
 def layout_de(ident):
