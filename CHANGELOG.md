@@ -7,6 +7,8 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.3.1] - 2026-07-29
+
 ### Añadido
 
 - **Sonidos**: un cuack al hablar por el chat (más grave cuando habla otro pato), un
@@ -235,7 +237,8 @@ Primera versión.
   funciona con normalidad pero sin chat.
 - El instalador no está firmado, así que Windows SmartScreen mostrará un aviso.
 
-[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.3.0...HEAD
+[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.3.1
 [0.3.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.3.0
 [0.2.2]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.2.2
 [0.2.1]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.2.1
