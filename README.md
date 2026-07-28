@@ -63,35 +63,62 @@ Sin esto la app funciona igual, pero el chat queda deshabilitado.
 
 1. Crea una cuenta en [supabase.com](https://supabase.com) y un **proyecto nuevo**
    (el plan gratuito sobra: sólo se usa Realtime, no base de datos).
-2. En el panel del proyecto, ve a **Project Settings → API** (o **API Keys**) y copia:
+2. En el panel del proyecto, ve a **Project Settings → API Keys** y copia:
    - **Project URL** → algo como `https://abcdefgh.supabase.co`
-   - **anon public** key → el token largo que empieza por `eyJ…`
-3. Copia el fichero de ejemplo y rellena esos dos valores:
-
-   ```bash
-   cp supabase.example.json supabase.json
-   ```
+   - **Publishable key** → empieza por `sb_publishable_…`
+3. Edita el fichero `supabase.json` de la raíz (ya viene creado) con esos dos valores:
 
    ```json
    {
      "url": "https://abcdefgh.supabase.co",
-     "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+     "publishableKey": "sb_publishable_..."
    }
    ```
 
 4. Reinicia la app. Abre **Ajustes** y ponle nombre a tu pato.
 
 `supabase.json` está en `.gitignore`: **no se sube al repositorio**. Como alternativa
-puedes usar las variables de entorno `SUPABASE_URL` y `SUPABASE_ANON_KEY`.
+puedes usar las variables de entorno `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY`.
 
 **Para que varias personas chateen entre sí**, todas deben usar **las mismas
 credenciales** (mismo proyecto de Supabase). Al compilar el instalador, el fichero
 `supabase.json` se empaqueta dentro, así que quien lo instale ya lo tiene configurado.
 
+### ¿Y si el fichero está ignorado, cómo lo lleva el instalador?
+
+No hace falta compilar en local. La clave vive en los **secrets del repositorio** y el
+workflow **crea `supabase.json` en el runner** justo antes de compilar, así que acaba
+dentro del instalador sin pasar nunca por el repositorio:
+
+| Dónde | Está el fichero | De dónde sale |
+|---|---|---|
+| Repositorio | ❌ no | ignorado por `.gitignore` |
+| Tu equipo (desarrollo) | ✅ sí | lo creas tú a mano |
+| Runner de CI | ✅ sí | lo genera el workflow desde los secrets |
+| Instalador publicado | ✅ sí | empaquetado en `extraResources` |
+
+Configúralo una vez en **Settings → Secrets and variables → Actions → New repository
+secret**:
+
+- `SUPABASE_URL`
+- `SUPABASE_PUBLISHABLE_KEY`
+
+Sin esos secrets el build no falla: simplemente publica una versión sin chat.
+
+> Ojo: la clave viaja **dentro** del instalador, así que quien lo descargue puede
+> extraerla. Es aceptable porque es pública por diseño (para eso está pensada), pero
+> implica que cualquiera con ella puede entrar al canal. Si algún día necesitas
+> restringir el acceso, el paso siguiente es añadir autenticación de Supabase y
+> Realtime Authorization en el canal.
+
 ### Notas
 
-- La `anon key` está pensada para usarse en clientes y es pública por diseño. Aun así,
-  no conviene versionarla.
+- La **publishable key** sustituye a la antigua `anon key`, que Supabase mantiene como
+  *legacy*. Si tu proyecto es anterior y sólo tienes la `anon key`, sirve igual: ponla
+  como `"anonKey"` en vez de `"publishableKey"` (la app avisa por consola de que
+  conviene migrar).
+- Está pensada para usarse en clientes y es pública por diseño. Aun así, no conviene
+  versionarla.
 - El chat usa **broadcast**: los mensajes son efímeros, no se guardan en ninguna tabla.
   Si algún día quieres historial, crea la tabla y protégela con **RLS**.
 - Realtime no necesita configuración extra: el canal se crea solo al conectarse.

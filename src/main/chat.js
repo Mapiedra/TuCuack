@@ -41,7 +41,7 @@ function initChat(getWin, initialName) {
   // Clave estable por instalación para identificar nuestra propia presencia.
   myKey = `pato-${Math.random().toString(36).slice(2, 10)}`;
 
-  supabase = createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, {
+  supabase = createClient(config.SUPABASE_URL, config.SUPABASE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
     realtime: { transport: WebSocketImpl, params: { eventsPerSecond: 10 } }
   });

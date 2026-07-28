@@ -3,14 +3,16 @@
 // Credenciales de Supabase para el chat entre patos.
 //
 // NO se guardan en el repositorio. Se buscan, por este orden:
-//   1. Variables de entorno SUPABASE_URL y SUPABASE_ANON_KEY.
+//   1. Variables de entorno SUPABASE_URL y SUPABASE_PUBLISHABLE_KEY.
 //   2. Un fichero `supabase.json` junto al proyecto (desarrollo) o dentro de
 //      los recursos de la app instalada (producción):
-//        { "url": "https://xxxx.supabase.co", "anonKey": "eyJhbGc..." }
+//        { "url": "https://xxxx.supabase.co", "publishableKey": "sb_publishable_..." }
 //
-// La `anon key` está pensada para usarse en clientes y es pública por diseño;
-// aun así conviene no versionarla. Si se persisten mensajes en tablas, hay que
-// protegerlas con RLS (ver README).
+// La clave publicable (`sb_publishable_...`) es la que Supabase usa hoy para
+// clientes; sustituye a la antigua `anon key`, que sigue aceptándose aquí como
+// `anonKey` por compatibilidad con proyectos anteriores. Es pública por diseño,
+// pero conviene no versionarla. Si algún día se persisten mensajes en tablas,
+// hay que protegerlas con RLS (ver README).
 
 const fs = require('fs');
 const path = require('path');
@@ -33,14 +35,27 @@ function candidatePaths() {
   return out;
 }
 
+/** Acepta la clave nueva (publishableKey) y la antigua (anonKey). */
+function pickKey(obj) {
+  if (!obj) return '';
+  return String(obj.publishableKey || obj.anonKey || '').trim();
+}
+
+/** ¿Sigue con el texto de ejemplo sin rellenar? */
+function isPlaceholder(value) {
+  if (!value) return true;
+  return /TU-PROYECTO|TU_CLAVE|TU_ANON|TU_KEY/i.test(value);
+}
+
 function readFileConfig() {
   for (const p of candidatePaths()) {
     try {
       if (!fs.existsSync(p)) continue;
       const raw = JSON.parse(fs.readFileSync(p, 'utf8'));
-      if (raw && raw.url && raw.anonKey) {
-        return { url: String(raw.url), anonKey: String(raw.anonKey), source: p };
-      }
+      const url = String((raw && raw.url) || '').trim();
+      const key = pickKey(raw);
+      if (isPlaceholder(url) || isPlaceholder(key)) continue;  // sin rellenar
+      return { url, key, source: p, legacy: Boolean(raw.anonKey && !raw.publishableKey) };
     } catch (err) {
       console.error('[config] supabase.json ilegible en', p, err.message);
     }
@@ -49,24 +64,31 @@ function readFileConfig() {
 }
 
 function resolve() {
-  if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+  const envKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
+  if (process.env.SUPABASE_URL && envKey) {
     return {
       url: process.env.SUPABASE_URL,
-      anonKey: process.env.SUPABASE_ANON_KEY,
-      source: 'env'
+      key: envKey,
+      source: 'env',
+      legacy: !process.env.SUPABASE_PUBLISHABLE_KEY
     };
   }
-  return readFileConfig() || { url: '', anonKey: '', source: null };
+  return readFileConfig() || { url: '', key: '', source: null, legacy: false };
 }
 
 const resolved = resolve();
 
+if (resolved.legacy && resolved.url) {
+  console.warn('[config] Usando la "anon key" antigua. Supabase recomienda migrar a '
+    + 'la clave publicable (sb_publishable_...): cámbiala por "publishableKey".');
+}
+
 module.exports = {
   SUPABASE_URL: resolved.url,
-  SUPABASE_ANON_KEY: resolved.anonKey,
+  SUPABASE_KEY: resolved.key,
   SOURCE: resolved.source,
   CHANNEL,
   isConfigured() {
-    return Boolean(resolved.url && resolved.anonKey);
+    return Boolean(resolved.url && resolved.key);
   }
 };
