@@ -1,5 +1,7 @@
 // Panel de estadísticas del Tamagotchi + acciones de cuidado.
 
+import { panelHeader } from './panelHeader.js';
+
 const STAT_META = [
   { key: 'hunger', label: '🍖 Comida' },
   { key: 'energy', label: '⚡ Energía' },
@@ -9,22 +11,37 @@ const STAT_META = [
 
 /**
  * @param {import('../game/Tamagotchi.js').Tamagotchi} tam
- * @param {{onAction:(name:string)=>void, onClose:Function, name?:string}} handlers
+ * @param {{onAction:(name:string)=>void, onClose:Function, onBack?:Function,
+ *          name?:string, level?:import('../game/Level.js').Level}} handlers
  * @returns {{el:HTMLElement, destroy:Function}}
  */
 export function buildStatsPanel(tam, handlers) {
   const el = document.createElement('div');
   el.className = 'panel hot';
 
-  const h = document.createElement('h3');
   // Título = nombre del pato (el que se configura en Ajustes).
-  h.textContent = handlers.name || 'Tu pato';
-  const close = document.createElement('span');
-  close.className = 'close';
-  close.textContent = '×';
-  close.addEventListener('click', () => handlers.onClose());
-  h.appendChild(close);
-  el.appendChild(h);
+  el.appendChild(panelHeader(handlers.name || 'Tu pato', handlers));
+
+  // El nivel va con el resto de indicadores: es una medida más de cómo va el pato.
+  const level = handlers.level;
+  if (level) {
+    const fila = document.createElement('div');
+    fila.className = 'nivel-cab nivel-inline';
+    const txt = document.createElement('div');
+    txt.className = 'nivel-txt';
+    txt.innerHTML = `<b>Nivel ${level.nivel}</b> · ${level.rango}`;
+    const barra = document.createElement('div');
+    barra.className = 'nivel-barra';
+    const relleno = document.createElement('div');
+    relleno.className = 'nivel-fill';
+    relleno.style.width = `${Math.round(level.progreso * 100)}%`;
+    barra.appendChild(relleno);
+    const resto = document.createElement('div');
+    resto.className = 'muted';
+    resto.textContent = `${level.xpNivelActual} / ${level.xpNivelSiguiente} XP`;
+    fila.append(txt, barra, resto);
+    el.appendChild(fila);
+  }
 
   const bars = {};
   for (const meta of STAT_META) {

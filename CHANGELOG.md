@@ -7,12 +7,23 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.2.1] - 2026-07-28
+
 ### Añadido
 
+- **Botón de volver** en los paneles: al abrir Estadísticas, Diseños o Ajustes desde el
+  menú del pato ya se puede regresar a él sin tener que hacer clic derecho otra vez.
+- El **nivel se muestra junto al resto de indicadores**, tanto en el panel de
+  estadísticas como en el globo que sale al pasar el ratón por encima del pato.
 - Comprobador de arte fuente (`npm run sprites:check`): antes de empaquetar un diseño
   nuevo, avisa de si la rejilla no cuadra, falta alguna fila, el personaje se sale de
   su celda o cambia demasiado de tamaño entre frames. Con `--guardar-contacto` deja
   además una hoja con todas las celdas numeradas.
+
+### Corregido
+
+- Al desplegar la ayuda sobre los niveles, el panel crecía y se salía de la pantalla.
+  Ahora se recoloca al cambiar de tamaño y, si aun así no cabe, hace scroll.
 
 
 ## [0.2.0] - 2026-07-28
@@ -148,7 +159,8 @@ Primera versión.
   funciona con normalidad pero sin chat.
 - El instalador no está firmado, así que Windows SmartScreen mostrará un aviso.
 
-[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.2.0...HEAD
+[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.2.1
 [0.2.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.2.0
 [0.1.3]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.1.3
 [0.1.2]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.1.2

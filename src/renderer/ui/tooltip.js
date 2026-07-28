@@ -15,7 +15,7 @@ let actual = null;
  * @param {string} nombre
  * @param {{x:number,y:number}} anchor  punto sobre la cabeza del pato
  */
-export function showStatsTooltip(tam, nombre, anchor) {
+export function showStatsTooltip(tam, nombre, anchor, level) {
   hideStatsTooltip();
 
   const el = document.createElement('div');
@@ -25,6 +25,22 @@ export function showStatsTooltip(tam, nombre, anchor) {
   t.className = 'tooltip-title';
   t.textContent = nombre;
   el.appendChild(t);
+
+  // El nivel va con el resto de indicadores, no aparte.
+  if (level) {
+    const niv = document.createElement('div');
+    niv.className = 'tooltip-nivel';
+    const et = document.createElement('span');
+    et.textContent = `Nv ${level.nivel} · ${level.rango}`;
+    const bar = document.createElement('span');
+    bar.className = 'bar';
+    const fill = document.createElement('span');
+    fill.className = 'fill';
+    fill.style.width = `${Math.round(level.progreso * 100)}%`;
+    bar.appendChild(fill);
+    niv.append(et, bar);
+    el.appendChild(niv);
+  }
 
   for (const s of STATS) {
     const v = Math.round(tam.stats[s.key]);

@@ -1,5 +1,7 @@
 // Panel de ajustes: nombre del pato (para el chat) y auto-arranque.
 
+import { panelHeader } from './panelHeader.js';
+
 /**
  * @param {{displayName:string, autoLaunch:boolean}} settings
  * @param {string} version
@@ -11,14 +13,7 @@ export function buildSettingsPanel(settings, version, handlers) {
   const el = document.createElement('div');
   el.className = 'panel hot';
 
-  const h = document.createElement('h3');
-  h.textContent = 'Ajustes';
-  const close = document.createElement('span');
-  close.className = 'close';
-  close.textContent = '×';
-  close.addEventListener('click', () => handlers.onClose());
-  h.appendChild(close);
-  el.appendChild(h);
+  el.appendChild(panelHeader('Ajustes', handlers));
 
   // Nombre del pato
   const row1 = document.createElement('div');

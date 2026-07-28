@@ -59,7 +59,10 @@ function registerOverlay(el) {
 }
 function unregisterOverlay(el) {
   openOverlays.delete(el);
-  if (el && el.remove) el.remove();
+  if (el) {
+    el.dispatchEvent(new Event('panel:cerrado'));
+    if (el.remove) el.remove();
+  }
   updateMouseCapture();
 }
 
@@ -176,9 +179,10 @@ async function main() {
       state: () => ({ x: duck.x, y: duck.y, vx, vy, flying }),
       hover: () => ({ overDuck, overHot, dragging, cursor: lastCursor,
                       paneles: openOverlays.size, timer: !!hoverTimer }),
-      verTooltip: () => showStatsTooltip(tam, duckName(), duckAnchor()),
+      verTooltip: () => showStatsTooltip(tam, duckName(), duckAnchor(), level),
       verMenu: () => { const p = duckAnchor(); openDuckMenu(p.x, p.y); },
       verSkins: () => { const p = duckAnchor(); openSkins(p.x, p.y); },
+      verStats: () => { const p = duckAnchor(); openStats(p.x, p.y); },
       level,
       darXp: (n) => { level.xp += n; return level.nivel; },
       act: doAction,
@@ -450,10 +454,18 @@ function doAction(name) {
 }
 
 // ---- Paneles ------------------------------------------------------------
+/** Cierra el panel y vuelve al menú del pato, desde donde se abrió. */
+function volverAlMenu(el, x, y) {
+  unregisterOverlay(el);
+  openDuckMenu(x, y);
+}
+
 function openStats(x, y) {
   const { el } = buildStatsPanel(tam, {
     onAction: doAction,
     name: duckName(),
+    level,
+    onBack: () => volverAlMenu(el, x, y),
     onClose: () => unregisterOverlay(el)
   });
   mountPanel(el, x, y);
@@ -468,6 +480,7 @@ function openSettings(x, y) {
       api.saveSettings(settings);
       chat.setName(settings.displayName);   // re-anuncia el nombre en el canal
     },
+    onBack: () => volverAlMenu(el, x, y),
     onClose: () => unregisterOverlay(el)
   });
   mountPanel(el, x, y);
@@ -482,7 +495,7 @@ function armarTooltip() {
     // Si mientras tanto se ha empezado a arrastrar o hay un panel abierto, no
     // se muestra: sería ruido encima de otra cosa.
     if (!overDuck || dragging || openOverlays.size > 0) return;
-    showStatsTooltip(tam, duckName(), duckAnchor());
+    showStatsTooltip(tam, duckName(), duckAnchor(), level);
   }, HOVER_MS);
 }
 
@@ -514,6 +527,7 @@ function openSkins(x, y) {
       settings = { ...settings, skin: id };
       api.saveSettings(settings);
     },
+    onBack: () => volverAlMenu(el, x, y),
     onClose: () => unregisterOverlay(el)
   });
   mountPanel(el, x, y);
@@ -545,14 +559,30 @@ function openTalk(x, y) {
 function mountPanel(el, x, y) {
   el.style.visibility = 'hidden';
   document.body.appendChild(el);
-  const rect = el.getBoundingClientRect();
-  const px = Math.min(x - rect.width / 2, window.innerWidth - rect.width - 8);
-  let py = y - rect.height - 12;
-  if (py < 8) py = Math.min(y + 12, window.innerHeight - rect.height - 8);
+  colocarPanel(el, x, y);
+  el.style.visibility = 'visible';
+
+  // Los paneles pueden crecer después de colocarlos (al desplegar la ayuda, por
+  // ejemplo) y saldrían de la pantalla: se recolocan cuando cambian de tamaño.
+  if (typeof ResizeObserver === 'function') {
+    const ro = new ResizeObserver(() => colocarPanel(el, x, y));
+    ro.observe(el);
+    el.addEventListener('panel:cerrado', () => ro.disconnect(), { once: true });
+  }
+  registerOverlay(el);
+}
+
+function colocarPanel(el, x, y) {
+  // La altura se limita a la ventana; si el contenido no cabe, el panel hace
+  // scroll en lugar de desbordarse.
+  el.style.maxHeight = `${window.innerHeight - 16}px`;
+  const w = el.offsetWidth;
+  const h = el.offsetHeight;
+  const px = Math.min(x - w / 2, window.innerWidth - w - 8);
+  let py = y - h - 12;
+  if (py < 8) py = Math.min(y + 12, window.innerHeight - h - 8);
   el.style.left = `${Math.max(8, px)}px`;
   el.style.top = `${Math.max(8, py)}px`;
-  el.style.visibility = 'visible';
-  registerOverlay(el);
 }
 
 // ---- Chat ---------------------------------------------------------------

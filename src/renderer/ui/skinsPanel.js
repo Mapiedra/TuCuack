@@ -3,6 +3,7 @@
 
 import { SKINS, estaDesbloqueada, rutaSheet } from '../game/skins.js';
 import { XP, RANGOS, xpParaNivel } from '../game/Level.js';
+import { panelHeader } from './panelHeader.js';
 
 // El retrato de cada diseño es el primer frame de 'idle' del sheet, recortado
 // al pato mediante background-size/position (ver .skin-mini en styles.css).
@@ -16,14 +17,7 @@ export function buildSkinsPanel(level, actual, handlers) {
   const el = document.createElement('div');
   el.className = 'panel panel-skins hot';
 
-  const h = document.createElement('h3');
-  h.textContent = 'Diseños';
-  const close = document.createElement('span');
-  close.className = 'close';
-  close.textContent = '×';
-  close.addEventListener('click', () => handlers.onClose());
-  h.appendChild(close);
-  el.appendChild(h);
+  el.appendChild(panelHeader('Diseños', handlers));
 
   // Nivel y progreso hacia el siguiente.
   const cab = document.createElement('div');
