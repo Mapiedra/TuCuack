@@ -1,8 +1,7 @@
 name: CI
 
 # Comprobaciones rápidas en cada push y pull request: que el código parsea y que
-# el sheet de sprites se puede regenerar y pasa su propia verificación
-# (alineación de los frames, cambios de tamaño y recortes).
+# el sheet de sprites se regenera correctamente.
 on:
   push:
     branches: [main]
@@ -14,10 +13,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 20
 
@@ -27,21 +26,28 @@ jobs:
           echo "OK"
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
       - name: Install Python deps
         run: pip install pillow numpy
 
+      # El propio script verifica que ninguna animación salte, cambie de tamaño
+      # ni se corte, y sale con error si algo no cuadra.
       - name: Rebuild sprite sheet
         run: python tools/pack_sprites.py
 
-      - name: Fail if the sprite sheet is out of date
+      # Sólo se comparan los metadatos: el PNG no es reproducible byte a byte
+      # entre plataformas (cada versión de Pillow comprime y remuestrea distinto),
+      # mientras que duck.json describe la estructura y no depende de eso. Basta
+      # para detectar que alguien tocó el generador sin regenerar el sheet.
+      - name: Check sprite metadata is up to date
         run: |
-          if ! git diff --quiet -- assets/sprites/duck.png assets/sprites/duck.json; then
-            echo "El sheet generado no coincide con el versionado."
+          if ! git diff --quiet -- assets/sprites/duck.json; then
+            echo "::error::assets/sprites/duck.json no coincide con lo versionado."
             echo "Ejecuta 'npm run sprites' y commitea el resultado."
+            git diff -- assets/sprites/duck.json
             exit 1
           fi
           echo "OK"

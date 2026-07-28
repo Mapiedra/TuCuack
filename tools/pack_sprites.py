@@ -23,6 +23,7 @@ Salida: assets/sprites/duck.png + assets/sprites/duck.json
 
 import json
 import os
+import sys
 import numpy as np
 from PIL import Image
 
@@ -459,7 +460,7 @@ def main():
     print(f'sheet {sheet.size} -> {OUT_PNG}')
     for k in order:
         print(f'  {k:7s} {len(anims[k]["frames"])} frames @ {anims[k]["fps"]}fps')
-    verify(anims, order)
+    return verify(anims, order)
 
 
 def verify(anims, order):
@@ -509,6 +510,7 @@ def verify(anims, order):
         print(f'    {name:7s} base var={bvar:2d}  alto var={hvar:2d}  '
               f'cortados={clipped}{flag}')
     print('  OK' if not problems else f'  {problems} animación(es) a revisar')
+    return problems
 
 
 def build_synthetic(anims, src):
@@ -545,4 +547,6 @@ def build_synthetic(anims, src):
 
 
 if __name__ == '__main__':
-    main()
+    # Código de salida distinto de 0 si alguna animación no pasa la
+    # verificación, para que el CI lo detecte.
+    sys.exit(1 if main() else 0)
