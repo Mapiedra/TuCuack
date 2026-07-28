@@ -30,6 +30,8 @@ DESCRIPCIONES = {
     'talk': 'hablando, gesticulando',
     'sad': 'triste, cabizbajo',
     'cool': 'chulesco, ajustándose las gafas',
+    'flap': 'aleteando en el aire (al lanzarlo por la pantalla)',
+    'drag': 'colgando del cursor, balanceándose',
     'crouch': 'agachado, en reposo',
 }
 

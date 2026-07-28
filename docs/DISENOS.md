@@ -43,25 +43,29 @@ Una sola imagen con **todos los frames en una rejilla**, fondo transparente.
 | **7** | Hablar | Gesticula mientras habla, mueve el pico y las alas | 4-6 |
 | **8** | Triste | Cabizbajo, hombros caídos, ala en la cara | 4-6 |
 | **9** | Chulesco | Pose de sobrado: se ajusta las gafas, se cruza de alas | 4-6 |
+| **10** | Aletear | En el aire, agitando las alas para sostenerse | 4-6 |
+| **11** | Colgando | Sujeto por arriba, pataleando o balanceándose | 4-6 |
 
-Son **9 filas seguidas, sin huecos**.
+Son **11 filas seguidas, sin huecos**: una por animación, todas dibujadas.
 
-> **El sheet generado tendrá 11 filas, no 9.** No es un descuadre: a las 9 dibujadas se
-> añaden **aletear** (cuando se le lanza por la pantalla) y **colgar del cursor**, que
-> se componen solas a partir de la fila 6 y por eso no hay que dibujarlas. `npm run
-> sprites` lo indica al terminar (`11 animaciones = 9 del arte + 2 compuestas`).
->
-> Es decir: **9 filas es lo que se dibuja; 11 es lo que usa el juego.**
+Las dos últimas son para cuando se le arrastra y se le lanza por la pantalla. Podrían
+sacarse de la fila 6 moviendo el dibujo, y así se hacía al principio, pero entonces dos
+acciones distintas comparten el mismo dibujo y el diseño se nota repetido. Mejor
+dibujarlas.
 
 **El arte del pato duro ya está en este formato**, así que sirve de ejemplo de
-referencia. Venía con 11 filas repartidas de forma irregular —tres de ellas duplicados
-que no se usaban— y se reordenó con `tools/migrate_source_layout.py`.
+referencia. Venía con las acciones repartidas de forma irregular, con duplicados que no
+se usaban, y se reordenó con `tools/migrate_source_layout.py`.
+
+En su caso, las filas 10 y 11 están derivadas del saludo, porque aquel arte no las
+traía. En un diseño nuevo conviene dibujarlas: es justo lo que evita que dos acciones
+se parezcan.
 
 ### Prompt para generarlo
 
 > Sprite sheet de un pato de dibujos animados, estilo pixel art, **fondo
 > transparente**.
-> Rejilla de **9 filas × 8 columnas**, celdas de **192×208 px** exactos, un frame por
+> Rejilla de **11 filas × 8 columnas**, celdas de **192×208 px** exactos, un frame por
 > celda, sin separación entre celdas.
 > El personaje **centrado y completo dentro de cada celda, sin tocar los bordes**, del
 > **mismo tamaño en todas**, y **mirando siempre a la derecha**.
@@ -74,7 +78,9 @@ que no se usaban— y se reordenó con `tools/migrate_source_layout.py`.
 > fila 6, contento saludando con el ala;
 > fila 7, hablando y gesticulando;
 > fila 8, triste y cabizbajo;
-> fila 9, en pose chulesca.
+> fila 9, en pose chulesca;
+> fila 10, aleteando en el aire para sostenerse;
+> fila 11, colgando de arriba, pataleando.
 > El personaje es: `<descripción del diseño>`
 
 Descripciones para los que faltan:

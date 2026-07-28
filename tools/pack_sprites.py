@@ -422,6 +422,11 @@ LAYOUT_ESTANDAR = [
     (6, 'talk',  8,  False),
     (7, 'sad',   5,  False),
     (8, 'cool',  8,  False),
+    # Aletear y colgar del cursor también se dibujan: componerlas reutilizando
+    # otra fila hacía que dos acciones compartieran el mismo dibujo, y con ello
+    # todos los diseños salían repetitivos.
+    (9, 'flap',  14, False),
+    (10, 'drag', 10, False),
 ]
 
 # Todos los diseños usan la distribución estándar. `LAYOUTS` queda por si algún
@@ -612,20 +617,22 @@ def build_synthetic(anims, src):
     if 'play' not in anims:
         anims['play'] = {'frames': swing_from_row(src, 7, 6), 'fps': 12, 'loop': True}
 
-    # -- ALETEAR: para la caída lenta -------------------------------------
-    # El ala sube y baja (base: la fila del saludo) y el cuerpo se sostiene.
+    # -- ALETEAR y ARRASTRE: sólo si el arte no los trae dibujados ---------
+    # Son un apaño para arte antiguo: reutilizan la fila del saludo, así que dos
+    # acciones acaban compartiendo dibujo. El formato estándar los pide propios.
     hap = anims['happy']['frames']
-    seq = [0, 1, 2, 3, 2, 1]
-    flap = [bob(hap[idx % len(hap)], int(round(3 * np.sin(i / len(seq) * 2 * np.pi))))
-            for i, idx in enumerate(seq)]
-    anims['flap'] = {'frames': flap, 'fps': 14, 'loop': True}
+    if 'flap' not in anims:
+        seq = [0, 1, 2, 3, 2, 1]
+        flap = [bob(hap[idx % len(hap)], int(round(3 * np.sin(i / len(seq) * 2 * np.pi))))
+                for i, idx in enumerate(seq)]
+        anims['flap'] = {'frames': flap, 'fps': 14, 'loop': True}
 
-    # -- ARRASTRE: colgando del cursor, se balancea ligeramente ------------
-    drag = []
-    for i in range(6):
-        amp = np.sin(i / 6.0 * 2 * np.pi)
-        drag.append(rotate_about(hap[i % len(hap)], 7 * amp, (OUT_W // 2, 30)))
-    anims['drag'] = {'frames': drag, 'fps': 10, 'loop': True}
+    if 'drag' not in anims:
+        drag = []
+        for i in range(6):
+            amp = np.sin(i / 6.0 * 2 * np.pi)
+            drag.append(rotate_about(hap[i % len(hap)], 7 * amp, (OUT_W // 2, 30)))
+        anims['drag'] = {'frames': drag, 'fps': 10, 'loop': True}
 
 
 if __name__ == '__main__':

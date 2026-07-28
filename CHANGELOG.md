@@ -19,9 +19,11 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ### Añadido
 
-- Al empaquetar se indica cuántas animaciones vienen del arte y cuántas se componen:
-  el sheet lleva 11 filas frente a las 9 que se dibujan, y sin decirlo parecía un
-  descuadre.
+- El formato del arte pasa a **11 filas**, una por animación: aletear y colgar del
+  cursor también se dibujan, en vez de derivarse de la fila de "contento". Reutilizar
+  un dibujo para dos acciones hacía que los diseños se notaran repetidos, y lo que se
+  busca al añadir diseños es justo lo contrario.
+- Al empaquetar se indica cuántas animaciones vienen del arte y cuántas se componen.
 - Reparador de arte fuente (`npm run sprites:repair`): reconstruye los frames a los
   que les falta un trozo por el borde, copiándolo de un frame sano de la misma fila.
 - El arte de un diseño nuevo usa una **distribución de filas documentada**: una acción
