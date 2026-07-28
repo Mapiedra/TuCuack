@@ -525,9 +525,16 @@ def pack_one(ident):
     with open(OUT_JSON, 'w', encoding='utf8') as fh:
         json.dump(meta, fh, indent=2)
 
+    # El sheet lleva más filas que el arte: las que no se dibujan se componen a
+    # partir de otras. Se marca cuáles para que no parezca un descuadre.
+    dibujadas = {n for _f, n, _fps, _fl in layout}
+    n_comp = sum(1 for k in order if k not in dibujadas)
     print(f'sheet {sheet.size} -> {OUT_PNG}')
+    print(f'  {len(order)} animaciones = {len(order) - n_comp} del arte '
+          f'+ {n_comp} compuestas')
     for k in order:
-        print(f'  {k:7s} {len(anims[k]["frames"])} frames @ {anims[k]["fps"]}fps')
+        marca = '' if k in dibujadas else '   (compuesta, no se dibuja)'
+        print(f'  {k:7s} {len(anims[k]["frames"])} frames @ {anims[k]["fps"]}fps{marca}')
     return verify(anims, order)
 
 

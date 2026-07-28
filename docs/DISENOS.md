@@ -44,9 +44,14 @@ Una sola imagen con **todos los frames en una rejilla**, fondo transparente.
 | **8** | Triste | Cabizbajo, hombros caídos, ala en la cara | 4-6 |
 | **9** | Chulesco | Pose de sobrado: se ajusta las gafas, se cruza de alas | 4-6 |
 
-Son **9 filas seguidas, sin huecos**. Las animaciones de **aletear** (cuando se le
-lanza por la pantalla) y **colgar del cursor** se componen solas a partir de la fila
-6, así que no hay que dibujarlas.
+Son **9 filas seguidas, sin huecos**.
+
+> **El sheet generado tendrá 11 filas, no 9.** No es un descuadre: a las 9 dibujadas se
+> añaden **aletear** (cuando se le lanza por la pantalla) y **colgar del cursor**, que
+> se componen solas a partir de la fila 6 y por eso no hay que dibujarlas. `npm run
+> sprites` lo indica al terminar (`11 animaciones = 9 del arte + 2 compuestas`).
+>
+> Es decir: **9 filas es lo que se dibuja; 11 es lo que usa el juego.**
 
 **El arte del pato duro ya está en este formato**, así que sirve de ejemplo de
 referencia. Venía con 11 filas repartidas de forma irregular —tres de ellas duplicados
