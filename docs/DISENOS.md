@@ -48,32 +48,9 @@ Son **9 filas seguidas, sin huecos**. Las animaciones de **aletear** (cuando se 
 lanza por la pantalla) y **colgar del cursor** se componen solas a partir de la fila
 6, así que no hay que dibujarlas.
 
-### Por qué el pato duro tiene 11 filas y aquí sólo hay 9
-
-El arte del pato duro es anterior a este formato. Tiene **11 filas, de las que se usan
-8**: las otras tres son duplicados, no acciones nuevas.
-
-| Fila | Uso en el pato duro |
-|---:|---|
-| 1 | quieto |
-| 2 | andar |
-| 3 | *sin usar* — otro ciclo de caminar, descartado porque viene recortado |
-| 4 | contento |
-| 5 | *sin usar* — variante de quieto |
-| 6 | *sin usar* — variante de quieto |
-| 7 | hablar |
-| 8 | chulesco |
-| 9 | triste |
-| 10 | comer |
-| 11 | agachado (de ahí sale el dormir) |
-
-El formato estándar tiene **9 filas y no 8** porque añade **jugar** y **dormir** como
-filas propias. Con el arte del pato duro no existían y hay que apañarlas: el swing del
-bate se compone reordenando la fila "chulesco" por el ángulo del bate, y el dormir es
-la fila "agachado" con una respiración simulada. Dibujadas quedan mejor.
-
-Se conserva esa distribución para el pato duro porque el arte ya funciona; el
-generador sabe cuál toca según el diseño.
+**El arte del pato duro ya está en este formato**, así que sirve de ejemplo de
+referencia. Venía con 11 filas repartidas de forma irregular —tres de ellas duplicados
+que no se usaban— y se reordenó con `tools/migrate_source_layout.py`.
 
 ### Prompt para generarlo
 
@@ -126,8 +103,18 @@ gastar cuatro intentos.
    personaje se sale de su celda y cuánto cambia de tamaño entre frames. Con
    `--guardar-contacto` deja además una hoja con todas las celdas numeradas, para ver
    de un vistazo qué salió mal.
-3. **Repite el prompt** hasta que no haya problemas graves. Los avisos de "toca el
-   borde" son corregibles automáticamente, pero cuantos menos, mejor sale.
+3. **Repite el prompt** hasta que no haya problemas graves.
+
+   Si sólo quedan avisos de contorno recortado (al personaje le falta un trozo por
+   un lado), se pueden arreglar sin volver a generar:
+
+   ```bash
+   npm run sprites:repair -- assets/sprites/fuentes/ganster.webp
+   ```
+
+   Reconstruye el trozo que falta copiándolo de un frame sano de la misma fila. Como
+   dentro de una animación el personaje apenas cambia de forma, el parche es su propio
+   dibujo. Vuelve a pasar el comprobador después.
 4. **Empaqueta e integra**:
 
    ```bash
@@ -139,6 +126,7 @@ gastar cuatro intentos.
    `make_placeholder_skins.py` deja de tocarlo.
 5. **Arranca la app** y míralo andar.
 
-Qué esperar: hasta el arte del pato duro, que es bueno, tiene dos frames recortados y
-un 23 % de variación de tamaño entre celdas. Es normal; el empaquetador lo compensa
-normalizando la escala, alineando por los pies y reconstruyendo los frames recortados.
+Qué esperar: el arte del pato duro, que es bueno, llegó con dos frames recortados (ya
+reparados) y sigue teniendo un 23 % de variación de tamaño entre celdas. Es normal; el
+empaquetador lo compensa normalizando la escala y alineando por los pies, así que no
+hay que perseguir la perfección en el arte.

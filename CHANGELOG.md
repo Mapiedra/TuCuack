@@ -13,7 +13,14 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   irregulares (tres sin usar) a las 9 documentadas, una acción por fila. Sirve de
   referencia para generar los demás diseños y deja un único formato en el proyecto.
   La fila de jugar queda resuelta en el arte, ordenada por el ángulo del bate, en vez
-  de componerse en cada empaquetado.
+  de componerse en cada empaquetado. Se reparan además los dos frames que venían
+  recortados, así que el arte de referencia queda limpio y el empaquetado ya no tiene
+  que reconstruir nada.
+
+### Añadido
+
+- Reparador de arte fuente (`npm run sprites:repair`): reconstruye los frames a los
+  que les falta un trozo por el borde, copiándolo de un frame sano de la misma fila.
 - El arte de un diseño nuevo usa una **distribución de filas documentada**: una acción
   por fila, seguidas y sin huecos (quieto, andar, comer, jugar, dormir, contento,
   hablar, triste, chulesco). La del pato duro venía de antes, con filas que no se
