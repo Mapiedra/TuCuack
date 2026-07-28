@@ -44,10 +44,10 @@ jobs:
       # para detectar que alguien tocó el generador sin regenerar el sheet.
       - name: Check sprite metadata is up to date
         run: |
-          if ! git diff --quiet -- assets/sprites/duck.json; then
-            echo "::error::assets/sprites/duck.json no coincide con lo versionado."
+          if ! git diff --quiet -- 'assets/sprites/duck-*.json'; then
+            echo "::error::Los metadatos de algún diseño no coinciden con lo versionado."
             echo "Ejecuta 'npm run sprites' y commitea el resultado."
-            git diff -- assets/sprites/duck.json
+            git diff --stat -- 'assets/sprites/duck-*.json'
             exit 1
           fi
           echo "OK"
