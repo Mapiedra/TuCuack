@@ -1,0 +1,259 @@
+:root {
+  /* Medidas del sprite (tools/pack_sprites.py) y escala a la que se muestra.
+     Todo lo demás se deriva de aquí, así que basta tocar --duck-scale para
+     cambiar el tamaño del pato en pantalla. */
+  --sprite-w: 232px;
+  --sprite-h: 240px;
+  --sprite-foot: 14px;    /* margen bajo los pies dentro del sprite */
+  --sprite-head: 96px;    /* altura aprox. de la cabeza desde los pies */
+  --duck-scale: 0.62;
+
+  --duck-w: calc(var(--sprite-w) * var(--duck-scale));
+  --duck-h: calc(var(--sprite-h) * var(--duck-scale));
+  --foot-inset: calc(var(--sprite-foot) * var(--duck-scale));
+  /* Altura a la que colocar burbujas y bocadillos: justo sobre la cabeza. */
+  --above-head: calc((var(--sprite-foot) + var(--sprite-head)) * var(--duck-scale));
+  --ink: #2b2b3a;
+  --paper: #fffdf7;
+  --accent: #ffb703;
+  --accent-2: #fb8500;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  /* El overlay deja pasar el ratón salvo en zonas .hot; el main alterna
+     setIgnoreMouseEvents según el hit-test en app.js. */
+  cursor: default;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  user-select: none;
+}
+
+#stage {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* ---- Pato --------------------------------------------------------------- */
+.duck {
+  position: absolute;
+  left: 0;
+  /* --duck-y es la altura de los PIES sobre el suelo, que pone el renderer.
+     Se resta el margen vacío que el sprite tiene bajo los pies para que el
+     pato pise la barra de tareas en lugar de flotar sobre ella. */
+  --duck-y: 0px;
+  bottom: calc(var(--duck-y) - var(--foot-inset));
+  width: var(--duck-w);
+  height: var(--duck-h);
+  will-change: left, bottom;
+  pointer-events: none; /* el hit-test lo gestiona app.js a nivel de ventana */
+}
+
+.duck-canvas {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: var(--duck-w);
+  height: var(--duck-h);
+  /* Centro del cuerpo del pato dentro del lienzo: es el punto sobre el que
+     gira cuando sale volando. */
+  transform-origin: 50% 67%;
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.32));
+}
+
+/* Emoji de respaldo si el sprite no carga. */
+.duck-emoji {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: var(--duck-w);
+  height: var(--duck-h);
+  font-size: calc(var(--duck-w) * 0.85);
+  line-height: var(--duck-h);
+  text-align: center;
+}
+
+.duck-shadow {
+  position: absolute;
+  bottom: var(--foot-inset);
+  left: 50%;
+  width: calc(var(--duck-w) * 0.5);
+  height: 9px;
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 50%;
+  transform: translateX(-50%);
+  filter: blur(2px);
+  opacity: 0.55;
+  transition: opacity 0.2s linear;
+}
+
+/* En el aire la sombra desaparece (el suelo queda lejos). */
+.duck[data-state="drag"] .duck-shadow,
+.duck[data-state="fall"] .duck-shadow { opacity: 0; }
+.duck[data-state="sleep"] .duck-shadow { opacity: 0.4; }
+
+/* ---- Burbujas de emoción ------------------------------------------------ */
+.status-bubbles {
+  position: absolute;
+  bottom: var(--above-head);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  font-size: 22px;
+  pointer-events: none;
+}
+.status-bubbles .emo { animation: pop 0.3s ease; }
+@keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+
+/* ---- Bocadillo de cómic (chat) ------------------------------------------ */
+.speech-layer { position: absolute; bottom: calc(var(--above-head) + 26px); left: 50%; }
+.speech {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 60px;
+  max-width: 240px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 1.3;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
+  animation: pop 0.18s ease;
+  pointer-events: none;
+}
+.speech .from { display: block; font-weight: 700; font-size: 11px; color: var(--accent-2); margin-bottom: 2px; }
+.speech::after {
+  content: '';
+  position: absolute;
+  bottom: -12px;
+  left: 24px;
+  border: 8px solid transparent;
+  border-top-color: var(--ink);
+}
+.speech::before {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  left: 27px;
+  border: 6px solid transparent;
+  border-top-color: var(--paper);
+  z-index: 1;
+}
+
+/* ---- Menú contextual, paneles, inputs ----------------------------------- */
+.hot { pointer-events: auto; }
+
+.ctx-menu {
+  position: absolute;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
+  padding: 6px;
+  min-width: 170px;
+  z-index: 50;
+  font-size: 13px;
+}
+.ctx-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--ink);
+  font: inherit;
+}
+.ctx-menu button:hover { background: var(--accent); }
+.ctx-menu .sep { height: 1px; background: rgba(0,0,0,0.12); margin: 4px 2px; }
+
+.panel {
+  position: absolute;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.2);
+  padding: 14px 16px;
+  z-index: 60;
+  color: var(--ink);
+  font-size: 13px;
+  width: 260px;
+}
+.panel h3 { margin: 0 0 10px; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
+.panel h3 .close { cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; }
+.panel .row { margin-bottom: 10px; }
+.panel label { display: block; font-weight: 600; margin-bottom: 4px; }
+
+.stat { margin-bottom: 8px; }
+.stat .lbl { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
+.stat .bar { height: 10px; background: rgba(0,0,0,0.1); border-radius: 6px; overflow: hidden; }
+.stat .fill { height: 100%; width: 0%; border-radius: 6px; transition: width 0.3s ease; background: var(--accent-2); }
+.stat.low .fill { background: #e63946; }
+
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.btn {
+  flex: 1 1 auto;
+  background: var(--accent);
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+}
+.btn:hover { background: var(--accent-2); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+
+.text-input, .panel input[type="text"] {
+  width: 100%;
+  padding: 8px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.chat-input {
+  position: absolute;
+  z-index: 70;
+  display: flex;
+  gap: 6px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  padding: 6px;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+}
+.chat-input input { width: 200px; border: none; outline: none; font: inherit; padding: 4px 6px; }
+.chat-input button { border: none; background: var(--accent); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-weight: 700; }
+
+.toast {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  background: var(--ink);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  z-index: 80;
+  animation: pop 0.2s ease;
+}
+
+.muted { color: #777; font-size: 11px; margin-top: 4px; }
+.muted.error { color: #c1121f; font-weight: 600; }
+.text-input.invalid, .panel input[type="text"].invalid { border-color: #c1121f; }

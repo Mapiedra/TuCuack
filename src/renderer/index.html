@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
+  <title>TuCuack</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="stage">
+    <div id="duck" class="duck" data-state="idle" data-facing="left">
+      <div class="status-bubbles" id="statusBubbles"></div>
+      <div class="speech-layer" id="speechLayer"></div>
+      <canvas id="duckCanvas" class="duck-canvas" width="232" height="240"></canvas>
+      <div class="duck-shadow"></div>
+    </div>
+  </div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

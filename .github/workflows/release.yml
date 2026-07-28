@@ -1,0 +1,55 @@
+name: Release
+
+# Se dispara al subir un tag de versión (p. ej. v0.1.0). Compila el instalador
+# con electron-builder y lo publica, junto con latest.yml, en un GitHub Release:
+# ese Release es el feed que electron-updater consulta para autoactualizarse.
+#
+# Para publicar una versión:
+#   1. sube "version" en package.json y añade la entrada en CHANGELOG.md
+#   2. git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:      # permite lanzarlo a mano desde la pestaña Actions
+
+permissions:
+  contents: write         # necesario para crear el Release y subir los binarios
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Credenciales del chat. Se generan aquí desde los secrets del repositorio
+      # para no versionarlas; si no están definidas, se compila sin chat.
+      - name: Configure Supabase
+        shell: pwsh
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if ($env:SUPABASE_URL -and $env:SUPABASE_ANON_KEY) {
+            @{ url = $env:SUPABASE_URL; anonKey = $env:SUPABASE_ANON_KEY } |
+              ConvertTo-Json | Set-Content -Path supabase.json -Encoding utf8
+            Write-Host "supabase.json generado: el instalador llevara el chat activado."
+          } else {
+            Write-Host "Sin secrets de Supabase: se compila sin chat."
+          }
+
+      - name: Build and publish
+        run: npm run release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

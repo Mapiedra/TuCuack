@@ -1,0 +1,461 @@
+// app.js — arranque del renderer: monta el pato, arranca los bucles y cablea
+// interacción, Tamagotchi, chat y eventos del sistema.
+
+import { Duck } from './pet/Duck.js';
+import { Behavior } from './pet/behavior.js';
+import { Tamagotchi } from './game/Tamagotchi.js';
+import { updateBubbles } from './ui/bubbles.js';
+import { showContextMenu, closeContextMenu } from './ui/contextMenu.js';
+import { buildStatsPanel } from './ui/panels.js';
+import { buildSettingsPanel } from './ui/settings.js';
+import { openChatInput } from './ui/chatInput.js';
+import { ChatClient } from './chat/chatClient.js';
+import { SpeechBubbles } from './chat/speechBubble.js';
+
+const api = window.pato;
+
+let duck, behavior, tam, chat, speech;
+let settings = { displayName: '', autoLaunch: false };
+let config = { version: '0.0.0', isDev: false };
+
+// ---- Estado de interacción ----------------------------------------------
+let dragging = false;
+let flying = false;          // en el aire: volando/botando tras un lanzamiento
+let vx = 0;                  // velocidad en px/s
+let vy = 0;
+const trail = [];            // muestras recientes del cursor (para la inercia)
+const VELOCITY_WINDOW = 90;  // ms sobre los que se promedia la velocidad
+let overHot = false;
+let grab = { x: 0, y: 0 };
+const openOverlays = new Set(); // menús/paneles/inputs abiertos
+
+function updateMouseCapture() {
+  // El overlay captura el ratón si: arrastramos, hay un panel abierto, o el
+  // cursor está sobre el pato o una zona interactiva. Si no, deja pasar clics.
+  const capture = dragging || openOverlays.size > 0 || overHot;
+  api.setIgnoreMouse(!capture);
+}
+
+function registerOverlay(el) {
+  openOverlays.add(el);
+  updateMouseCapture();
+}
+function unregisterOverlay(el) {
+  openOverlays.delete(el);
+  if (el && el.remove) el.remove();
+  updateMouseCapture();
+}
+
+// ---- Hit-test -----------------------------------------------------------
+function pointInRect(px, py, rect) {
+  return px >= rect.left && px <= rect.right && py >= rect.top && py <= rect.bottom;
+}
+function isOverHotElement(target) {
+  return target && target.closest && target.closest('.hot');
+}
+function computeOverHot(px, py) {
+  if (duck.hitTest(px, py)) return true;
+  for (const el of document.querySelectorAll('.hot')) {
+    if (pointInRect(px, py, el.getBoundingClientRect())) return true;
+  }
+  return false;
+}
+
+// ---- Bootstrap ----------------------------------------------------------
+async function main() {
+  config = await api.getConfig();
+  settings = await api.loadSettings();
+  const saved = await api.loadState();
+
+  // Primer arranque: el pato necesita un nombre para el chat. Se propone uno
+  // con sufijo aleatorio para que dos instalaciones no choquen de salida; el
+  // usuario puede cambiarlo en Ajustes.
+  if (!(settings.displayName || '').trim()) {
+    settings.displayName = `Pato-${Math.floor(1000 + Math.random() * 9000)}`;
+    api.saveSettings(settings);
+  }
+
+  // El suelo es la parte superior de la barra de tareas: el pato camina ahí y
+  // el overlay ocupa toda la pantalla para poder arrastrarlo a cualquier punto.
+  duck = new Duck(
+    document.getElementById('duck'),
+    document.getElementById('duckCanvas'),
+    config.ground || 0
+  );
+  duck.setX(Math.min(window.innerWidth - duck.width - 40, 260));
+  api.onLayoutChanged((d) => duck.setGround(d && d.ground));
+
+  tam = new Tamagotchi(saved.stats);
+  tam.applyOfflineDecay(saved.savedAt);
+
+  behavior = new Behavior(duck, tam);
+
+  speech = new SpeechBubbles(document.getElementById('speechLayer'));
+  const statusBubbles = document.getElementById('statusBubbles');
+
+  // Reacciones del Tamagotchi a las acciones → animación del pato.
+  tam.on('action', (kind) => {
+    if (kind === 'eat') behavior.playOnce('eat', 1.8);
+    else if (kind === 'play') behavior.playOnce('play', 1.8);   // golpe de bate
+    else if (kind === 'happy') behavior.playOnce('happy', 1.4); // saludo con el ala
+    else if (kind === 'sleep' || kind === 'wake') behavior.refresh();
+  });
+
+  setupChat();
+  setupInteraction();
+  setupTray();
+  setupUpdates();
+
+  // Guardado al salir.
+  api.onBeforeQuit(() => saveNow());
+
+  // Hook de depuración: permite probar desde fuera acciones que normalmente
+  // requieren ratón (p. ej. soltar el pato desde arriba para ver el planeo).
+  if (config.isDev) {
+    window.__pato = {
+      duck, behavior, tam,
+      /** Lanza el pato desde (x,y) con una velocidad dada, como si se soltara. */
+      throwFrom(x, y, vx0 = 0, vy0 = 0) {
+        behavior.lock();
+        duck.setDragTransition(false);
+        if (x != null) duck.setX(x);
+        duck.setY(y);
+        dragging = false;
+        flying = true;
+        vx = vx0;
+        vy = vy0;
+        duck.setState('fall');
+      },
+      state: () => ({ x: duck.x, y: duck.y, vx, vy, flying }),
+      act: doAction,
+      chat,
+      settings: () => settings,
+      name: duckName
+    };
+  }
+
+  startLoops(statusBubbles);
+}
+
+// ---- Bucles -------------------------------------------------------------
+function startLoops(statusBubbles) {
+  let last = performance.now();
+  const frame = (t) => {
+    const dt = Math.min((t - last) / 1000, 0.1);
+    last = t;
+    updateFlight(dt);
+    behavior.update(dt);
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+
+  // Decaimiento de necesidades (1 s).
+  setInterval(() => tam.tick(1), 1000);
+
+  // Burbuja de ánimo (2 s).
+  setInterval(() => {
+    if (!dragging) updateBubbles(statusBubbles, tam.mood());
+  }, 2000);
+  updateBubbles(statusBubbles, tam.mood());
+
+  // Guardado periódico (15 s).
+  setInterval(saveNow, 15000);
+}
+
+function saveNow() {
+  api.saveState({ stats: tam.stats });
+}
+
+// ---- Interacción: arrastre + menú clic derecho --------------------------
+function setupInteraction() {
+  document.addEventListener('mousemove', (e) => {
+    if (dragging) {
+      duck.setX(e.clientX - grab.x);
+      duck.setY((window.innerHeight - e.clientY) + grab.y);
+      pushTrail(e);           // para calcular la inercia al soltar
+      // Mira hacia donde se le está moviendo.
+      if (trail.length >= 2) {
+        const dx = trail[trail.length - 1].x - trail[0].x;
+        if (Math.abs(dx) > 8) duck.setFacing(dx > 0 ? 1 : -1);
+      }
+      return;
+    }
+    overHot = computeOverHot(e.clientX, e.clientY);
+    updateMouseCapture();
+  });
+
+  document.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    if (isOverHotElement(e.target)) return; // paneles/menús se gestionan solos
+    if (duck.hitTest(e.clientX, e.clientY)) startDrag(e);
+  });
+
+  document.addEventListener('mouseup', () => { if (dragging) endDrag(); });
+
+  document.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    if (isOverHotElement(e.target)) return;
+    if (duck.hitTest(e.clientX, e.clientY)) openDuckMenu(e.clientX, e.clientY);
+  });
+
+  window.addEventListener('resize', () => {
+    duck.setX(duck.x); // re-clamp
+  });
+}
+
+function startDrag(e) {
+  dragging = true;
+  flying = false;
+  grab.x = e.clientX - duck.x;
+  grab.y = duck.y - (window.innerHeight - e.clientY);
+  trail.length = 0;
+  pushTrail(e);
+  duck.setDragTransition(false);
+  duck.setTilt(0);          // por si se le agarra mientras volaba
+  behavior.lock();          // el pato cuelga del cursor
+  updateMouseCapture();
+}
+
+// Muestras recientes del cursor, para saber a qué velocidad se lanza el pato.
+function pushTrail(e) {
+  const now = performance.now();
+  trail.push({ x: e.clientX, y: e.clientY, t: now });
+  while (trail.length > 2 && now - trail[0].t > VELOCITY_WINDOW) trail.shift();
+}
+
+/** Velocidad del cursor en px/s, promediada en los últimos ms. */
+function pointerVelocity() {
+  if (trail.length < 2) return { vx: 0, vy: 0 };
+  const a = trail[0];
+  const b = trail[trail.length - 1];
+  const dt = (b.t - a.t) / 1000;
+  if (dt <= 0.001) return { vx: 0, vy: 0 };
+  // El eje Y del pato crece hacia arriba; el del cursor, hacia abajo.
+  return { vx: (b.x - a.x) / dt, vy: -(b.y - a.y) / dt };
+}
+
+// Al soltarlo sale despedido con la inercia del ratón y describe una parábola,
+// rebotando en el suelo y en los lados. Si se suelta casi quieto, en vez de
+// desplomarse planea aleteando hasta posarse.
+function endDrag() {
+  dragging = false;
+  updateMouseCapture();
+
+  const v = pointerVelocity();
+  vx = clamp(v.vx, -MAX_THROW, MAX_THROW);
+  vy = clamp(v.vy, -MAX_THROW, MAX_THROW);
+  trail.length = 0;
+
+  if (duck.onGround() && Math.abs(vx) < 60 && vy <= 0) {
+    behavior.unlock();
+    return;
+  }
+  flying = true;
+  duck.setDragTransition(false);
+  duck.setState('fall');
+  if (Math.abs(vx) > 40) duck.setFacing(vx > 0 ? 1 : -1);
+}
+
+// --- Física del vuelo ----------------------------------------------------
+const GRAVITY = 1750;          // px/s²
+const MAX_THROW = 2600;        // tope de la velocidad de lanzamiento (px/s)
+const AIR_DRAG = 0.55;         // rozamiento horizontal (1/s)
+const GLIDE_SPEED = 240;       // velocidad de caída cuando planea aleteando
+const GLIDE_THRESHOLD = 300;   // por debajo de esta velocidad, aletea y frena
+const WALL_BOUNCE = 0.6;       // rebote en los lados
+const GROUND_BOUNCE = 0.42;    // rebote contra el suelo
+const GROUND_FRICTION = 0.7;   // el suelo frena el avance en cada bote
+const REST_SPEED = 70;         // por debajo de esto, deja de botar
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function updateFlight(dt) {
+  if (!flying) return;
+
+  vy -= GRAVITY * dt;
+  vx -= vx * AIR_DRAG * dt;
+
+  // Cuando va despacio el pato aletea y frena la caída: así un simple soltar
+  // se convierte en un aterrizaje suave, mientras que un lanzamiento fuerte
+  // conserva su parábola.
+  if (Math.hypot(vx, vy) < GLIDE_THRESHOLD && vy < -GLIDE_SPEED) {
+    vy = -GLIDE_SPEED;
+  }
+
+  let nx = duck.x + vx * dt;
+  let ny = duck.y + vy * dt;
+
+  // Rebote en los lados.
+  const maxX = window.innerWidth - duck.width;
+  if (nx <= 0) { nx = 0; vx = Math.abs(vx) * WALL_BOUNCE; }
+  else if (nx >= maxX) { nx = maxX; vx = -Math.abs(vx) * WALL_BOUNCE; }
+
+  // Techo: no se escapa por arriba.
+  const maxY = window.innerHeight - duck.height;
+  if (ny >= maxY) { ny = maxY; vy = -Math.abs(vy) * 0.35; }
+
+  // Suelo: bota y va perdiendo energía hasta quedarse quieto.
+  if (ny <= duck.ground) {
+    ny = duck.ground;
+    if (Math.abs(vy) > REST_SPEED) {
+      vy = Math.abs(vy) * GROUND_BOUNCE;
+      vx *= GROUND_FRICTION;
+    } else {
+      land(nx);
+      return;
+    }
+  }
+
+  duck.setX(nx);
+  duck.setY(ny);
+  duck.setState('fall');
+
+  // Se inclina hacia donde vuela y mira en esa dirección.
+  duck.setTilt(clamp(-vx * 0.035, -45, 45));
+  if (Math.abs(vx) > 120) duck.setFacing(vx > 0 ? 1 : -1);
+}
+
+function land(nx) {
+  flying = false;
+  vx = 0;
+  vy = 0;
+  duck.setX(nx);
+  duck.toGround();
+  duck.setTilt(0);
+  behavior.unlock();
+  behavior.playOnce('happy', 0.6);   // se sacude al posarse (tras unlock, que
+                                     // si no reiniciaría el estado)
+}
+
+function openDuckMenu(x, y) {
+  const items = [
+    { label: '🍞 Alimentar', onClick: () => doAction('feed') },
+    { label: '⚽ Jugar', onClick: () => doAction('play') },
+    { label: '🧼 Limpiar', onClick: () => doAction('clean') },
+    { label: tam.sleeping ? '☀️ Despertar' : '💤 Dormir', onClick: () => doAction('sleep') },
+    { sep: true },
+    { label: '💬 Hablar…', onClick: () => openTalk(x, y) },
+    { label: '📊 Estadísticas', onClick: () => openStats(x, y) },
+    { label: '⚙️ Ajustes…', onClick: () => openSettings(x, y) },
+    { sep: true },
+    { label: '❌ Salir', onClick: () => api.quit() }
+  ];
+  let menuEl = null;
+  showContextMenu(x, y, items, {
+    onClose: () => {
+      if (menuEl) openOverlays.delete(menuEl);
+      updateMouseCapture();
+    }
+  });
+  // El menú es .hot: computeOverHot ya lo cubre. Lo registramos además por si el
+  // cursor quedara estático tras abrirlo.
+  menuEl = document.querySelector('.ctx-menu');
+  if (menuEl) registerOverlay(menuEl);
+}
+
+// ---- Acciones -----------------------------------------------------------
+function doAction(name) {
+  if (name === 'feed') tam.feed();
+  else if (name === 'play') tam.play();
+  else if (name === 'clean') tam.clean();
+  else if (name === 'sleep') tam.toggleSleep();
+}
+
+// ---- Paneles ------------------------------------------------------------
+function openStats(x, y) {
+  const { el } = buildStatsPanel(tam, {
+    onAction: doAction,
+    name: duckName(),
+    onClose: () => unregisterOverlay(el)
+  });
+  mountPanel(el, x, y);
+}
+
+function openSettings(x, y) {
+  const { el } = buildSettingsPanel(settings, config.version, {
+    isNameTaken: (n) => chat.isNameTaken(n),
+    chatReady: chat.connected,
+    onSave: (s) => {
+      settings = { ...settings, ...s };
+      api.saveSettings(settings);
+      chat.setName(settings.displayName);   // re-anuncia el nombre en el canal
+    },
+    onClose: () => unregisterOverlay(el)
+  });
+  mountPanel(el, x, y);
+}
+
+/** Nombre del pato (siempre hay uno: se genera en el primer arranque). */
+function duckName() {
+  return (settings.displayName || '').trim() || 'Pato';
+}
+
+function openTalk(x, y) {
+  const { el } = openChatInput(x, Math.max(8, y - 60), {
+    onSend: (text) => sendChat(text),
+    onClose: () => unregisterOverlay(el)
+  });
+  registerOverlay(el); // openChatInput ya lo añade al DOM y lo posiciona
+}
+
+// Añade un panel al DOM, lo coloca dentro de la ventana (por encima del cursor)
+// y lo registra para la captura de ratón.
+function mountPanel(el, x, y) {
+  el.style.visibility = 'hidden';
+  document.body.appendChild(el);
+  const rect = el.getBoundingClientRect();
+  const px = Math.min(x, window.innerWidth - rect.width - 8);
+  const py = Math.min(y - rect.height - 10, window.innerHeight - rect.height - 8);
+  el.style.left = `${Math.max(8, px)}px`;
+  el.style.top = `${Math.max(8, py)}px`;
+  el.style.visibility = 'visible';
+  registerOverlay(el);
+}
+
+// ---- Chat ---------------------------------------------------------------
+function setupChat() {
+  chat = new ChatClient();
+  chat.onMessage((m) => {
+    speech.show(m.from, m.text, { self: false });
+    if (behavior) behavior.playOnce('talk', 2.2);
+  });
+  chat.onStatus(() => { /* opcional: indicador de conexión */ });
+}
+
+function sendChat(text) {
+  const name = duckName();
+  chat.send(name, text);
+  speech.show(name, text, { self: true });
+  if (behavior) behavior.playOnce('talk', 2.2);
+}
+
+// ---- Bandeja ------------------------------------------------------------
+function setupTray() {
+  api.onTrayCommand((cmd) => {
+    const cx = duck.rect().left;
+    const cy = duck.rect().top;
+    if (cmd === 'feed' || cmd === 'play' || cmd === 'clean' || cmd === 'sleep') {
+      doAction(cmd);
+    } else if (cmd === 'stats') openStats(cx, cy);
+    else if (cmd === 'settings') openSettings(cx, cy);
+  });
+}
+
+// ---- Actualizaciones ----------------------------------------------------
+function setupUpdates() {
+  api.onUpdateEvent((evt) => {
+    if (!evt) return;
+    if (evt.type === 'available') toast(`Descargando actualización v${evt.version}…`);
+    else if (evt.type === 'ready') toast('¡Nueva versión lista! Se aplicará al reiniciar.');
+  });
+}
+
+function toast(text) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 5000);
+}
+
+main().catch((err) => console.error('[pato] error al arrancar', err));

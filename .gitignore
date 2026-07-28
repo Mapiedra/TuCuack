@@ -1,0 +1,15 @@
+node_modules/
+dist/
+scratch_caps/
+scratch_*.png
+
+# Python (tools/)
+__pycache__/
+*.py[cod]
+.venv/
+
+# Credenciales de Supabase: nunca se versionan (ver README)
+supabase.json
+*.log
+.DS_Store
+Thumbs.db
