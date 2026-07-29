@@ -18,7 +18,42 @@ permissions:
   contents: write         # necesario para crear el Release y subir los binarios
 
 jobs:
+  # El Release se crea aquí, una sola vez, antes de compilar. Si lo crearan los
+  # jobs de compilación, los dos intentarían crearlo a la vez y el que perdiera
+  # la carrera fallaría con "already_exists" sin subir sus binarios: es lo que
+  # dejó la 0.3.1 sin instalador de macOS. Con el Release ya creado, cada job se
+  # limita a subir sus ficheros.
+  preparar:
+    name: Preparar el Release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # El tag sale de package.json, que es de donde lo saca también
+      # electron-builder: así no pueden discrepar.
+      - name: Calcular el tag
+        id: version
+        run: echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Crear el Release si no existe
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "El Release $TAG ya existe; se reutiliza."
+            exit 0
+          fi
+          node tools/notas-release.js "$TAG" > notas.md
+          gh release create "$TAG" --title "TuCuack ${TAG#v}" --notes-file notas.md
+
   release:
+    needs: preparar
+
     strategy:
       fail-fast: false    # que un fallo en un sistema no cancele el otro
       matrix:
@@ -60,3 +95,7 @@ jobs:
           # Sin certificado de Apple no se firma ni se notariza; evita que
           # electron-builder intente firmar y falle.
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          # Por defecto electron-builder se niega a subir a un Release publicado
+          # hace más de dos horas. Eso impide relanzar a mano un job que falló,
+          # que es justo cuando más falta hace.
+          EP_GH_IGNORE_TIME: true
