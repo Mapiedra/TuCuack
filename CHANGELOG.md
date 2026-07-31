@@ -46,6 +46,11 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 - **Los fallos de conexión no decían por qué.** Todos aparecían como "transport
   failure", con la causa real escondida; ahora se muestra encadenada, que es lo
   que distingue un antivirus inspeccionando el tráfico de un DNS que no resuelve.
+- **El CI llevaba en rojo desde la 0.3.0.** El verificador de sprites tumbaba la
+  compilación por tres animaciones cuya línea de base salta más de lo tolerado
+  (`capo/idle`, `ganster/happy` y `normal/sleep`). Esos saltos están ahora
+  registrados como deuda conocida con su valor actual, así que el CI vuelve a
+  pasar pero sigue avisando si empeoran o si aparece otro.
 
 ### Eliminado
 
