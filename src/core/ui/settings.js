@@ -1,12 +1,16 @@
-// Panel de ajustes: nombre del pato (para el chat) y auto-arranque.
+// Panel de ajustes: nombre del pato (para el chat), sonido, tamaño y
+// auto-arranque.
 
 import { panelHeader } from './panelHeader.js';
+import { LIMITES, normalizarFactor } from '../scale.js';
 
 /**
  * @param {{displayName:string, autoLaunch:boolean}} settings
  * @param {string} version
  * @param {{onSave:(s:object)=>void, onClose:Function,
- *          isNameTaken:(n:string)=>boolean, chatReady:boolean}} handlers
+ *          isNameTaken:(n:string)=>boolean, chatReady:boolean,
+ *          onSonido:(s:object)=>void, onEscala:(pct:number)=>void,
+ *          puedeAutoArrancar:boolean}} handlers
  * @returns {{el:HTMLElement}}
  */
 export function buildSettingsPanel(settings, version, handlers) {
@@ -66,17 +70,48 @@ export function buildSettingsPanel(settings, version, handlers) {
   rowSnd.append(lblSnd, linea);
   el.appendChild(rowSnd);
 
-  // Auto-arranque
-  const row2 = document.createElement('div');
-  row2.className = 'row';
-  const lbl2 = document.createElement('label');
+  // Tamaño del pato. Se aplica al momento, como el volumen, porque es un ajuste
+  // que sólo se acierta viéndolo.
+  const rowEsc = document.createElement('div');
+  rowEsc.className = 'row';
+  const lblEsc = document.createElement('label');
+  lblEsc.textContent = 'Tamaño del pato';
+  const lineaEsc = document.createElement('div');
+  lineaEsc.className = 'fila-sonido';
+  const esc = document.createElement('input');
+  esc.type = 'range';
+  esc.min = String(LIMITES.MINIMO);
+  esc.max = String(LIMITES.MAXIMO);
+  esc.step = String(LIMITES.PASO);
+  esc.value = String(normalizarFactor(
+    settings.escala != null ? settings.escala : LIMITES.POR_DEFECTO
+  ));
+  const valorEsc = document.createElement('span');
+  valorEsc.className = 'valor-escala';
+  const pintaEscala = () => { valorEsc.textContent = `${esc.value} %`; };
+  esc.addEventListener('input', () => {
+    pintaEscala();
+    handlers.onEscala(Number(esc.value));
+  });
+  pintaEscala();
+  lineaEsc.append(esc, valorEsc);
+  rowEsc.append(lblEsc, lineaEsc);
+  el.appendChild(rowEsc);
+
+  // Auto-arranque. Sólo donde hay un sistema en el que arrancar: en una
+  // extensión no existe tal cosa.
   const chk = document.createElement('input');
   chk.type = 'checkbox';
   chk.checked = !!settings.autoLaunch;
-  chk.style.marginRight = '6px';
-  lbl2.append(chk, document.createTextNode('Iniciar con Windows'));
-  row2.appendChild(lbl2);
-  el.appendChild(row2);
+  if (handlers.puedeAutoArrancar) {
+    const row2 = document.createElement('div');
+    row2.className = 'row';
+    const lbl2 = document.createElement('label');
+    chk.style.marginRight = '6px';
+    lbl2.append(chk, document.createTextNode('Iniciar con Windows'));
+    row2.appendChild(lbl2);
+    el.appendChild(row2);
+  }
 
   // Guardar
   const btnRow = document.createElement('div');
@@ -117,7 +152,8 @@ export function buildSettingsPanel(settings, version, handlers) {
       displayName: value,
       autoLaunch: chk.checked,
       volumen: vol.value / 100,
-      silenciado: !!settings.silenciado
+      silenciado: !!settings.silenciado,
+      escala: Number(esc.value)
     });
     handlers.onClose();
   });

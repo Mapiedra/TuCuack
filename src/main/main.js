@@ -85,7 +85,7 @@ function createWindow() {
   // El renderer lo desactiva al pasar el ratón por el pato/paneles.
   win.setIgnoreMouseEvents(true, { forward: true });
 
-  win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+  win.loadFile(path.join(__dirname, '..', 'desktop', 'index.html'));
 
   win.once('ready-to-show', () => {
     win.show();

@@ -45,7 +45,7 @@ cualquier punto. Al soltar se mide la **velocidad del cursor** y se aplica como 
 
 La transición es automática: manda la inercia mientras va rápido, y cuando frena el
 pato aletea. Constantes ajustables (`GRAVITY`, `WALL_BOUNCE`, `GLIDE_SPEED`…) juntas en
-[`src/renderer/app.js`](src/renderer/app.js).
+[`src/core/app.js`](src/core/app.js).
 
 **Varios monitores.** El pato vive en uno cada vez y **se lleva a otro arrastrándolo**:
 al cruzar el cursor a otra pantalla, la ventana se muda allí con el pato bajo el
@@ -142,8 +142,23 @@ antes recortar el bate y rotarlo, pero se solapa un 70-78 % con el cuerpo en tod
 frames y al quitarlo dejaba un corte visible.
 
 Si cambias frames o fps, actualiza la constante `SHEET` de
-[`src/renderer/pet/Duck.js`](src/renderer/pet/Duck.js). Para cambiar el tamaño en
-pantalla basta tocar `--duck-scale` en `src/renderer/styles.css`.
+[`src/core/pet/Duck.js`](src/core/pet/Duck.js).
+
+### Tamaño del pato
+
+En **Ajustes** hay un control de tamaño, del 40 % al 160 % en saltos de 5, que
+se aplica mientras se arrastra y se guarda al momento. Funciona igual en el
+escritorio y en la extensión.
+
+Ese porcentaje multiplica una escala base que decide cada carcasa
+([`src/core/scale.js`](src/core/scale.js)), de modo que el 100 % significa "el
+tamaño normal del pato aquí":
+
+- **Escritorio**: la base es `--duck-scale` en `src/core/styles.css` (0.62).
+- **Extensión**: se calcula según el ancho del panel
+  ([`src/extension/escala.js`](src/extension/escala.js)), así que el pato se
+  adapta si se cambia el ancho, y además hay un tope para que no acabe más
+  grande que el panel por mucho que se suba el ajuste.
 
 Los iconos también se generan, desde el propio sprite:
 
@@ -159,21 +174,16 @@ python tools/make_icons.py
 npm run build     # instalador para tu sistema, en dist/
 ```
 
-Cada sistema se compila en el suyo: Windows produce el instalador **NSIS**, y macOS
-un **DMG** y un **ZIP** (universales, Intel y Apple Silicon). El workflow de release
-los genera en paralelo y los sube al mismo Release.
+Se compila el instalador **NSIS** de Windows. El workflow de release lo sube al
+Release junto con el **zip de la extensión de Chrome**, que se ensambla en el
+mismo workflow con `npm run ext`.
 
-### Sobre la versión de macOS
+### No hay versión de macOS
 
-Funciona, pero con dos avisos:
-
-- **No está firmada ni notarizada** (haría falta una cuenta de Apple Developer). La
-  primera vez, macOS la bloqueará: hay que abrirla con **clic derecho → Abrir**, o
-  ejecutar `xattr -cr /Applications/TuCuack.app`.
-- El pato camina por el borde inferior de la pantalla, donde en macOS suele estar el
-  **Dock**. La app vive en la barra de menús (no aparece en el Dock).
-
-No se ha probado en un Mac real; si algo se comporta raro, abre una incidencia.
+Se retiró. Sin una cuenta de Apple Developer no se puede firmar ni notarizar, y
+una app sin firmar da más problemas de los que resuelve: macOS la bloquea y hay
+que enseñarle a cada persona a saltarse el aviso. **Quien use Mac tiene la
+extensión de Chrome**, que funciona igual en cualquier sistema.
 
 Para publicar una versión y que las instalaciones se actualicen solas:
 
@@ -199,12 +209,75 @@ reiniciar.
 ## Estructura
 
 ```
+src/core/       el pato: animación, física, Tamagotchi, paneles, chat, niveles
+src/desktop/    carcasa de escritorio: documento del overlay y plataforma Electron
+src/extension/  carcasa de Chrome: panel lateral, service worker y plataforma
 src/main/       proceso principal: ventana overlay, bandeja, chat, updater, persistencia
-src/renderer/   interfaz: pato, animación, física, Tamagotchi, paneles, chat
-tools/          generadores de sprites e iconos (Python)
+tools/          generadores de sprites e iconos (Python), banco de pruebas y ensamblado
 assets/         sprite sheet e iconos
 .github/        workflow de release
 ```
+
+`src/core/` es JavaScript de navegador puro: no sabe si vive en una ventana de
+Electron o en una pestaña. Todo lo que necesita del entorno —persistencia,
+chat, rutas de recursos, ratón, ciclo de vida— entra por el contrato que
+describe [`src/core/platform.js`](src/core/platform.js), y cada carcasa aporta
+su implementación. Eso es lo que permite que el mismo pato corra en el
+escritorio y en el navegador sin duplicar código.
+
+## Extensión de Chrome
+
+El mismo pato, paseando por las páginas que visitas. Va en modo desarrollador: no
+está en la Chrome Web Store ni hace falta que lo esté.
+
+**Dónde vive.** Hay un solo pato, y está en la ventana de Chrome que estés
+usando: sobre la página que tengas abierta, o en el panel lateral si lo abres. El
+árbitro que lo decide está en el service worker, y por eso nunca hay dos patos
+guardando el mismo estado. Para esconderlo o llamarlo: **botón derecho en el
+icono de la extensión**. El botón izquierdo abre el panel.
+
+Hay sitios donde Chrome no deja entrar a ninguna extensión y el pato no puede
+aparecer: `chrome://`, el visor de PDF, la Chrome Web Store y las páginas de otras
+extensiones. Con el panel abierto, se va al panel.
+
+**Para quien la instala** hay instrucciones en
+[`src/extension/INSTALAR.txt`](src/extension/INSTALAR.txt), que viaja dentro del
+zip. Se actualiza descomprimiendo la versión nueva encima de la misma carpeta y
+pulsando recargar en `chrome://extensions`.
+
+```bash
+npm run ext
+```
+
+Eso ensambla la extensión en `dist/extension/`. Después, en Chrome:
+`chrome://extensions` → activar **Modo de desarrollador** → **Cargar
+descomprimida** → elegir la carpeta `dist/extension`. El pato se abre pulsando
+el icono de la extensión.
+
+Mientras se trabaja en el pato conviene dejar el ensamblado vigilando; así basta
+con pulsar recargar en `chrome://extensions` para ver los cambios, sin compilar
+nada:
+
+```bash
+npm run ext:watch
+```
+
+**Por qué hay un paso de ensamblado.** Una extensión no puede leer nada fuera de
+su carpeta raíz, y desde `src/extension/` no se alcanzan ni `src/core/` ni
+`assets/`. El repo entero tampoco sirve como raíz: Chrome rechaza la carga si
+encuentra ficheros que empiecen por `_`, y `node_modules` está lleno de ellos.
+
+**El `key` del manifest no se toca.** En modo desarrollador el ID de una
+extensión se deriva de la ruta de la carpeta, así que saldría distinto en cada
+máquina — y de ese ID cuelgan el almacenamiento y la identidad del pato. La
+clave pública fijada en `src/extension/manifest.json` hace que el ID sea el
+mismo en todas partes.
+
+**Chat.** Necesita `supabase.json` en la raíz del proyecto *antes* de ensamblar
+(ver [docs/CONFIGURACION.md](docs/CONFIGURACION.md)); el ensamblado lo copia
+dentro de la extensión y avisa si no lo encuentra. Sin él, el pato funciona
+igual pero mudo. Los patos de extensión y los de escritorio comparten el mismo
+canal, así que se ven entre ellos.
 
 ## Herramientas de desarrollo
 
@@ -217,6 +290,18 @@ npx electron . --dev --probe "JSON.stringify(__pato.state())"
 
 En modo `--dev`, el renderer expone `window.__pato` (`duck`, `behavior`, `tam`, `chat`,
 `throwFrom(x,y,vx,vy)`, `act('feed'|'play'|'clean'|'sleep')`, `state()`, `name()`).
+
+**Banco de pruebas.** El núcleo también arranca en un navegador normal, sin
+Electron, con una plataforma de mentira que guarda en `localStorage` y no se
+conecta al chat. Sirve para trabajar en el pato sin levantar la app entera:
+
+```bash
+npm run banco
+```
+
+Y abrir <http://127.0.0.1:8777/tools/banco/index.html>. Ojo: si la pestaña
+queda en segundo plano el navegador congela `requestAnimationFrame` y el pato
+se queda quieto — no está roto, está durmiendo.
 
 ## Licencia
 

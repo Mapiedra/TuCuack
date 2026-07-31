@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>TuCuack</title>
+  <link rel="stylesheet" href="core/styles.css" />
+  <style>
+    /* Cualquier regla de autor que traiga `display` gana al `display: none` que
+       el navegador aplica a `[hidden]`, y entonces `hidden` deja de ocultar. Aquí
+       hay elementos con `display: flex`, así que se restablece a mano. */
+    [hidden] { display: none !important; }
+
+    /* El overlay de escritorio es transparente porque va sobre otras ventanas;
+       el panel, en cambio, tiene sitio para darle al pato un lugar donde estar.
+       Todo el decorado es CSS: ni una imagen, así que no pesa nada.
+
+       La altura del suelo tiene que coincidir con `ground` en platform.js, que es
+       lo que le dice al pato por dónde camina. */
+    :root {
+      --suelo: 30px;
+      --cielo-alto: #bfe4f5;
+      --cielo-bajo: #e6f4ef;
+      --astro: #ffd98a;
+      --astro-halo: rgba(255, 217, 138, 0.35);
+      --nube: rgba(255, 255, 255, 0.85);
+      --hierba: #8fc98a;
+      --hierba-borde: #6fae74;
+
+      /* La escala real la calcula escala.js según el hueco del panel; esto es
+         solo el valor de partida por si ese cálculo no llegara a ejecutarse. */
+      --duck-scale: 1;
+    }
+
+    html, body {
+      overflow: hidden;
+      background:
+        /* nubes, de la más alta a la más baja */
+        radial-gradient(42px 16px at 22% 20%, var(--nube), transparent 70%),
+        radial-gradient(30px 12px at 34% 23%, var(--nube), transparent 70%),
+        radial-gradient(52px 18px at 74% 38%, var(--nube), transparent 70%),
+        radial-gradient(34px 13px at 62% 41%, var(--nube), transparent 70%),
+        /* sol, con su halo */
+        radial-gradient(circle 26px at 78% 13%, var(--astro) 60%, var(--astro-halo) 62%, transparent 78%),
+        /* cielo */
+        linear-gradient(var(--cielo-alto), var(--cielo-bajo));
+      background-repeat: no-repeat;
+    }
+
+    /* El suelo por el que pasea. */
+    body::after {
+      content: '';
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: var(--suelo);
+      background: var(--hierba);
+      border-top: 2px solid var(--hierba-borde);
+      /* Ondas suaves en el borde, para que no sea una raya recta. */
+      border-radius: 50% 50% 0 0 / 14px 14px 0 0;
+      transform: scaleX(1.06);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --cielo-alto: #16202c;
+        --cielo-bajo: #24303f;
+        --astro: #e8eef5;            /* de noche, luna */
+        --astro-halo: rgba(232, 238, 245, 0.22);
+        --nube: rgba(255, 255, 255, 0.10);
+        --hierba: #2f4038;
+        --hierba-borde: #3d5346;
+      }
+      /* Un puñado de estrellas, sólo de noche. */
+      body {
+        background:
+          radial-gradient(1.4px 1.4px at 18% 12%, #fff, transparent),
+          radial-gradient(1.2px 1.2px at 46% 8%, #fff, transparent),
+          radial-gradient(1.6px 1.6px at 63% 18%, #fff, transparent),
+          radial-gradient(1.2px 1.2px at 88% 26%, #fff, transparent),
+          radial-gradient(1.3px 1.3px at 30% 30%, #fff, transparent),
+          radial-gradient(1.1px 1.1px at 72% 6%, #fff, transparent),
+          radial-gradient(52px 18px at 74% 38%, var(--nube), transparent 70%),
+          radial-gradient(34px 13px at 62% 41%, var(--nube), transparent 70%),
+          radial-gradient(circle 22px at 78% 13%, var(--astro) 60%, var(--astro-halo) 62%, transparent 78%),
+          linear-gradient(var(--cielo-alto), var(--cielo-bajo));
+        background-repeat: no-repeat;
+      }
+    }
+
+    /* Cuando el pato está en otra ventana. Hay uno solo, y vive donde estás tú. */
+    #aviso {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 24px;
+      text-align: center;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: var(--ink);
+      opacity: 0.75;
+    }
+    #aviso .cara { font-size: 34px; }
+    #aviso .texto { font-size: 13px; line-height: 1.4; }
+    @media (prefers-color-scheme: dark) { #aviso { color: #e8eef5; } }
+  </style>
+</head>
+<body>
+  <div id="aviso" hidden>
+    <span class="cara">🦆</span>
+    <span class="texto">Tu pato está en otra ventana.<br>Cambia a ella o cierra este panel.</span>
+  </div>
+
+  <div id="stage" hidden>
+    <div id="duck" class="duck" data-state="idle" data-facing="left">
+      <div class="status-bubbles" id="statusBubbles"></div>
+      <div class="speech-layer" id="speechLayer"></div>
+      <canvas id="duckCanvas" class="duck-canvas" width="248" height="268"></canvas>
+      <div class="duck-shadow"></div>
+    </div>
+  </div>
+  <script type="module" src="boot.js"></script>
+</body>
+</html>

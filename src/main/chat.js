@@ -10,10 +10,16 @@
 const config = require('./config');
 
 let supabase = null;
+/** Cómo se construye el cliente, para poder rehacerlo al reconectar. */
+let crearCliente = null;
 let channel = null;
 let connected = false;
 let myName = '';
 let myKey = '';
+// Si ya nos hemos anunciado en la presencia con el nombre actual. Repetir el
+// anuncio deja una entrada de más, y el pato sale duplicado en la lista de
+// conectados que ven los demás.
+let anunciado = false;
 
 /**
  * @param {() => import('electron').BrowserWindow | null} getWin
@@ -41,10 +47,15 @@ function initChat(getWin, initialName) {
   // Clave estable por instalación para identificar nuestra propia presencia.
   myKey = `pato-${Math.random().toString(36).slice(2, 10)}`;
 
-  supabase = createClient(config.SUPABASE_URL, config.SUPABASE_KEY, {
+  // Se guarda cómo se construye para poder rehacerlo si la reconexión se atasca.
+  // El proceso main de Electron no trae `WebSocket`, así que hay que pasarle el
+  // del paquete `ws`; sin él, supabase-js ni siquiera crea el cliente.
+  crearCliente = () => createClient(config.SUPABASE_URL, config.SUPABASE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
     realtime: { transport: WebSocketImpl, params: { eventsPerSecond: 10 } }
   });
+
+  supabase = crearCliente();
 
   channel = crearCanal(getWin);
   suscribir(getWin);
@@ -64,10 +75,13 @@ function initChat(getWin, initialName) {
 
     /** Actualiza el nombre anunciado en la presencia. */
     async setName(name) {
-      myName = String(name || '').slice(0, 40);
+      const nuevo = String(name || '').slice(0, 40);
+      if (nuevo === myName && anunciado) return;
+      myName = nuevo;
       if (channel && connected) {
         try {
           await channel.track({ name: myName, at: Date.now() });
+          anunciado = true;
         } catch (err) {
           console.error('[chat] no se pudo actualizar el nombre:', err);
         }
@@ -81,6 +95,7 @@ function initChat(getWin, initialName) {
 
 /** Crea el canal con sus escuchas. Se rehace entero en cada reconexión. */
 function crearCanal(getWin) {
+  anunciado = false;   // canal nuevo, presencia nueva
   const ch = supabase.channel(config.CHANNEL, {
     config: {
       broadcast: { self: false },
@@ -118,20 +133,50 @@ let temporizador = null;
 const ESPERA_MIN = 5000;
 const ESPERA_MAX = 5 * 60 * 1000;
 
+/**
+ * Saca el motivo de verdad de un error del canal.
+ *
+ * Supabase envuelve los fallos de transporte en un "channel error: transport
+ * failure" que no dice nada, y deja el error original en `cause`. Ahí es donde
+ * aparece lo que hace falta saber: un certificado que no se pudo verificar (un
+ * antivirus que inspecciona el tráfico), un DNS que no resuelve, un proxy que
+ * corta. Sin esto, todos los fallos de red se parecen.
+ */
+function describirError(err) {
+  if (!err) return '';
+  const partes = [err.message || String(err)];
+  let causa = err.cause;
+  let vueltas = 0;
+  while (causa && vueltas++ < 4) {
+    const texto = causa.message || causa.code || causa.type
+      || (typeof causa === 'string' ? causa : null);
+    if (texto) partes.push(String(texto));
+    causa = causa.cause || (causa.error && causa.error.message ? causa.error : null);
+  }
+  return partes.join(' ← ');
+}
+
 function suscribir(getWin) {
   if (!channel) return;
   channel.subscribe(async (status, err) => {
     const antes = connected;
     connected = status === 'SUBSCRIBED';
-    const detalle = err ? ` (${err.message || err})` : '';
+    const detalle = err ? ` (${describirError(err)})` : '';
     if (connected) {
       reintentos = 0;
       if (!antes) console.log('[chat] canal: conectado');
       notify(getWin, { type: 'status', connected: true, reason: status });
-      try {
-        await channel.track({ name: myName, at: Date.now() });
-      } catch (e) {
-        console.error('[chat] no se pudo anunciar la presencia:', e);
+      // Sólo una vez por canal. Supabase puede avisar de SUBSCRIBED más de una
+      // vez sobre el mismo canal, y cada anuncio deja una entrada NUEVA en la
+      // presencia en vez de reemplazar la anterior: el pato se va multiplicando
+      // en la lista de conectados de todos los demás.
+      if (!anunciado) {
+        try {
+          await channel.track({ name: myName, at: Date.now() });
+          anunciado = true;
+        } catch (e) {
+          console.error('[chat] no se pudo anunciar la presencia:', e);
+        }
       }
       notify(getWin, { type: 'presence', names: presentNames() });
       return;
@@ -149,14 +194,31 @@ function programarReintento(getWin) {
   if (temporizador) return;   // ya hay uno en marcha
   const espera = Math.min(ESPERA_MAX, ESPERA_MIN * Math.pow(2, reintentos));
   reintentos++;
+  // A partir del tercer intento no basta con rehacer el canal: se rehace el
+  // cliente entero. Quitar el último canal deja al socket programando su propia
+  // desconexión, y el canal nuevo puede quedarse esperando a un socket que se
+  // está yendo — con lo que los reintentos fallan uno tras otro para siempre,
+  // aunque la red ya haya vuelto.
+  const desdeCero = reintentos >= 3;
   console.log(`[chat] reintentando en ${Math.round(espera / 1000)}s `
-    + `(intento ${reintentos})`);
+    + `(intento ${reintentos}${desdeCero ? ', reconectando desde cero' : ''})`);
+
   temporizador = setTimeout(() => {
     temporizador = null;
-    if (!supabase || !channel) return;
+    if (!supabase) return;
     try {
-      // Se rehace el canal: reutilizar uno que ya falló no vuelve a conectar.
-      supabase.removeChannel(channel);
+      if (desdeCero) {
+        try {
+          supabase.removeAllChannels();
+          if (supabase.realtime && typeof supabase.realtime.disconnect === 'function') {
+            supabase.realtime.disconnect();
+          }
+        } catch { /* el cliente viejo ya estaba para el arrastre */ }
+        supabase = crearCliente();
+      } else if (channel) {
+        // Reutilizar un canal que ya falló no vuelve a conectar.
+        supabase.removeChannel(channel);
+      }
       channel = crearCanal(getWin);
       suscribir(getWin);
     } catch (e) {
@@ -180,14 +242,16 @@ function presentNames() {
   if (!channel || !connected) return [];
   try {
     const state = channel.presenceState() || {};
-    const out = [];
+    // Un Set porque un mismo pato puede figurar varias veces: le pasa a quien
+    // siga con una versión que se anunciaba de más.
+    const out = new Set();
     for (const [key, metas] of Object.entries(state)) {
       if (key === myKey) continue;
       for (const m of metas) {
-        if (m && m.name) out.push(String(m.name));
+        if (m && m.name) out.add(String(m.name));
       }
     }
-    return out;
+    return [...out];
   } catch {
     return [];
   }

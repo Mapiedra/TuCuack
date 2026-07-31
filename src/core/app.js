@@ -1,5 +1,9 @@
-// app.js — arranque del renderer: monta el pato, arranca los bucles y cablea
+// app.js — arranque del pato: lo monta, arranca los bucles y cablea
 // interacción, Tamagotchi, chat y eventos del sistema.
+//
+// No sabe dónde vive. Todo lo que necesita del entorno llega por la plataforma
+// que le pasa la carcasa (ver `platform.js`), así que el mismo código sirve
+// para la ventana de Electron y para la extensión de Chrome.
 
 import { Duck } from './pet/Duck.js';
 import { Behavior } from './pet/behavior.js';
@@ -16,8 +20,14 @@ import { SKINS, skinPorId, estaDesbloqueada, SKIN_POR_DEFECTO } from './game/ski
 import { ChatClient } from './chat/chatClient.js';
 import { SpeechBubbles } from './chat/speechBubble.js';
 import * as sonido from './audio/sounds.js';
+import { normalizarPlataforma } from './platform.js';
+import { configurarAssets, configurarCargadorSheet } from './assets.js';
+import { fijarFactor, normalizarFactor } from './scale.js';
+import { porId, todos, uno, montar, elementoVisible, objetivoReal } from './stage.js';
 
-const api = window.pato;
+// La instala `arrancarPato`. Hasta entonces, una plataforma que no hace nada,
+// para que nada reviente si algo se dispara antes de tiempo.
+let api = normalizarPlataforma();
 
 let duck, behavior, tam, chat, speech, level;
 let settings = { displayName: '', autoLaunch: false };
@@ -37,11 +47,30 @@ let hoverTimer = null;       // cuenta atrás para mostrar las stats en un toolt
 let grab = { x: 0, y: 0 };
 const openOverlays = new Set(); // menús/paneles/inputs abiertos
 
+// ---- Apagado ------------------------------------------------------------
+//
+// El pato de escritorio vive hasta que se cierra la app y nunca necesita esto,
+// pero en la extensión se muda de pestaña, y al mudarse hay que apagar el de
+// antes: si no, quedarían dos bucles guardando el mismo estado a la vez.
+const tareasDeApagado = [];
+
+function alApagar(fn) {
+  tareasDeApagado.push(fn);
+}
+
+/** Añade un listener que se retira solo al apagar el pato. */
+function escuchar(objetivo, evento, fn, opciones) {
+  objetivo.addEventListener(evento, fn, opciones);
+  alApagar(() => objetivo.removeEventListener(evento, fn, opciones));
+}
+
 function updateMouseCapture() {
-  // El overlay captura el ratón si: arrastramos, hay un panel abierto, o el
-  // cursor está sobre el pato o una zona interactiva. Si no, deja pasar clics.
+  // Hace falta el ratón si: arrastramos, hay un panel abierto, o el cursor está
+  // sobre el pato o una zona interactiva. En el overlay de escritorio eso decide
+  // si los clics atraviesan la ventana; donde el pato tiene documento propio, la
+  // plataforma lo ignora y sólo queda el cursor.
   const capture = dragging || openOverlays.size > 0 || overHot;
-  api.setIgnoreMouse(!capture);
+  api.capturarRaton(capture);
   updateCursor();
 }
 
@@ -50,7 +79,7 @@ function updateCursor() {
   const c = dragging ? 'grabbing' : (overDuck ? 'grab' : 'default');
   if (c !== lastCursor) {
     lastCursor = c;
-    document.body.style.cursor = c;
+    elementoVisible().style.cursor = c;
   }
 }
 
@@ -76,28 +105,39 @@ function isOverHotElement(target) {
 }
 function computeOverHot(px, py) {
   if (duck.hitTest(px, py)) return true;
-  for (const el of document.querySelectorAll('.hot')) {
+  for (const el of todos('.hot')) {
     if (pointInRect(px, py, el.getBoundingClientRect())) return true;
   }
   return false;
 }
 
 // ---- Bootstrap ----------------------------------------------------------
-async function main() {
-  config = await api.getConfig();
-  settings = await api.loadSettings();
-  const saved = await api.loadState();
+/**
+ * Monta el pato en el documento actual.
+ * @param {import('./platform.js').Plataforma} plataforma
+ */
+export async function arrancarPato(plataforma) {
+  api = normalizarPlataforma(plataforma);
+  configurarAssets(api.urlAsset);
+  if (api.cargarSheet) configurarCargadorSheet(api.cargarSheet);
+
+  config = await api.config();
+  settings = await api.cargarAjustes();
+  const saved = await api.cargarEstado();
 
   // Primer arranque: el pato necesita un nombre para el chat. Se propone uno
   // con sufijo aleatorio para que dos instalaciones no choquen de salida; el
   // usuario puede cambiarlo en Ajustes.
   if (!(settings.displayName || '').trim()) {
     settings.displayName = `Pato-${Math.floor(1000 + Math.random() * 9000)}`;
-    api.saveSettings(settings);
+    api.guardarAjustes(settings);
   }
 
   sonido.setVolumen(settings.volumen != null ? settings.volumen : 0.5);
   sonido.setSilenciado(!!settings.silenciado);
+
+  // El tamaño elegido, antes de montar el pato: se mide a sí mismo al nacer.
+  fijarFactor(normalizarFactor(settings.escala));
 
   // El suelo es la parte superior de la barra de tareas: el pato camina ahí y
   // el overlay ocupa toda la pantalla para poder arrastrarlo a cualquier punto.
@@ -108,19 +148,25 @@ async function main() {
   const skinValida = skin && estaDesbloqueada(skin, level.nivel) ? skin.id : SKIN_POR_DEFECTO;
 
   duck = new Duck(
-    document.getElementById('duck'),
-    document.getElementById('duckCanvas'),
+    porId('duck'),
+    porId('duckCanvas'),
     config.ground || 0,
     skinValida,
     config.sprites            // metadatos de cada diseño
   );
-  duck.setX(Math.min(window.innerWidth - duck.width - 40, 260));
-  api.onLayoutChanged((d) => duck.setGround(d && d.ground));
+  // Dónde aparece. Si hay una posición guardada se recupera, y en proporción al
+  // ancho: el pato se muda entre pestañas de tamaños distintos, y así no salta de
+  // lado ni acaba fuera de la ventana.
+  const sitioLibre = Math.max(0, window.innerWidth - duck.width);
+  duck.setX(saved.x != null && saved.x >= 0 && saved.x <= 1
+    ? Math.round(saved.x * sitioLibre)
+    : Math.min(sitioLibre, 260));
+  api.alCambiarEscenario((d) => duck.setGround(d && d.ground));
 
   // El pato ha cruzado a otro monitor mientras se arrastraba: la ventana ya se
   // ha mudado, así que sólo hay que recolocarlo bajo el cursor y ajustar el
   // suelo del monitor nuevo.
-  api.onDisplayChanged((d) => {
+  api.alCambiarPantalla((d) => {
     if (!d) return;
     duck.setGround(d.ground);
     if (d.cursor) {
@@ -135,8 +181,8 @@ async function main() {
 
   behavior = new Behavior(duck, tam);
 
-  speech = new SpeechBubbles(document.getElementById('speechLayer'));
-  const statusBubbles = document.getElementById('statusBubbles');
+  speech = new SpeechBubbles(porId('speechLayer'));
+  const statusBubbles = porId('statusBubbles');
 
   // Reacciones del Tamagotchi a las acciones → animación del pato.
   tam.on('action', (kind) => {
@@ -163,7 +209,7 @@ async function main() {
   setupUpdates();
 
   // Guardado al salir.
-  api.onBeforeQuit(() => saveNow());
+  api.alCerrar(() => saveNow());
 
   // Hook de depuración: permite probar desde fuera acciones que normalmente
   // requieren ratón (p. ej. soltar el pato desde arriba para ver el planeo).
@@ -189,6 +235,7 @@ async function main() {
       verMenu: () => { const p = duckAnchor(); openDuckMenu(p.x, p.y); },
       verSkins: () => { const p = duckAnchor(); openSkins(p.x, p.y); },
       verStats: () => { const p = duckAnchor(); openStats(p.x, p.y); },
+      verAjustes: () => { const p = duckAnchor(); openSettings(p.x, p.y); },
       level,
       darXp: (n) => { level.xp += n; return level.nivel; },
       act: doAction,
@@ -202,43 +249,88 @@ async function main() {
   }
 
   startLoops(statusBubbles);
+
+  return { apagar };
+}
+
+/**
+ * Para el pato y lo deja todo como estaba: sin bucles, sin listeners y sin
+ * paneles abiertos. Guarda antes, que es lo último que hace un pato educado.
+ */
+function apagar() {
+  try {
+    saveNow();
+  } catch (err) {
+    console.warn('[pato] no se pudo guardar al apagar', err);
+  }
+
+  cancelarTooltip();
+  closeContextMenu();
+  for (const el of [...openOverlays]) unregisterOverlay(el);
+  // El animador de sprites corre en su propio bucle, aparte del del pato.
+  if (duck) duck.detener();
+  // Y el chat puede tener un puente abierto con quien mantenga la conexión.
+  if (api.chat && api.chat.cerrar) api.chat.cerrar();
+
+  for (const fn of tareasDeApagado.splice(0)) {
+    try {
+      fn();
+    } catch (err) {
+      console.warn('[pato] fallo al apagar', err);
+    }
+  }
 }
 
 // ---- Bucles -------------------------------------------------------------
 function startLoops(statusBubbles) {
   let last = performance.now();
+  let pedido = 0;
   const frame = (t) => {
     const dt = Math.min((t - last) / 1000, 0.1);
     last = t;
     updateFlight(dt);
     behavior.update(dt);
-    requestAnimationFrame(frame);
+    pedido = requestAnimationFrame(frame);
   };
-  requestAnimationFrame(frame);
+  pedido = requestAnimationFrame(frame);
+  alApagar(() => cancelAnimationFrame(pedido));
 
   // Decaimiento de necesidades y experiencia por convivencia (1 s).
-  setInterval(() => {
+  cadaCierto(() => {
     tam.tick(1);
     level.convivencia(1, tam.mood() === 'contento');
   }, 1000);
 
   // Burbuja de ánimo (2 s).
-  setInterval(() => {
+  cadaCierto(() => {
     if (!dragging) updateBubbles(statusBubbles, tam.mood());
   }, 2000);
   updateBubbles(statusBubbles, tam.mood());
 
   // Guardado periódico (15 s).
-  setInterval(saveNow, 15000);
+  cadaCierto(saveNow, 15000);
+}
+
+/** setInterval que se para solo cuando el pato se apaga. */
+function cadaCierto(fn, ms) {
+  const id = setInterval(fn, ms);
+  alApagar(() => clearInterval(id));
 }
 
 function saveNow() {
-  api.saveState({ stats: tam.stats, level: level.toJSON() });
+  const sitioLibre = Math.max(1, window.innerWidth - duck.width);
+  api.guardarEstado({
+    stats: tam.stats,
+    level: level.toJSON(),
+    // Como proporción del sitio disponible, no en píxeles: la ventana de la
+    // pestaña siguiente no tiene por qué medir lo mismo.
+    x: Math.min(1, Math.max(0, duck.x / sitioLibre))
+  });
 }
 
 // ---- Interacción: arrastre + menú clic derecho --------------------------
 function setupInteraction() {
-  document.addEventListener('mousemove', (e) => {
+  escuchar(document, 'mousemove', (e) => {
     if (dragging) {
       // Si el botón se soltó fuera de la ventana (p. ej. justo al cruzar de
       // monitor), el mouseup no llega y el pato se quedaría pegado al cursor.
@@ -264,17 +356,17 @@ function setupInteraction() {
     updateMouseCapture();
   });
 
-  document.addEventListener('mousedown', (e) => {
+  escuchar(document, 'mousedown', (e) => {
     if (e.button !== 0) return;
-    if (isOverHotElement(e.target)) return; // paneles/menús se gestionan solos
+    if (isOverHotElement(objetivoReal(e))) return; // paneles/menús se gestionan solos
     if (duck.hitTest(e.clientX, e.clientY)) startDrag(e);
   });
 
-  document.addEventListener('mouseup', () => { if (dragging) endDrag(); });
+  escuchar(document, 'mouseup', () => { if (dragging) endDrag(); });
 
-  document.addEventListener('contextmenu', (e) => {
+  escuchar(document, 'contextmenu', (e) => {
     e.preventDefault();
-    if (isOverHotElement(e.target)) return;
+    if (isOverHotElement(objetivoReal(e))) return;
     // El menú se ancla al pato (no al cursor) y se abre por encima de él.
     if (duck.hitTest(e.clientX, e.clientY)) {
       const p = duckAnchor();
@@ -282,7 +374,8 @@ function setupInteraction() {
     }
   });
 
-  window.addEventListener('resize', () => {
+  escuchar(window, 'resize', () => {
+    duck.medir();      // la escala puede depender del hueco disponible
     duck.setX(duck.x); // re-clamp
   });
 }
@@ -298,7 +391,7 @@ function startDrag(e) {
   duck.setDragTransition(false);
   duck.setTilt(0);          // por si se le agarra mientras volaba
   behavior.lock();          // el pato cuelga del cursor
-  api.dragStart();          // el main vigila si cruza a otro monitor
+  api.empezarArrastre();    // donde haya varios monitores, se vigila si cruza
   updateMouseCapture();
 }
 
@@ -325,7 +418,7 @@ function pointerVelocity() {
 // desplomarse planea aleteando hasta posarse.
 function endDrag() {
   dragging = false;
-  api.dragEnd();
+  api.terminarArrastre();
   updateMouseCapture();
 
   const v = pointerVelocity();
@@ -430,10 +523,13 @@ function openDuckMenu(x, y) {
     { label: '💬 Hablar…', onClick: () => openTalk(x, y) },
     { label: '📊 Estadísticas', onClick: () => openStats(x, y) },
     { label: `👕 Diseños · Nv ${level.nivel}`, onClick: () => openSkins(x, y) },
-    { label: '⚙️ Ajustes…', onClick: () => openSettings(x, y) },
-    { sep: true },
-    { label: '❌ Salir', onClick: () => api.quit() }
+    { label: '⚙️ Ajustes…', onClick: () => openSettings(x, y) }
   ];
+  // "Salir" sólo donde hay algo de lo que salir: en una extensión el pato no
+  // tiene proceso propio que cerrar.
+  if (api.capacidades.salir) {
+    items.push({ sep: true }, { label: '❌ Salir', onClick: () => api.salir() });
+  }
   let menuEl = null;
   showContextMenu(x, y, items, {
     center: true,          // `x` es el centro del pato
@@ -444,7 +540,7 @@ function openDuckMenu(x, y) {
   });
   // El menú es .hot: computeOverHot ya lo cubre. Lo registramos además por si el
   // cursor quedara estático tras abrirlo.
-  menuEl = document.querySelector('.ctx-menu');
+  menuEl = uno('.ctx-menu');
   if (menuEl) registerOverlay(menuEl);
 }
 
@@ -489,17 +585,26 @@ function openSettings(x, y) {
   const { el } = buildSettingsPanel(settings, config.version, {
     isNameTaken: (n) => chat.isNameTaken(n),
     chatReady: chat.connected,
+    puedeAutoArrancar: api.capacidades.autoArranque,
+    // El tamaño se ve al momento mientras se mueve el control, y se guarda ya:
+    // si el pato queda enorme, cerrar el panel sin más no debería perder el
+    // ajuste con el que el usuario se ha quedado.
+    onEscala: (pct) => {
+      fijarFactor(pct);
+      settings = { ...settings, escala: pct };
+      api.guardarAjustes(settings);
+    },
     // El volumen se aplica al momento, para poder ajustarlo de oído.
     onSonido: ({ volumen, silenciado }) => {
       sonido.setVolumen(volumen);
       sonido.setSilenciado(silenciado);
       settings = { ...settings, volumen, silenciado };
-      api.saveSettings(settings);
+      api.guardarAjustes(settings);
       if (!silenciado) sonido.cuack();     // muestra de cómo suena
     },
     onSave: (s) => {
       settings = { ...settings, ...s };
-      api.saveSettings(settings);
+      api.guardarAjustes(settings);
       chat.setName(settings.displayName);   // re-anuncia el nombre en el canal
     },
     onBack: () => volverAlMenu(el, x, y),
@@ -533,7 +638,7 @@ function cancelarTooltip() {
  */
 function duckAnchor() {
   const r = duck.rect();
-  const head = document.getElementById('statusBubbles').getBoundingClientRect();
+  const head = porId('statusBubbles').getBoundingClientRect();
   return { x: Math.round(r.left + r.width / 2), y: Math.round(head.bottom) };
 }
 
@@ -547,7 +652,7 @@ function openSkins(x, y) {
     onElegir: (id) => {
       duck.setSkin(id);
       settings = { ...settings, skin: id };
-      api.saveSettings(settings);
+      api.guardarAjustes(settings);
     },
     onBack: () => volverAlMenu(el, x, y),
     onClose: () => unregisterOverlay(el)
@@ -560,7 +665,7 @@ function avisoNivel(html) {
   const el = document.createElement('div');
   el.className = 'levelup';
   el.innerHTML = html;      // sólo texto propio, sin datos de terceros
-  document.body.appendChild(el);
+  montar(el);
   const a = duckAnchor();
   el.style.left = `${Math.max(8, Math.min(a.x - el.offsetWidth / 2,
     window.innerWidth - el.offsetWidth - 8))}px`;
@@ -580,7 +685,7 @@ function openTalk(x, y) {
 // (para no tapar al pato), y lo registra para la captura de ratón.
 function mountPanel(el, x, y) {
   el.style.visibility = 'hidden';
-  document.body.appendChild(el);
+  montar(el);
   colocarPanel(el, x, y);
   el.style.visibility = 'visible';
 
@@ -609,7 +714,7 @@ function colocarPanel(el, x, y) {
 
 // ---- Chat ---------------------------------------------------------------
 function setupChat() {
-  chat = new ChatClient();
+  chat = new ChatClient(api.chat);
   chat.onMessage((m) => {
     speech.show(m.from, m.text, { self: false });
     // Un poco más grave que el propio, para distinguir quién habla.
@@ -619,6 +724,11 @@ function setupChat() {
   chat.onStatus(() => { /* opcional: indicador de conexión */ });
   // El canal ya puede estar conectado antes de llegar aquí.
   chat.sync();
+  // Anuncia el nombre en la presencia del canal. Hace falta en el primer
+  // arranque: quien mantiene la conexión lo lee de los ajustes guardados, y ahí
+  // todavía no había nombre porque se acaba de generar. Sin esto, el pato sale
+  // sin nombre en la lista de conectados hasta que se abren los Ajustes.
+  chat.setName(duckName());
 }
 
 function sendChat(text) {
@@ -632,9 +742,10 @@ function sendChat(text) {
   if (behavior) behavior.playOnce('talk', 2.2);
 }
 
-// ---- Bandeja ------------------------------------------------------------
+// ---- Órdenes desde fuera del documento ----------------------------------
+// La bandeja del sistema en el escritorio; el menú de la extensión en Chrome.
 function setupTray() {
-  api.onTrayCommand((cmd) => {
+  api.alRecibirComando((cmd) => {
     const { x: cx, y: cy } = duckAnchor();
     if (cmd === 'feed' || cmd === 'play' || cmd === 'clean' || cmd === 'sleep') {
       doAction(cmd);
@@ -645,7 +756,7 @@ function setupTray() {
 
 // ---- Actualizaciones ----------------------------------------------------
 function setupUpdates() {
-  api.onUpdateEvent((evt) => {
+  api.alRecibirActualizacion((evt) => {
     if (!evt) return;
     if (evt.type === 'available') toast(`Descargando actualización v${evt.version}…`);
     else if (evt.type === 'ready') toast('¡Nueva versión lista! Se aplicará al reiniciar.');
@@ -656,8 +767,6 @@ function toast(text) {
   const el = document.createElement('div');
   el.className = 'toast';
   el.textContent = text;
-  document.body.appendChild(el);
+  montar(el);
   setTimeout(() => el.remove(), 5000);
 }
-
-main().catch((err) => console.error('[pato] error al arrancar', err));

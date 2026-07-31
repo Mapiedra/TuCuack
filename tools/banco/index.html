@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>TuCuack — banco de pruebas</title>
+  <link rel="stylesheet" href="../../src/core/styles.css" />
+  <style>
+    /* El escritorio es transparente porque va sobre el resto de ventanas; aquí
+       hace falta un fondo para ver algo. */
+    body { background: #1b2430; }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <div id="duck" class="duck" data-state="idle" data-facing="left">
+      <div class="status-bubbles" id="statusBubbles"></div>
+      <div class="speech-layer" id="speechLayer"></div>
+      <canvas id="duckCanvas" class="duck-canvas" width="248" height="268"></canvas>
+      <div class="duck-shadow"></div>
+    </div>
+  </div>
+  <script type="module">
+    import { arrancarPato } from '../../src/core/app.js';
+    import { crearPlataformaBanco } from './platform.js';
+
+    arrancarPato(crearPlataformaBanco())
+      .catch((err) => console.error('[pato] error al arrancar', err));
+  </script>
+</body>
+</html>

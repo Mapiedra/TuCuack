@@ -39,16 +39,24 @@ const DEFAULT_STATE = {
   stats: { hunger: 80, energy: 80, hygiene: 80, happiness: 80 },
   // Experiencia y racha de días (ver renderer/game/Level.js).
   level: { xp: 0, racha: 0, ultimoDia: "", diaDelChat: "", chatHoy: 0 },
+  // Dónde estaba el pato, como proporción del ancho disponible (ver core/app.js).
+  x: null,
   savedAt: 0
 };
 
 const DEFAULT_SETTINGS = {
   displayName: '',
   autoLaunch: false,
-  skin: 'normal',       // diseño de pato elegido (renderer/game/skins.js)
+  skin: 'normal',       // diseño de pato elegido (core/game/skins.js)
   volumen: 0.5,
-  silenciado: false
+  silenciado: false,
+  escala: 100           // tamaño del pato en % (ver core/scale.js)
 };
+
+/** Valida una proporción 0..1; cualquier otra cosa se descarta. */
+function proporcion(v) {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1 ? v : null;
+}
 
 module.exports = {
   load() {
@@ -57,6 +65,7 @@ module.exports = {
     return {
       stats: { ...DEFAULT_STATE.stats, ...(state.stats || {}) },
       level: { ...DEFAULT_STATE.level, ...(state.level || {}) },
+      x: proporcion(state.x),
       savedAt: typeof state.savedAt === 'number' ? state.savedAt : 0
     };
   },
@@ -65,6 +74,7 @@ module.exports = {
     writeJson(STATE_FILE, {
       stats: (data && data.stats) || DEFAULT_STATE.stats,
       level: (data && data.level) || DEFAULT_STATE.level,
+      x: proporcion(data && data.x),
       savedAt: Date.now()
     });
   },

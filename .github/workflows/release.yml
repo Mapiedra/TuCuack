@@ -1,9 +1,12 @@
 name: Release
 
-# Se dispara al subir un tag de versión (p. ej. v0.1.0). Compila en Windows y en
-# macOS y publica los instaladores, junto con latest.yml / latest-mac.yml, en un
-# GitHub Release: ese Release es el feed que electron-updater consulta para
-# autoactualizarse.
+# Se dispara al subir un tag de versión (p. ej. v0.1.0). Compila el instalador de
+# Windows y publica el Release con latest.yml, que es el feed que electron-updater
+# consulta para autoactualizarse. Además empaqueta la extensión de Chrome.
+#
+# No se compila para macOS: sin licencia de Apple no se puede firmar ni notarizar,
+# y un .dmg sin firmar da más problemas de los que resuelve. Quien use Mac tiene
+# la extensión.
 #
 # Para publicar una versión:
 #   1. sube "version" en package.json y añade la entrada en CHANGELOG.md
@@ -18,11 +21,11 @@ permissions:
   contents: write         # necesario para crear el Release y subir los binarios
 
 jobs:
-  # El Release se crea aquí, una sola vez, antes de compilar. Si lo crearan los
-  # jobs de compilación, los dos intentarían crearlo a la vez y el que perdiera
-  # la carrera fallaría con "already_exists" sin subir sus binarios: es lo que
-  # dejó la 0.3.1 sin instalador de macOS. Con el Release ya creado, cada job se
-  # limita a subir sus ficheros.
+  # El Release se crea aquí, una sola vez, antes de nada. Si lo crearan los jobs
+  # que publican, los dos intentarían crearlo a la vez y el que perdiera la
+  # carrera fallaría con "already_exists" sin subir sus ficheros: es lo que dejó
+  # la 0.3.1 a medias. Con el Release ya creado, cada job se limita a subir lo
+  # suyo — el instalador de Windows y el zip de la extensión.
   preparar:
     name: Preparar el Release
     runs-on: ubuntu-latest
@@ -53,18 +56,8 @@ jobs:
 
   release:
     needs: preparar
-
-    strategy:
-      fail-fast: false    # que un fallo en un sistema no cancele el otro
-      matrix:
-        include:
-          - os: windows-latest
-            nombre: Windows
-          - os: macos-latest
-            nombre: macOS
-
-    name: ${{ matrix.nombre }}
-    runs-on: ${{ matrix.os }}
+    name: Windows
+    runs-on: windows-latest
 
     steps:
       - name: Checkout
@@ -81,7 +74,6 @@ jobs:
 
       # Credenciales del chat. Se generan aquí desde los secrets del repositorio
       # para no versionarlas; si no están definidas, se compila sin chat.
-      # Se hace con node para que valga igual en Windows y en macOS.
       - name: Configure Supabase
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -92,10 +84,58 @@ jobs:
         run: npm run release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Sin certificado de Apple no se firma ni se notariza; evita que
-          # electron-builder intente firmar y falle.
-          CSC_IDENTITY_AUTO_DISCOVERY: false
           # Por defecto electron-builder se niega a subir a un Release publicado
           # hace más de dos horas. Eso impide relanzar a mano un job que falló,
           # que es justo cuando más falta hace.
           EP_GH_IGNORE_TIME: true
+
+  # La extensión no se compila: se ensambla copiando el núcleo, su carcasa y los
+  # sprites en una carpeta, y esa carpeta se comprime. Se instala en modo
+  # desarrollador y se actualiza descomprimiendo encima (ver INSTALAR.txt).
+  extension:
+    needs: preparar
+    name: Extensión de Chrome
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+
+      # Sólo hace falta supabase-js, que va en dependencies: el service worker
+      # lleva dentro su bundle, porque Manifest V3 no permite cargar código de
+      # fuera. Sin las de desarrollo nos ahorramos descargar Electron entero para
+      # un trabajo que es copiar ficheros.
+      - name: Install dependencies
+        run: npm ci --omit=dev
+
+      # Las mismas credenciales que el escritorio: así los patos de extensión y
+      # los de escritorio comparten el canal de chat.
+      - name: Configure Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: node tools/write-supabase-config.js
+
+      - name: Ensamblar la extensión
+        run: npm run ext
+
+      - name: Comprimir
+        run: |
+          TAG="${{ needs.preparar.outputs.tag }}"
+          cd dist/extension
+          zip -r "../TuCuack-extension-${TAG#v}.zip" .
+          cd ..
+          unzip -l "TuCuack-extension-${TAG#v}.zip" | tail -1
+
+      - name: Subir al Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ needs.preparar.outputs.tag }}"
+          gh release upload "$TAG" "dist/TuCuack-extension-${TAG#v}.zip" --clobber

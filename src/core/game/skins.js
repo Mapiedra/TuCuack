@@ -9,6 +9,8 @@
 // rejilla que describe el README, ejecuta `npm run sprites` y añade su entrada
 // aquí.
 
+import { urlSheet } from '../assets.js';
+
 export const SKINS = [
   {
     id: 'normal',
@@ -56,7 +58,7 @@ export function estaDesbloqueada(skin, nivel) {
   return nivel >= skin.nivel;
 }
 
-/** Ruta del sheet de un diseño, relativa al documento del renderer. */
+/** Ruta del sheet de un diseño, resuelta por la plataforma que aloje al pato. */
 export function rutaSheet(id) {
-  return `../../assets/sprites/duck-${id}.png`;
+  return urlSheet(id);
 }

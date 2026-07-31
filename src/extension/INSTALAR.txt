@@ -1,0 +1,75 @@
+TuCuack — extensión de Chrome
+=============================
+
+Tu pato paseando por las páginas que visitas. No está en la Chrome Web Store a
+propósito: es un juguete interno, así que se instala a mano.
+
+
+PRIMERA INSTALACIÓN (una sola vez)
+----------------------------------
+
+1. Descomprime este zip en una carpeta donde vaya a quedarse. La carpeta es la
+   extensión: si la borras o la mueves, Chrome dejará de encontrarla.
+
+   Sugerencia: C:\TuCuack\extension
+
+2. Abre Chrome en:  chrome://extensions
+
+3. Activa el interruptor "Modo de desarrollador", arriba a la derecha.
+
+4. Pulsa "Cargar descomprimida" y elige la carpeta del paso 1
+   (la que contiene manifest.json).
+
+5. Ya está. Pulsa el icono de TuCuack en la barra de extensiones para abrir su
+   panel; si prefieres tenerlo siempre a mano, ánclalo con la chincheta.
+
+
+CÓMO SE USA
+-----------
+
+El pato vive en la ventana de Chrome que estés usando: aparece sobre la página
+que tengas abierta, y si abres su panel lateral se muda ahí. Sólo hay un pato,
+así que siempre está donde estás tú.
+
+Para esconderlo o volver a llamarlo: BOTÓN DERECHO sobre el icono de la
+extensión → "Ocultar el pato" / "Mostrar el pato".
+
+Con el botón izquierdo se abre el panel.
+
+Hay sitios donde Chrome no permite entrar a ninguna extensión, y ahí el pato no
+puede aparecer: las páginas chrome://, el visor de PDF, la Chrome Web Store y
+las páginas de otras extensiones. Si tienes el panel abierto, se irá al panel.
+
+
+ACTUALIZAR A UNA VERSIÓN NUEVA
+------------------------------
+
+1. Descomprime el zip nuevo ENCIMA de la misma carpeta, sobrescribiendo.
+2. Vuelve a chrome://extensions y pulsa el icono de recargar (↻) en TuCuack.
+
+No hace falta volver a "Cargar descomprimida", ni pierdes tu pato: sus stats, su
+nivel y su nombre se guardan en Chrome, no en la carpeta.
+
+Aviso: descomprimir encima sobrescribe lo que cambia, pero NO borra ficheros que
+hayan desaparecido en la versión nueva. Es inofensivo, aunque si quieres dejarlo
+impecable, borra la carpeta antes de descomprimir y vuelve a cargarla como en la
+primera instalación.
+
+
+SI ALGO NO VA
+-------------
+
+El pato no aparece en ninguna página
+  Comprueba que no esté oculto (botón derecho en el icono). Y recuerda que en
+  chrome:// y en el visor de PDF no puede estar.
+
+No habla con los patos de los compañeros
+  Al chat le hacen falta las credenciales, que viajan en el zip como
+  supabase.json. Si ese fichero no está, el pato funciona pero mudo.
+
+Sale un aviso de que el pato está en otra ventana
+  Es lo previsto: hay un solo pato. Cámbiate a esa ventana o cierra el panel.
+
+Chrome dice que la extensión no se puede cargar
+  Asegúrate de estar eligiendo la carpeta que contiene manifest.json, y no la
+  carpeta que la contiene.
