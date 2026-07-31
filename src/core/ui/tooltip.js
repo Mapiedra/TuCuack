@@ -1,6 +1,8 @@
 // Globo con las necesidades del pato, que aparece al dejar el ratón encima.
 // Es sólo informativo: no captura el ratón ni interrumpe el arrastre.
 
+import { montar } from '../stage.js';
+
 const STATS = [
   { key: 'hunger', icon: '🍖', label: 'Comida' },
   { key: 'energy', icon: '⚡', label: 'Energía' },
@@ -71,7 +73,7 @@ export function showStatsTooltip(tam, nombre, anchor, level) {
   mood.textContent = tam.sleeping ? 'durmiendo…' : tam.mood();
   el.appendChild(mood);
 
-  document.body.appendChild(el);
+  montar(el);
 
   // Centrado sobre el pato y por encima de su cabeza.
   //

@@ -3,6 +3,7 @@
 // SpriteAnimator. Si el sprite no carga, cae a un emoji como respaldo.
 
 import { SpriteAnimator } from './SpriteAnimator.js';
+import { cargarSheet } from '../assets.js';
 
 // Los metadatos del sheet (filas, frames y fps de cada animación) los genera
 // tools/pack_sprites.py y llegan desde el proceso principal: cada diseño tiene
@@ -50,13 +51,25 @@ export class Duck {
     this.facing = 1;             // 1 derecha (canónico), -1 izquierda
     this.tilt = 0;               // inclinación en grados (al volar)
     this.state = 'idle';
-    this.width = this.el.offsetWidth || 96;
-    this.height = this.el.offsetHeight || 104;
+    this.medir();
     this.animator = null;
     this.ready = false;
+    this._generacionSheet = 0;
 
     this._loadSheet();
     this._apply();
+  }
+
+  /**
+   * Relee el tamaño del pato en pantalla.
+   *
+   * El alto y el ancho salen del CSS (`--duck-scale`), y hay que refrescarlos
+   * cuando ese tamaño cambia —el panel de la extensión ajusta la escala según el
+   * hueco disponible— porque de ellos dependen los topes de posición.
+   */
+  medir() {
+    this.width = this.el.offsetWidth || 96;
+    this.height = this.el.offsetHeight || 104;
   }
 
   /** Metadatos del diseño puesto, o los de respaldo si no se conocen. */
@@ -66,21 +79,37 @@ export class Duck {
 
   _loadSheet() {
     const meta = this._sheet();
-    const img = new Image();
-    img.onload = () => {
-      const sheet = { image: img, frameW: meta.frameW, frameH: meta.frameH,
+    const skinId = this.skinId;
+    // Cambiar de diseño dos veces seguidas lanza dos cargas; sólo vale la
+    // última, así que las que lleguen tarde se descartan.
+    const generacion = ++this._generacionSheet;
+
+    cargarSheet(skinId).then((imagen) => {
+      if (generacion !== this._generacionSheet) return;
+      const sheet = { image: imagen, frameW: meta.frameW, frameH: meta.frameH,
                       animations: meta.animations };
       if (this.animator) this.animator.stop();
       this.animator = new SpriteAnimator(this.canvas, sheet);
       this.ready = true;
       this.animator.play(STATE_ANIM[this.state] || 'idle');
-    };
-    img.onerror = () => {
-      console.warn(`[duck] no se pudo cargar el diseño "${this.skinId}"; usando emoji`);
+    }).catch(() => {
+      if (generacion !== this._generacionSheet) return;
+      console.warn(`[duck] no se pudo cargar el diseño "${skinId}"; usando emoji`);
       this._emojiFallback();
-    };
-    // Ruta relativa al documento (src/renderer/index.html).
-    img.src = `../../assets/sprites/duck-${this.skinId}.png`;
+    });
+  }
+
+  /**
+   * Para la animación y descarta lo que esté cargándose.
+   *
+   * El animador tiene su propio bucle de fotogramas, así que hay que pararlo
+   * aparte: si no, al mudar el pato de pestaña quedaría uno dibujando por cada
+   * sitio por el que ha pasado.
+   */
+  detener() {
+    this._generacionSheet++;   // lo que llegue tarde ya no monta nada
+    if (this.animator) this.animator.stop();
+    this.ready = false;
   }
 
   /** Cambia el diseño del pato en caliente. */

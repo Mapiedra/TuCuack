@@ -1,5 +1,7 @@
 // Menú contextual (clic derecho) como HTML propio, para convivir con el overlay.
 
+import { montar, objetivoReal } from '../stage.js';
+
 let openMenu = null;
 
 /**
@@ -29,7 +31,7 @@ export function showContextMenu(x, y, items, opts = {}) {
     menu.appendChild(btn);
   }
 
-  document.body.appendChild(menu);
+  montar(menu);
 
   // El menú se abre POR ENCIMA del punto indicado (con `gap` de margen) para no
   // taparle la cara al pato. Si no cabe arriba, cae por debajo.
@@ -44,7 +46,7 @@ export function showContextMenu(x, y, items, opts = {}) {
   menu.style.top = `${Math.max(4, py)}px`;
 
   const onDocDown = (e) => {
-    if (!menu.contains(e.target)) closeContextMenu();
+    if (!menu.contains(objetivoReal(e))) closeContextMenu();
   };
   setTimeout(() => document.addEventListener('mousedown', onDocDown), 0);
 

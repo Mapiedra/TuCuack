@@ -1,4 +1,6 @@
-:root {
+/* `:host` además de `:root` porque cuando el pato vive sobre una página ajena va
+   dentro de un Shadow DOM, donde `:root` no llega. */
+:root, :host {
   /* Medidas del sprite (tools/pack_sprites.py) y escala a la que se muestra.
      Todo lo demás se deriva de aquí, así que basta tocar --duck-scale para
      cambiar el tamaño del pato en pantalla. */
@@ -19,6 +21,21 @@
   --paper: #fffdf7;
   --accent: #ffb703;
   --accent-2: #fb8500;
+
+  --fuente: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* Dentro de un Shadow DOM, el anfitrión SÍ hereda de la página: un sitio con
+   `* { font-family: ... !important }` le colaría su tipografía a los paneles del
+   pato. Se corta aquí, en los hijos directos de la sombra, donde el CSS de la
+   página ya no llega. Fuera de un shadow este selector no existe. */
+:host > * {
+  font-family: var(--fuente);
+  user-select: none;
+  line-height: normal;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--ink);
 }
 
 * { box-sizing: border-box; }
@@ -33,7 +50,7 @@ html, body {
   /* El overlay deja pasar el ratón salvo en zonas .hot; el main alterna
      setIgnoreMouseEvents según el hit-test en app.js. */
   cursor: default;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--fuente);
   user-select: none;
 }
 
@@ -282,6 +299,12 @@ html, body {
 /* Fila de sonido en Ajustes: botón de silencio + volumen. */
 .fila-sonido { display: flex; align-items: center; gap: 8px; }
 .fila-sonido input[type="range"] { flex: 1; accent-color: var(--accent-2); }
+/* El número no debe bailar mientras se arrastra el control. */
+.valor-escala {
+  min-width: 46px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 .btn-icono {
   background: none;
   border: 2px solid var(--ink);
@@ -314,6 +337,15 @@ html, body {
 }
 .chat-input input { width: 200px; border: none; outline: none; font: inherit; padding: 4px 6px; }
 .chat-input button { border: none; background: var(--accent); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-weight: 700; }
+/* El de cerrar es secundario: no compite con Enviar. */
+.chat-input .chat-cerrar {
+  background: none;
+  color: var(--ink);
+  padding: 4px 7px;
+  opacity: 0.55;
+  font-weight: 400;
+}
+.chat-input .chat-cerrar:hover { opacity: 1; background: rgba(43, 43, 58, 0.10); }
 
 .toast {
   position: absolute;

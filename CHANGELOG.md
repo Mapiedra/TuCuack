@@ -7,6 +7,53 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.4.0] - 2026-07-30
+
+### Añadido
+
+- **El pato en Chrome**, como extensión. Pasea por las páginas que visitas y se
+  muda al panel lateral cuando lo abres. Hay un solo pato: vive en la ventana que
+  estés usando, así que no se clona ni se queda atrás. Se instala en modo
+  desarrollador (ver `INSTALAR.txt` dentro del zip) y comparte el canal de chat
+  con los patos de escritorio, de modo que se ven entre ellos.
+- **Ajuste de tamaño del pato** en Ajustes, del 40 % al 160 %. Se aplica mientras
+  mueves el control y vale igual en el escritorio y en la extensión.
+- El Release trae ahora el **zip de la extensión** además del instalador.
+
+### Cambiado
+
+- El pato se ha separado en un **núcleo común** (`src/core`) que no sabe dónde
+  vive, y una carcasa por sitio: Electron en el escritorio, panel y páginas en
+  Chrome. El escritorio se comporta igual que antes.
+- El pato recuerda **dónde estaba** y reaparece en la misma posición.
+
+### Corregido
+
+- **La caja para escribir en el chat no se podía cerrar** si el foco se iba a
+  otra parte: sólo respondía a Escape estando dentro de ella, o enviando algo.
+  Ahora tiene botón de cerrar, Escape funciona siempre y un clic fuera también
+  la cierra. Y cuando no cabía por encima del pato se colocaba justo debajo del
+  anclaje, es decir, tapándole la cara; ahora se queda arriba.
+- **El pato se multiplicaba en la lista de conectados.** El canal avisa de
+  "suscrito" más de una vez, y cada aviso añadía una entrada nueva en la
+  presencia en lugar de reemplazar la anterior. Además la lista se deduplica,
+  para que quien siga con una versión anterior no la ensucie a los demás.
+- **El chat no se recuperaba de una caída.** Al reconectar se rehacía el canal
+  sobre el mismo cliente, pero quitar el último canal deja al socket programando
+  su propia desconexión, así que el canal nuevo esperaba a un socket que se
+  estaba yendo y todos los reintentos fallaban aunque la red ya hubiera vuelto.
+  A partir del tercer intento se rehace el cliente entero.
+- **Los fallos de conexión no decían por qué.** Todos aparecían como "transport
+  failure", con la causa real escondida; ahora se muestra encadenada, que es lo
+  que distingue un antivirus inspeccionando el tráfico de un DNS que no resuelve.
+
+### Eliminado
+
+- **La versión de macOS.** Sin cuenta de Apple Developer no se puede firmar ni
+  notarizar, y una app sin firmar da más problemas de los que resuelve: macOS la
+  bloquea y hay que enseñar a cada persona a saltarse el aviso. Quien use Mac
+  tiene la extensión de Chrome, que funciona en cualquier sistema.
+
 ## [0.3.2] - 2026-07-29
 
 ### Corregido
@@ -256,6 +303,7 @@ Primera versión.
 - El instalador no está firmado, así que Windows SmartScreen mostrará un aviso.
 
 [No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.3.2...HEAD
+[0.4.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.4.0
 [0.3.2]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.3.2
 [0.3.1]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.3.1
 [0.3.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.3.0

@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "TuCuack",
+  "version": "0.0.0",
+  "description": "Tu pato tamagotchi, paseando por las páginas que visitas.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjm0yzqhcZ6fw6Zow8FIyvFR4Iwxk5LghJqk6jGVsiQDHXd14RuSWfldUl9W6WzqJOK6aJ0/iAaKYtnLBcp8USbuJ9OdDl3BftgvFwST7Y3EkCuLncyZO6vUr/3NPcL1VXK8lSc6hPk8FyBxwUbIfiQSRbnydyeat11gcMXjyMIomlo6jhRljDyKGqCIGDpNhHmVE6NSqVwix3SFsuV0Lk0uvgAXimRBAsuVyFKcNDwiQvFWHcfRqnJoKeDR5/hi2bvWCnQ7H0b0jONx7l6ocnGqAhE3JnpwE7LHa2lyYpnV6lBAwaJjnVQBsUJi2cMXhovPQyGvVxV/1beZXWaCa4wIDAQAB",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "storage",
+    "sidePanel",
+    "scripting",
+    "tabs",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "https://*.supabase.co/*",
+    "<all_urls>"
+  ],
+  "action": {
+    "default_title": "TuCuack"
+  },
+  "side_panel": {
+    "default_path": "panel.html"
+  },
+  "background": {
+    "service_worker": "sw.js"
+  },
+  "icons": {
+    "128": "assets/icons/tucuack.png"
+  },
+  "web_accessible_resources": [
+    {
+      "comentario": "El content script trae el núcleo con import() dinámico, así que sus módulos y los sprites tienen que ser alcanzables desde la página donde vive el pato.",
+      "resources": [
+        "core/*",
+        "assets/*",
+        "platform-pagina.js",
+        "almacen.js"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

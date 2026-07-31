@@ -22,7 +22,40 @@ jobs:
 
       - name: Check JavaScript syntax
         run: |
-          find src -name '*.js' -print0 | xargs -0 -n1 node --check
+          find src tools -name '*.js' -print0 | xargs -0 -n1 node --check
+          echo "OK"
+
+      # Sólo las de producción: aquí no se compila nada de Electron.
+      - name: Install dependencies
+        run: npm ci --omit=dev
+
+      # El ensamblado de la extensión es un paso fácil de romper sin darse cuenta
+      # —basta mover un fichero de sitio— y sólo se nota al publicar. Comprobarlo
+      # aquí cuesta segundos.
+      - name: Ensamblar la extensión
+        run: npm run ext
+
+      - name: Comprobar que la extensión queda completa
+        run: |
+          for f in manifest.json sw.js content.js panel.html boot.js \
+                   core/app.js vendor/supabase.js assets/sprites/index.json INSTALAR.txt; do
+            if [ ! -f "dist/extension/$f" ]; then
+              echo "::error::Falta $f en la extensión ensamblada."
+              exit 1
+            fi
+          done
+          node -e "
+            const m = require('./dist/extension/manifest.json');
+            const v = require('./package.json').version;
+            if (m.version !== v) {
+              console.error('::error::El manifest dice ' + m.version + ' y package.json ' + v);
+              process.exit(1);
+            }
+            if (!m.key) {
+              console.error('::error::El manifest no lleva key: el ID cambiaría en cada máquina.');
+              process.exit(1);
+            }
+          "
           echo "OK"
 
       - name: Setup Python

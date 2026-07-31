@@ -1,7 +1,7 @@
 # Diseños de pato
 
 Cada diseño es un sprite sheet propio. Se desbloquean por nivel (ver
-[`src/renderer/game/skins.js`](../src/renderer/game/skins.js)):
+[`src/core/game/skins.js`](../src/core/game/skins.js)):
 
 | Diseño | Nivel | Estado del arte |
 |---|---|---|

@@ -1,16 +1,20 @@
-// Cliente de chat del renderer: envoltura fina sobre la API `window.pato`.
-// La conexión real a Supabase Realtime vive en el proceso main (src/main/chat.js)
-// porque Electron main necesita `ws` como transporte de WebSocket.
+// Cliente de chat del pato: envoltura fina sobre el canal que le pase la
+// plataforma. Todos los patos —de escritorio y de navegador— comparten el mismo
+// canal de Supabase Realtime; lo que cambia es dónde vive la conexión: en el
+// proceso main de Electron (src/main/chat.js, que necesita `ws` como transporte)
+// o en la propia extensión, donde el navegador ya trae `WebSocket`.
 
 export class ChatClient {
-  constructor() {
+  /** @param {import('../platform.js').Plataforma['chat']} canal */
+  constructor(canal) {
+    this.canal = canal;
     this._onMessage = () => {};
     this._onStatus = () => {};
     this._onPresence = () => {};
     this.connected = false;
     this.names = [];        // nombres de los demás patos conectados
 
-    window.pato.onChatEvent((evt) => {
+    this.canal.alRecibirEvento((evt) => {
       if (!evt) return;
       if (evt.type === 'message') {
         this._onMessage({ from: evt.from, text: evt.text, ts: evt.ts });
@@ -29,16 +33,16 @@ export class ChatClient {
   onPresence(cb) { this._onPresence = cb; }
 
   /**
-   * Pregunta el estado actual al proceso principal.
+   * Pregunta el estado actual a quien mantenga la conexión.
    *
-   * Hace falta porque el canal se conecta mientras el renderer aún está
+   * Hace falta porque el canal se conecta mientras el pato aún está
    * cargando: el evento de estado se emite antes de que haya nadie
    * escuchando y se perdería, dejando el chat como "desconectado" pese a
    * estar funcionando.
    */
   async sync() {
     try {
-      const st = await window.pato.chatStatus();
+      const st = await this.canal.estado();
       if (!st) return;
       this.connected = !!st.connected;
       this.names = Array.isArray(st.names) ? st.names : [];
@@ -48,12 +52,12 @@ export class ChatClient {
   }
 
   send(from, text) {
-    window.pato.sendChat({ from, text });
+    this.canal.enviar({ from, text });
   }
 
   /** Anuncia el nombre en la presencia del canal. */
   setName(name) {
-    window.pato.setChatName(name);
+    this.canal.ponerNombre(name);
   }
 
   /**
