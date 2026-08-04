@@ -32,6 +32,9 @@ export class Behavior {
 
   // Reproduce un estado durante `dur` segundos y luego vuelve al ciclo normal.
   playOnce(state, dur) {
+    // Agotado no hay quien lo levante: ni come, ni saluda, ni habla. Se queda
+    // dormido hasta reponerse (ver AGOTAMIENTO en game/Tamagotchi.js).
+    if (this.tam.agotado) return;
     this.tam.setSleeping(false);
     this.override = { state, timeLeft: dur };
     this.duck.setState(state);
@@ -56,6 +59,16 @@ export class Behavior {
   _decide() {
     const mood = this.tam.mood();
 
+    // Sin energía se desploma: mientras esté agotado no hace ninguna otra cosa,
+    // por mucho que se le pida.
+    if (this.tam.agotado) {
+      this.activity = 'sleep';
+      this.timeLeft = 3 + Math.random() * 3;
+      this.tam.setSleeping(true);
+      this.duck.setState('sleep');
+      return;
+    }
+
     // Si ya está durmiendo (por cansancio o porque se lo han mandado), sigue
     // durmiendo hasta reponerse; no se le despierta a mitad.
     if (this.tam.sleeping) {
@@ -68,7 +81,9 @@ export class Behavior {
       this.tam.setSleeping(false);
     }
 
-    if (this.tam.stats.energy < 22 || mood === 'cansado') {
+    // "cansado" ya es tener la energía por debajo del umbral (ver AGOTAMIENTO
+    // en game/Tamagotchi.js): con preguntarlo una vez basta.
+    if (mood === 'cansado') {
       this.activity = 'sleep';
       this.timeLeft = 6 + Math.random() * 6;
       this.tam.setSleeping(true);

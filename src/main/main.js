@@ -238,6 +238,15 @@ function applyAutoLaunch(settings) {
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
+  // Ya había un pato en marcha, así que esta instancia se retira y le pasa el
+  // aviso a la primera para que se deje ver.
+  //
+  // Se dice en voz alta a propósito: sin el mensaje, `npm start` se limitaba a
+  // terminar con éxito y sin ventana, que es exactamente lo que parece un
+  // arranque roto. Suele pasar con un pato escondido en la bandeja, o con uno
+  // lanzado desde otra terminal y olvidado.
+  console.log('[app] ya hay un TuCuack en marcha: se muestra ese y esta instancia se cierra. '
+    + 'Para arrancar de cero, ciérralo desde la bandeja o el menú del pato.');
   app.quit();
 } else {
   app.on('second-instance', () => {

@@ -34,7 +34,22 @@ con Pillow y numpy.
 el tiempo, incluso mientras la app está cerrada (hasta un tope, para no encontrártelo
 "muerto"). El estado de ánimo que resulta decide qué hace el pato por su cuenta:
 pasear, aburrirse, entristecerse o irse a dormir. Puedes darle de comer, jugar,
-limpiarlo y mandarlo a dormir (o despertarlo) desde el menú, el panel o la bandeja.
+limpiarlo y mandarlo a dormir (o despertarlo) desde la botonera del menú o la bandeja.
+
+**Agotamiento.** Si la energía llega a **0**, el pato se desploma y duerme hasta
+recuperar el **20 %**. Mientras dure no hace ninguna otra cosa ni acepta cuidados: las
+opciones de cuidado se ven apagadas y no hay forma de despertarlo. El umbral de vuelta
+no es 0 a propósito, para que no se pase el rato entrando y saliendo del sueño; es el
+mismo por debajo del cual está "cansado" (`AGOTAMIENTO` en
+[`src/core/game/Tamagotchi.js`](src/core/game/Tamagotchi.js)).
+
+**Su estado, a mano.** Las necesidades se ven en el globo que sale al dejar el ratón
+sobre el pato, y **el mismo globo es la cabecera del menú** del clic derecho, ahí con
+barras más grandes y una **botonera** para cuidarlo sin salir de él: se pulsa, las
+barras se mueven al momento y el menú sigue abierto. No son dos vistas parecidas: es
+el mismo componente ([`src/core/ui/statsView.js`](src/core/ui/statsView.js)), así que
+sólo hay un sitio que tocar. El resto de opciones va debajo **a dos columnas**, para
+que el menú no se haga largo.
 
 **Arrastrar y lanzar.** El overlay ocupa toda la pantalla, así que puedes llevarlo a
 cualquier punto. Al soltar se mide la **velocidad del cursor** y se aplica como impulso:
@@ -63,6 +78,21 @@ compara con el de los demás. Detalles en [`docs/DISENOS.md`](docs/DISENOS.md).
 **Chat entre patos.** Todos los patos comparten **un único canal común**. Lo que
 escribes aparece en tu bocadillo y en el de los demás, y viceversa. Cada pato tiene un
 **nombre**, que se comprueba que no esté siendo usado por otro pato conectado.
+
+**Histórico de la sesión.** El bocadillo dura unos segundos, así que **Hablar** guarda
+los últimos **50 mensajes** —los de los demás y los tuyos— y los enseña encima de la
+caja de escribir. Se anotan aunque el panel esté cerrado, que es justo cuando hacen
+falta. Vive en memoria y se va al cerrar el pato: ni fichero, ni base de datos, ni nada
+que sobreviva a la sesión ([`src/core/chat/historial.js`](src/core/chat/historial.js)).
+En la extensión el pato se muda de pestaña y estrenaría memoria en cada salto, así que
+ahí lo guarda el service worker en `storage.session` —se borra al cerrar Chrome— y se
+lo pasa al pato al llegar.
+
+**Quién anda por ahí.** La opción **Conectados** del menú (y de la bandeja) abre la
+lista de los patos que están en el canal ahora mismo, con el tuyo el primero. El menú
+lleva la cuenta al lado, y la lista se actualiza sola mientras está abierta según entra
+y sale gente. Sale de la presencia del canal, la misma que ya se usaba para comprobar
+los nombres, así que no hace falta nada más en Supabase.
 
 **Se integra sin molestar.** Ventana transparente siempre encima, con **hit-test por
 píxel**: el overlay sólo captura el ratón cuando el cursor está de verdad sobre el

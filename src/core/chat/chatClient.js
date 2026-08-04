@@ -11,6 +11,7 @@ export class ChatClient {
     this._onMessage = () => {};
     this._onStatus = () => {};
     this._onPresence = () => {};
+    this._onHistorial = () => {};
     this.connected = false;
     this.names = [];        // nombres de los demás patos conectados
 
@@ -24,6 +25,11 @@ export class ChatClient {
       } else if (evt.type === 'presence') {
         this.names = Array.isArray(evt.names) ? evt.names : [];
         this._onPresence(this.names);
+      } else if (evt.type === 'historial') {
+        // Sólo llega donde el canal vive fuera del pato y sobrevive a sus
+        // mudanzas: la extensión de Chrome. En el escritorio el histórico se
+        // queda en el propio pato, que no se muda a ninguna parte.
+        this._onHistorial(Array.isArray(evt.mensajes) ? evt.mensajes : []);
       }
     });
   }
@@ -31,6 +37,7 @@ export class ChatClient {
   onMessage(cb) { this._onMessage = cb; }
   onStatus(cb) { this._onStatus = cb; }
   onPresence(cb) { this._onPresence = cb; }
+  onHistorial(cb) { this._onHistorial = cb; }
 
   /**
    * Pregunta el estado actual a quien mantenga la conexión.
@@ -48,6 +55,9 @@ export class ChatClient {
       this.names = Array.isArray(st.names) ? st.names : [];
       this._onStatus({ connected: this.connected, reason: 'sync' });
       this._onPresence(this.names);
+      // Donde el canal viva fuera del pato, el histórico de la sesión también
+      // está ahí (ver ChatClient.onHistorial).
+      if (Array.isArray(st.historial)) this._onHistorial(st.historial);
     } catch { /* el chat puede no estar disponible */ }
   }
 

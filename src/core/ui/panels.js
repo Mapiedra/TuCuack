@@ -1,6 +1,7 @@
 // Panel de estadísticas del Tamagotchi + acciones de cuidado.
 
 import { panelHeader } from './panelHeader.js';
+import { textoDeAnimo } from './statsView.js';
 
 const STAT_META = [
   { key: 'hunger', label: '🍖 Comida' },
@@ -85,7 +86,6 @@ export function buildStatsPanel(tam, handlers) {
   el.appendChild(btnRow);
 
   const render = () => {
-    if (!el.isConnected) return; // panel cerrado: no-op
     for (const meta of STAT_META) {
       const v = Math.round(tam.stats[meta.key]);
       const b = bars[meta.key];
@@ -93,14 +93,20 @@ export function buildStatsPanel(tam, handlers) {
       b.val.textContent = `${v}`;
       b.stat.classList.toggle('low', v < 30);
     }
-    moodLine.textContent = tam.sleeping
-      ? 'Está durmiendo…'
-      : `Estado de ánimo: ${tam.mood()}`;
+    // El mismo texto que enseña la vista de estado, para no decir dos cosas
+    // distintas de un pato que está igual.
+    moodLine.textContent = `Estado de ánimo: ${textoDeAnimo(tam)}`;
     // Mientras duerme, "Dormir" pasa a ser "Despertar".
     if (buttons.sleep) buttons.sleep.textContent = tam.sleeping ? 'Despertar' : 'Dormir';
+    // Agotado no acepta nada: los botones se apagan en vez de no hacer nada.
+    for (const b of Object.values(buttons)) b.disabled = tam.agotado;
   };
   render();
   tam.on('change', render);
+  // El panel va y viene; el Tamagotchi se queda. Sin soltar el oyente al
+  // cerrarlo, cada apertura dejaba uno más pintando sobre un panel que ya no
+  // está en el documento.
+  el.addEventListener('panel:cerrado', () => tam.off('change', render), { once: true });
 
-  return { el, destroy() { /* listeners viven mientras exista tam; el panel se elimina */ el.remove(); } };
+  return { el, destroy() { tam.off('change', render); el.remove(); } };
 }

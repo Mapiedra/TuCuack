@@ -7,6 +7,7 @@
 const MOOD_EMOJI = {
   hambriento: '🍖',   // = Comida
   cansado: '💤',      // = Energía (dormido comunica mejor que el rayo)
+  agotado: '😴',      // = Energía a cero: se ha desplomado y no atiende a nada
   sucio: '🧼',        // = Higiene
   aburrido: '⚽',     // = Ánimo: quiere jugar
   triste: '💔',       // = Ánimo por los suelos (antes una gota, que se leía

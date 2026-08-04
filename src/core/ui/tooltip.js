@@ -1,14 +1,11 @@
 // Globo con las necesidades del pato, que aparece al dejar el ratón encima.
 // Es sólo informativo: no captura el ratón ni interrumpe el arrastre.
+//
+// El contenido no se arma aquí: es la vista compartida de ui/statsView.js, la
+// misma que enseña el menú del pato en su cabecera.
 
 import { montar } from '../stage.js';
-
-const STATS = [
-  { key: 'hunger', icon: '🍖', label: 'Comida' },
-  { key: 'energy', icon: '⚡', label: 'Energía' },
-  { key: 'hygiene', icon: '🧼', label: 'Higiene' },
-  { key: 'happiness', icon: '❤️', label: 'Ánimo' }
-];
+import { buildStatsView } from './statsView.js';
 
 let actual = null;
 
@@ -22,56 +19,10 @@ export function showStatsTooltip(tam, nombre, anchor, level) {
 
   const el = document.createElement('div');
   el.className = 'tooltip';
-
-  const t = document.createElement('div');
-  t.className = 'tooltip-title';
-  t.textContent = nombre;
-  el.appendChild(t);
-
-  // El nivel va con el resto de indicadores, no aparte.
-  if (level) {
-    const niv = document.createElement('div');
-    niv.className = 'tooltip-nivel';
-    const et = document.createElement('span');
-    et.textContent = `Nv ${level.nivel} · ${level.rango}`;
-    const bar = document.createElement('span');
-    bar.className = 'bar';
-    const fill = document.createElement('span');
-    fill.className = 'fill';
-    fill.style.width = `${Math.round(level.progreso * 100)}%`;
-    bar.appendChild(fill);
-    niv.append(et, bar);
-    el.appendChild(niv);
-  }
-
-  for (const s of STATS) {
-    const v = Math.round(tam.stats[s.key]);
-    const fila = document.createElement('div');
-    fila.className = 'tooltip-stat' + (v < 30 ? ' low' : '');
-
-    const ico = document.createElement('span');
-    ico.className = 'ic';
-    ico.textContent = s.icon;
-
-    const bar = document.createElement('span');
-    bar.className = 'bar';
-    const fill = document.createElement('span');
-    fill.className = 'fill';
-    fill.style.width = `${v}%`;
-    bar.appendChild(fill);
-
-    const num = document.createElement('span');
-    num.className = 'num';
-    num.textContent = v;
-
-    fila.append(ico, bar, num);
-    el.appendChild(fila);
-  }
-
-  const mood = document.createElement('div');
-  mood.className = 'tooltip-mood';
-  mood.textContent = tam.sleeping ? 'durmiendo…' : tam.mood();
-  el.appendChild(mood);
+  // Sin `onAction`: el globo es informativo y no captura el ratón, así que no
+  // lleva botonera (ver ui/statsView.js).
+  const vista = buildStatsView(tam, nombre, level);
+  el.appendChild(vista.el);
 
   montar(el);
 
@@ -88,13 +39,14 @@ export function showStatsTooltip(tam, nombre, anchor, level) {
   el.style.left = `${x}px`;
   el.style.top = `${y}px`;
 
-  actual = el;
+  actual = { el, vista };
   return el;
 }
 
 export function hideStatsTooltip() {
   if (actual) {
-    actual.remove();
+    actual.vista.destroy();   // deja de escuchar al Tamagotchi
+    actual.el.remove();
     actual = null;
   }
 }

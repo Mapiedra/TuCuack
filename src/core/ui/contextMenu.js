@@ -6,29 +6,49 @@ let openMenu = null;
 
 /**
  * @param {number} x @param {number} y
- * @param {Array<{label?:string, onClick?:Function, sep?:boolean}>} items
- * @param {{onClose?:Function}} [opts]
+ * @param {Array<{label?:string, onClick?:Function, sep?:boolean,
+ *                disabled?:boolean, ancho?:boolean}>} items
+ *   `ancho`: la opción ocupa la fila entera cuando el menú va en dos columnas.
+ * @param {{onClose?:Function, cabecera?:HTMLElement, columnas?:number}} [opts]
+ *   `cabecera`: elemento que se pone arriba del todo, antes de las opciones
+ *   (el pato lo usa para enseñar su estado y cuidarlo sin abrir nada más).
+ *   `columnas`: 2 reparte las opciones en dos columnas; con una cabecera ancha
+ *   se aprovecha el sitio y el menú queda mucho menos alto.
  */
 export function showContextMenu(x, y, items, opts = {}) {
   closeContextMenu();
 
   const menu = document.createElement('div');
   menu.className = 'ctx-menu hot';
+  if (opts.cabecera) menu.classList.add('con-cabecera');
+  if (opts.columnas === 2) menu.classList.add('dos-columnas');
+
+  if (opts.cabecera) menu.appendChild(opts.cabecera);
+
+  // Las opciones van en su propio contenedor: es lo que se reparte en columnas,
+  // sin arrastrar a la cabecera.
+  const lista = document.createElement('div');
+  lista.className = 'ctx-opciones';
+  menu.appendChild(lista);
 
   for (const item of items) {
     if (item.sep) {
       const sep = document.createElement('div');
       sep.className = 'sep';
-      menu.appendChild(sep);
+      lista.appendChild(sep);
       continue;
     }
     const btn = document.createElement('button');
     btn.textContent = item.label;
+    if (item.ancho) btn.className = 'ancho';
+    // Deshabilitada: se sigue viendo, para que se note que la opción existe
+    // aunque ahora mismo no se pueda (p. ej. con el pato agotado).
+    if (item.disabled) btn.disabled = true;
     btn.addEventListener('click', () => {
       closeContextMenu();
       if (item.onClick) item.onClick();
     });
-    menu.appendChild(btn);
+    lista.appendChild(btn);
   }
 
   montar(menu);

@@ -7,6 +7,8 @@
 // Además del chat, el canal mantiene la PRESENCIA de cada pato conectado con su
 // nombre, que es lo que permite comprobar que un nombre no esté ya en uso.
 
+const tls = require('tls');
+const { execFile } = require('child_process');
 const config = require('./config');
 
 let supabase = null;
@@ -47,18 +49,23 @@ function initChat(getWin, initialName) {
   // Clave estable por instalación para identificar nuestra propia presencia.
   myKey = `pato-${Math.random().toString(36).slice(2, 10)}`;
 
-  // Se guarda cómo se construye para poder rehacerlo si la reconexión se atasca.
-  // El proceso main de Electron no trae `WebSocket`, así que hay que pasarle el
-  // del paquete `ws`; sin él, supabase-js ni siquiera crea el cliente.
-  crearCliente = () => createClient(config.SUPABASE_URL, config.SUPABASE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    realtime: { transport: WebSocketImpl, params: { eventsPerSecond: 10 } }
+  // El canal se levanta en cuanto se sepa de qué certificados fiarse (unos
+  // cientos de ms). Hasta entonces la app va normal, sólo que sin chat.
+  transporteQueSeFiaDelSistema(WebSocketImpl).then((Transporte) => {
+    // Se guarda cómo se construye para poder rehacerlo si la reconexión se
+    // atasca. El proceso main de Electron no trae `WebSocket`, así que hay que
+    // pasarle el del paquete `ws`; sin él, supabase-js ni siquiera crea el
+    // cliente.
+    crearCliente = () => createClient(config.SUPABASE_URL, config.SUPABASE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      realtime: { transport: Transporte, params: { eventsPerSecond: 10 } }
+    });
+
+    supabase = crearCliente();
+
+    channel = crearCanal(getWin);
+    suscribir(getWin);
   });
-
-  supabase = crearCliente();
-
-  channel = crearCanal(getWin);
-  suscribir(getWin);
 
   return {
     send(from, text) {
@@ -90,6 +97,77 @@ function initChat(getWin, initialName) {
 
     names: () => presentNames(),
     isReady: () => connected
+  };
+}
+
+// --- Certificados: convivir con los antivirus que inspeccionan el tráfico ---
+//
+// En Windows es corriente que un antivirus (AVG, Avast, ESET…) o un proxy de
+// empresa se meta en medio del HTTPS: sustituye el certificado del servidor por
+// uno suyo, firmado por una raíz que instala en el almacén de Windows. Chromium
+// la da por buena, pero Node —y por tanto el proceso main de Electron, que es
+// quien mantiene el chat— sólo se fía de la lista que trae compilada. De ahí el
+// "unable to verify the first certificate" que tumbaba el canal una y otra vez.
+//
+// Los antivirus lo apañan poniendo NODE_EXTRA_CA_CERTS en el entorno, pero eso
+// sólo alcanza a los procesos que arrancan después y heredan la variable: con
+// una terminal abierta de antes, el pato se queda sin chat sin motivo aparente.
+// Así que se leen las raíces del almacén de Windows y se le pasan al WebSocket,
+// que es justo lo que haría el navegador.
+
+/** Las raíces de confianza de Windows, en PEM. Vacío si no se pueden leer. */
+function raicesDeWindows() {
+  if (process.platform !== 'win32') return Promise.resolve([]);
+  const guion = 'Get-ChildItem Cert:\\LocalMachine\\Root, Cert:\\CurrentUser\\Root '
+    + '| ForEach-Object { [Convert]::ToBase64String($_.RawData) }';
+  return new Promise((resolve) => {
+    execFile('powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-Command', guion],
+      { timeout: 10000, maxBuffer: 16 * 1024 * 1024, windowsHide: true },
+      (err, stdout) => {
+        if (err) {
+          console.warn('[chat] no se pudo leer el almacén de certificados:', err.message);
+          return resolve([]);
+        }
+        const vistos = new Set();
+        const pems = [];
+        for (const linea of String(stdout).split(/\r?\n/)) {
+          const b64 = linea.trim();
+          if (!b64 || vistos.has(b64)) continue;
+          vistos.add(b64);
+          pems.push('-----BEGIN CERTIFICATE-----\n'
+            + b64.replace(/(.{64})/g, '$1\n').replace(/\n$/, '')
+            + '\n-----END CERTIFICATE-----');
+        }
+        resolve(pems);
+      });
+  });
+}
+
+/**
+ * El transporte de siempre, pero fiándose además de las raíces de Windows.
+ *
+ * Si no se pueden leer, se devuelve `ws` tal cual: mejor el comportamiento de
+ * antes que quedarse sin lista de certificados, que dejaría el chat inservible
+ * incluso donde funcionaba.
+ */
+async function transporteQueSeFiaDelSistema(WebSocketImpl) {
+  let extra = [];
+  try {
+    extra = await raicesDeWindows();
+  } catch (err) {
+    console.warn('[chat] no se pudieron reunir los certificados:', err.message);
+  }
+  if (!extra.length) return WebSocketImpl;
+
+  // Pasar `ca` REEMPLAZA la lista, no la amplía: hay que incluir las de siempre.
+  const ca = [...tls.rootCertificates, ...extra];
+  console.log(`[chat] ${extra.length} certificados raíz del sistema añadidos a los de Node`);
+
+  return class WebSocketConRaicesDelSistema extends WebSocketImpl {
+    constructor(direccion, protocolos, opciones) {
+      super(direccion, protocolos, { ...(opciones || {}), ca });
+    }
   };
 }
 
