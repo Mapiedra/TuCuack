@@ -97,7 +97,7 @@ export function conectarChat() {
       try {
         return await chrome.runtime.sendMessage({ tipo: 'estado' });
       } catch {
-        return { connected: false, names: [], reason: 'worker-dormido' };
+        return { connected: false, names: [], historial: [], reason: 'worker-dormido' };
       }
     },
 

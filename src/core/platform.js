@@ -42,7 +42,7 @@ const CHAT_DESACTIVADO = {
   enviar: noop,
   ponerNombre: noop,
   alRecibirEvento: noSuscribir,
-  estado: async () => ({ connected: false, names: [], reason: 'sin-plataforma' }),
+  estado: async () => ({ connected: false, names: [], historial: [], reason: 'sin-plataforma' }),
   // Sólo hace falta donde el canal viva fuera del pato y haya que soltarlo al
   // apagarse, para no dejar puentes abiertos que dupliquen los mensajes.
   cerrar: noop

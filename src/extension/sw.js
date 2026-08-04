@@ -37,6 +37,48 @@ function avisar(evt) {
   }
 }
 
+// ---- Histórico de la sesión ---------------------------------------------
+//
+// El pato guarda los mensajes de la sesión para poder releerlos (ver
+// src/core/chat/historial.js), pero aquí no basta con eso: el pato se muda de
+// pestaña y en cada página empieza un documento nuevo, con su memoria en blanco.
+// Así que el worker lleva su propia copia y se la entrega al llegar.
+//
+// Va en `storage.session` y no en una variable porque Manifest V3 recicla el
+// worker a los 30 segundos de inactividad; storage.session se borra sola al
+// cerrar Chrome, que es justo la vida que debe tener un histórico de sesión.
+const CLAVE_HISTORIAL = 'historial';
+const TOPE_HISTORIAL = 50;   // el mismo que el del pato
+
+// Los mensajes pueden llegar de dos en dos: sin encolar las escrituras, dos
+// lecturas simultáneas del storage se pisarían y se perdería uno.
+let colaHistorial = Promise.resolve();
+
+async function leerHistorial() {
+  try {
+    const guardado = await chrome.storage.session.get(CLAVE_HISTORIAL);
+    const lista = guardado[CLAVE_HISTORIAL];
+    return Array.isArray(lista) ? lista : [];
+  } catch {
+    return [];
+  }
+}
+
+function anotarEnHistorial(mensaje) {
+  colaHistorial = colaHistorial.then(async () => {
+    try {
+      const lista = await leerHistorial();
+      lista.push(mensaje);
+      await chrome.storage.session.set({
+        [CLAVE_HISTORIAL]: lista.slice(-TOPE_HISTORIAL)
+      });
+    } catch (err) {
+      console.warn('[chat] no se pudo anotar en el histórico:', err);
+    }
+  });
+  return colaHistorial;
+}
+
 // ---- Credenciales -------------------------------------------------------
 // No se versionan: el ensamblado copia supabase.json si existe (ver
 // tools/build-extension.js y docs/CONFIGURACION.md).
@@ -117,12 +159,15 @@ function crearCanal() {
     } else {
       console.log(`[chat] recibido de ${payload.from}: ${payload.text}`);
     }
-    avisar({
-      type: 'message',
+    const mensaje = {
       from: String(payload.from || 'Pato'),
       text: String(payload.text || ''),
       ts: payload.ts || Date.now()
-    });
+    };
+    // Se anota aunque no haya ningún pato a la vista: es entonces cuando el
+    // histórico gana su sueldo.
+    anotarEnHistorial({ ...mensaje, propio: false });
+    avisar({ type: 'message', ...mensaje });
   });
 
   for (const evento of ['sync', 'join', 'leave']) {
@@ -254,11 +299,14 @@ chrome.runtime.onConnect.addListener((puerto) => {
     }
   });
 
-  // El panel puede abrirse con el canal ya conectado: se le pone al día en
-  // cuanto aparece, que si no se quedaría creyendo que no hay chat.
-  iniciar().then(() => {
+  // El pato puede llegar con el canal ya conectado: se le pone al día en cuanto
+  // aparece, que si no se quedaría creyendo que no hay chat. Y con el histórico
+  // de la sesión, que él acaba de estrenar documento y no recuerda nada.
+  iniciar().then(async () => {
     puerto.postMessage({ type: 'status', connected: conectado, reason: 'sync' });
     puerto.postMessage({ type: 'presence', names: nombresPresentes() });
+    const mensajes = await leerHistorial();
+    if (mensajes.length) puerto.postMessage({ type: 'historial', mensajes });
   });
 });
 
@@ -276,11 +324,11 @@ function enviar(msg) {
   }
 
   console.log(`[chat] enviando: ${msg.from}: ${texto}`);
-  canal.send({
-    type: 'broadcast',
-    event: 'chat',
-    payload: { from: String(msg.from || 'Pato').slice(0, 40), text: texto, ts: Date.now() }
-  });
+  const propio = { from: String(msg.from || 'Pato').slice(0, 40), text: texto, ts: Date.now() };
+  canal.send({ type: 'broadcast', event: 'chat', payload: propio });
+  // Lo dicho por uno mismo también es conversación: si no, al mudarse de
+  // pestaña el histórico quedaría lleno de respuestas sin pregunta.
+  anotarEnHistorial({ ...propio, propio: true });
 }
 
 async function ponerNombre(nombre) {
@@ -302,7 +350,14 @@ async function ponerNombre(nombre) {
 chrome.runtime.onMessage.addListener((msg, _emisor, responder) => {
   if (!msg) return false;
   if (msg.tipo === 'estado') {
-    iniciar().then(() => responder({ connected: conectado, names: nombresPresentes() }));
+    // El histórico viaja también aquí, y no sólo al abrirse el puerto: el pato
+    // instala sus oyentes DESPUÉS de abrirlo, así que un envío que llegue justo
+    // en medio se perdería. Al preguntar él, no hay carrera que valga.
+    iniciar()
+      .then(() => leerHistorial())
+      .then((historial) => responder({
+        connected: conectado, names: nombresPresentes(), historial
+      }));
     return true;   // la respuesta llega de forma asíncrona
   }
   if (msg.tipo === 'abrir' && typeof msg.url === 'string' && /^https?:\/\//.test(msg.url)) {

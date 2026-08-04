@@ -7,14 +7,17 @@
 
 import { Duck } from './pet/Duck.js';
 import { Behavior } from './pet/behavior.js';
-import { Tamagotchi } from './game/Tamagotchi.js';
+import { Tamagotchi, AGOTAMIENTO } from './game/Tamagotchi.js';
 import { updateBubbles } from './ui/bubbles.js';
 import { showContextMenu, closeContextMenu } from './ui/contextMenu.js';
 import { buildStatsPanel } from './ui/panels.js';
 import { buildSettingsPanel } from './ui/settings.js';
-import { openChatInput } from './ui/chatInput.js';
+import { buildTalkPanel } from './ui/talkPanel.js';
+import * as historial from './chat/historial.js';
 import { showStatsTooltip, hideStatsTooltip } from './ui/tooltip.js';
+import { buildStatsView } from './ui/statsView.js';
 import { buildSkinsPanel } from './ui/skinsPanel.js';
+import { buildOnlinePanel } from './ui/onlinePanel.js';
 import { Level } from './game/Level.js';
 import { SKINS, skinPorId, estaDesbloqueada, SKIN_POR_DEFECTO } from './game/skins.js';
 import { ChatClient } from './chat/chatClient.js';
@@ -235,11 +238,14 @@ export async function arrancarPato(plataforma) {
       verMenu: () => { const p = duckAnchor(); openDuckMenu(p.x, p.y); },
       verSkins: () => { const p = duckAnchor(); openSkins(p.x, p.y); },
       verStats: () => { const p = duckAnchor(); openStats(p.x, p.y); },
+      verConectados: () => { const p = duckAnchor(); openOnline(p.x, p.y); },
+      verHablar: () => { const p = duckAnchor(); openTalk(p.x, p.y); },
       verAjustes: () => { const p = duckAnchor(); openSettings(p.x, p.y); },
       level,
       darXp: (n) => { level.xp += n; return level.nivel; },
       act: doAction,
       chat,
+      historial,
       speech,
       sonido,
       decir: (from, text) => speech.show(from, text, { self: false }),
@@ -514,26 +520,32 @@ function land(nx) {
 
 function openDuckMenu(x, y) {
   cancelarTooltip();
+  // Cuidar al pato ya no son opciones del menú: se hace desde la botonera de la
+  // cabecera, con las barras delante y sin que el menú se cierre en cada gesto.
   const items = [
-    { label: '🍞 Alimentar', onClick: () => doAction('feed') },
-    { label: '⚽ Jugar', onClick: () => doAction('play') },
-    { label: '🧼 Limpiar', onClick: () => doAction('clean') },
-    { label: tam.sleeping ? '☀️ Despertar' : '💤 Dormir', onClick: () => doAction('sleep') },
-    { sep: true },
     { label: '💬 Hablar…', onClick: () => openTalk(x, y) },
-    { label: '📊 Estadísticas', onClick: () => openStats(x, y) },
-    { label: `👕 Diseños · Nv ${level.nivel}`, onClick: () => openSkins(x, y) },
+    { label: etiquetaConectados(), onClick: () => openOnline(x, y) },
+    { label: '👕 Diseños', onClick: () => openSkins(x, y) },
     { label: '⚙️ Ajustes…', onClick: () => openSettings(x, y) }
   ];
   // "Salir" sólo donde hay algo de lo que salir: en una extensión el pato no
   // tiene proceso propio que cerrar.
   if (api.capacidades.salir) {
-    items.push({ sep: true }, { label: '❌ Salir', onClick: () => api.salir() });
+    items.push({ sep: true }, { label: '❌ Salir', ancho: true, onClick: () => api.salir() });
   }
+
+  // La misma vista que sale al dejar el ratón sobre el pato, aquí con botonera:
+  // con el menú abierto el globo no aparece, y decidir a ciegas qué le hace
+  // falta no tenía ningún sentido.
+  const vista = buildStatsView(tam, duckName(), level, { onAction: doAction });
+
   let menuEl = null;
   showContextMenu(x, y, items, {
+    cabecera: vista.el,
+    columnas: 2,           // la cabecera es ancha: las opciones caben a dos
     center: true,          // `x` es el centro del pato
     onClose: () => {
+      vista.destroy();
       if (menuEl) openOverlays.delete(menuEl);
       updateMouseCapture();
     }
@@ -549,6 +561,14 @@ function openDuckMenu(x, y) {
 const STAT_DE_ACCION = { feed: 'hunger', play: 'happiness', clean: 'hygiene' };
 
 function doAction(name) {
+  // Agotado no hay nada que hacer con él. Se dice, porque la orden también
+  // puede venir de la bandeja, donde no hay forma de apagar la opción y el
+  // silencio parecería un botón roto.
+  if (tam.agotado) {
+    toast(`Está agotado: duerme hasta recuperar el ${AGOTAMIENTO.DESPIERTA} % de energía.`);
+    return;
+  }
+
   // Se mira el valor ANTES de actuar: sólo da experiencia si estaba bajo, así
   // machacar el botón con la barra llena no sirve de nada.
   const stat = STAT_DE_ACCION[name];
@@ -606,6 +626,7 @@ function openSettings(x, y) {
       settings = { ...settings, ...s };
       api.guardarAjustes(settings);
       chat.setName(settings.displayName);   // re-anuncia el nombre en el canal
+      avisarPresencia();                    // nuestro nombre en la lista de conectados
     },
     onBack: () => volverAlMenu(el, x, y),
     onClose: () => unregisterOverlay(el)
@@ -647,6 +668,18 @@ function duckName() {
   return (settings.displayName || '').trim() || 'Pato';
 }
 
+function openOnline(x, y) {
+  const { el, actualizar } = buildOnlinePanel(estadoPresencia(), {
+    onBack: () => volverAlMenu(el, x, y),
+    onClose: () => unregisterOverlay(el)
+  });
+  // Los patos entran y salen del canal por su cuenta, así que la lista se
+  // mantiene viva mientras el panel esté abierto.
+  oyentesPresencia.add(actualizar);
+  el.addEventListener('panel:cerrado', () => oyentesPresencia.delete(actualizar), { once: true });
+  mountPanel(el, x, y);
+}
+
 function openSkins(x, y) {
   const { el } = buildSkinsPanel(level, duck.skinId, {
     onElegir: (id) => {
@@ -674,11 +707,12 @@ function avisoNivel(html) {
 }
 
 function openTalk(x, y) {
-  const { el } = openChatInput(x, y, {
+  const { el } = buildTalkPanel({
     onSend: (text) => sendChat(text),
+    onBack: () => volverAlMenu(el, x, y),
     onClose: () => unregisterOverlay(el)
   });
-  registerOverlay(el); // openChatInput ya lo añade al DOM y lo posiciona
+  mountPanel(el, x, y);
 }
 
 // Añade un panel al DOM, lo centra sobre el punto indicado y por encima de él
@@ -713,15 +747,56 @@ function colocarPanel(el, x, y) {
 }
 
 // ---- Chat ---------------------------------------------------------------
+//
+// Quién está conectado se guarda aquí y no en el panel: el ChatClient sólo
+// admite un oyente de presencia, y el panel de conectados se abre y se cierra.
+let conectados = [];                 // los demás patos del canal (sin el nuestro)
+const oyentesPresencia = new Set();  // paneles abiertos que quieren enterarse
+
+/** @returns {{yo:string, otros:string[], conectado:boolean}} */
+function estadoPresencia() {
+  return { yo: duckName(), otros: conectados, conectado: !!(chat && chat.connected) };
+}
+
+function avisarPresencia() {
+  const estado = estadoPresencia();
+  for (const cb of oyentesPresencia) cb(estado);
+}
+
+/** Entrada del menú, con cuántos patos hay ahora mismo (contándonos). */
+function etiquetaConectados() {
+  if (!chat || !chat.connected) return '🟢 Conectados';
+  return `🟢 Conectados · ${conectados.length + 1}`;
+}
+
 function setupChat() {
   chat = new ChatClient(api.chat);
   chat.onMessage((m) => {
+    // Se anota SIEMPRE, esté abierto el panel de Hablar o no: el bocadillo dura
+    // unos segundos y justo eso es lo que hay que poder releer después.
+    historial.anadir({ from: m.from, text: m.text, ts: m.ts, propio: false });
     speech.show(m.from, m.text, { self: false });
     // Un poco más grave que el propio, para distinguir quién habla.
     sonido.cuack({ agudo: 0.9 });
     if (behavior) behavior.playOnce('talk', 2.2);
   });
-  chat.onStatus(() => { /* opcional: indicador de conexión */ });
+  // Sólo en la extensión: el pato se muda de pestaña y el histórico de este
+  // documento nace vacío, así que quien mantiene la conexión le pasa el suyo.
+  //
+  // Si llega vacío no se hace nada: significa "todavía no hay nada apuntado"
+  // —o que el service worker estaba dormido—, y nunca que haya que borrar lo
+  // que este pato ya tenga.
+  chat.onHistorial((ms) => { if (ms.length) historial.sembrar(ms); });
+  chat.onStatus(() => {
+    // Con el canal caído no se sabe quién sigue ahí, y los demás tampoco nos
+    // ven: la lista de antes ya no vale.
+    if (!chat.connected) conectados = [];
+    avisarPresencia();
+  });
+  chat.onPresence((names) => {
+    conectados = names;
+    avisarPresencia();
+  });
   // El canal ya puede estar conectado antes de llegar aquí.
   chat.sync();
   // Anuncia el nombre en la presencia del canal. Hace falta en el primer
@@ -731,15 +806,23 @@ function setupChat() {
   chat.setName(duckName());
 }
 
+/**
+ * Manda un mensaje al canal común.
+ * @returns {boolean} si ha salido de verdad; el panel de Hablar lo dice cuando
+ *   no, en vez de dejar creer que el mensaje llegó a alguien.
+ */
 function sendChat(text) {
   // El nivel viaja con el mensaje: es lo que hace que la progresión se vea
   // entre compañeros, que es la gracia de tenerla.
   const name = `${duckName()} · Nv ${level.nivel}`;
+  const salio = !!(chat && chat.connected);
   chat.send(name, text);
+  historial.anadir({ from: name, text, ts: Date.now(), propio: true, fallo: !salio });
   speech.show(name, text, { self: true });
   sonido.cuack();
   level.chat();
   if (behavior) behavior.playOnce('talk', 2.2);
+  return salio;
 }
 
 // ---- Órdenes desde fuera del documento ----------------------------------
@@ -750,6 +833,7 @@ function setupTray() {
     if (cmd === 'feed' || cmd === 'play' || cmd === 'clean' || cmd === 'sleep') {
       doAction(cmd);
     } else if (cmd === 'stats') openStats(cx, cy);
+    else if (cmd === 'online') openOnline(cx, cy);
     else if (cmd === 'settings') openSettings(cx, cy);
   });
 }

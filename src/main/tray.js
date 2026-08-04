@@ -43,6 +43,7 @@ function createTray(getWin, opts = {}) {
       { label: 'Jugar', click: () => send('play') },
       { label: 'Limpiar', click: () => send('clean') },
       { label: 'Dormir / Despertar', click: () => send('sleep') },
+      { label: 'Conectados', click: () => send('online') },
       { label: 'Estadísticas', click: () => send('stats') },
       { label: 'Ajustes…', click: () => send('settings') },
       { type: 'separator' },

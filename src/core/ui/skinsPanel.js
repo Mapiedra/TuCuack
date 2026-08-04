@@ -19,24 +19,8 @@ export function buildSkinsPanel(level, actual, handlers) {
 
   el.appendChild(panelHeader('Diseños', handlers));
 
-  // Nivel y progreso hacia el siguiente.
-  const cab = document.createElement('div');
-  cab.className = 'nivel-cab';
-  const nivelTxt = document.createElement('div');
-  nivelTxt.className = 'nivel-txt';
-  nivelTxt.innerHTML = `<b>Nivel ${level.nivel}</b> · ${level.rango}`;
-  const barra = document.createElement('div');
-  barra.className = 'nivel-barra';
-  const relleno = document.createElement('div');
-  relleno.className = 'nivel-fill';
-  relleno.style.width = `${Math.round(level.progreso * 100)}%`;
-  barra.appendChild(relleno);
-  const restante = document.createElement('div');
-  restante.className = 'muted';
-  restante.textContent =
-    `${level.xpNivelActual} / ${level.xpNivelSiguiente} XP para el nivel ${level.nivel + 1}`;
-  cab.append(nivelTxt, barra, restante);
-  el.appendChild(cab);
+  // El nivel y su progreso no se repiten aquí: se ven en la cabecera del menú,
+  // que es desde donde se llega a este panel.
 
   // Rejilla de diseños.
   const grid = document.createElement('div');

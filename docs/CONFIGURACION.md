@@ -189,6 +189,7 @@ nombre y sus propias estadísticas; para dejarlo todo limpio, borra esa carpeta.
 |---|---|
 | No aparece ninguna tabla en Supabase | Correcto: el chat usa *broadcast* y no toca la base de datos. |
 | La consola muestra `canal: CHANNEL_ERROR` o *transport failure* | Credenciales rechazadas por Realtime. Lo más habitual: la URL lleva `/rest/v1` al final, o la clave está incompleta. |
+| `CHANNEL_ERROR ... unable to verify the first certificate` | Un antivirus o un proxy está inspeccionando el tráfico HTTPS con su propio certificado (AVG, Avast, ESET, proxys de empresa). El pato ya se fía de las raíces del almacén de Windows, así que esto sólo debería salir si la raíz del interceptor no está instalada ahí; compruébalo en `certmgr.msc` → *Entidades de certificación raíz de confianza*. |
 | Ajustes dice *«Chat sin configurar»* | El fichero no se encuentra o sigue con los valores de ejemplo. Revisa la ruta y que el JSON sea válido. |
 | Configurado, pero no llegan mensajes | Las dos instalaciones apuntan a proyectos de Supabase distintos. |
 | No avisa de nombres repetidos | La comprobación necesita conexión: sin chat no se puede saber qué nombres hay. |

@@ -7,6 +7,67 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.5.0] - 2026-08-04
+
+### Añadido
+
+- **El menú del pato, rehecho alrededor de su estado.** Abre con las mismas
+  barras que enseña el globo del ratón (nombre, nivel, las cuatro necesidades y
+  el ánimo) —el mismo componente en los dos sitios, no una copia—, aquí más
+  grandes y con una **botonera de cuidados**: alimentar, jugar, limpiar y dormir
+  se hacen desde ahí, viendo cómo se mueven las barras y sin que el menú se
+  cierre en cada gesto. Las demás opciones bajan a **dos columnas**.
+- **Lista de conectados.** Nueva opción **Conectados** en el menú del pato y en la
+  bandeja: enseña qué patos hay en el canal ahora mismo, con el tuyo marcado el
+  primero. El menú lleva la cuenta al lado, y la lista se actualiza sola mientras
+  está abierta según entran y salen. Si el chat se cae, lo dice y se rellena sola
+  al volver. Sale de la presencia del canal, que ya se mantenía para comprobar los
+  nombres, así que vale igual en el escritorio y en la extensión.
+- **Hablar es ahora un panel con histórico.** Tiene el **volver al menú** que
+  tienen los demás, y encima de la caja de escribir van los **últimos 50
+  mensajes** de la sesión —los de los demás y los tuyos, con hora—, que se
+  anotan aunque el panel esté cerrado. Al enviar ya no se cierra: se sigue la
+  conversación. Si el chat no está conectado lo dice y marca el mensaje como *no
+  enviado*, en vez de dejar creer que llegó a alguien. El histórico vive en
+  memoria y se va al cerrar el pato; en la extensión lo guarda el service worker
+  en `storage.session` para que sobreviva a los cambios de pestaña, y se borra al
+  cerrar Chrome. Sin base de datos ni ficheros.
+- **Agotamiento.** Si la energía llega a 0, el pato se desploma y duerme hasta
+  recuperar el 20 %. Mientras dure no hace ninguna otra cosa ni acepta cuidados:
+  las opciones se ven apagadas, y desde la bandeja lo dice con un aviso.
+
+### Cambiado
+
+- **Estadísticas** desaparece del menú del pato: lo que enseñaba está ahora en la
+  cabecera. El panel sigue existiendo y se abre desde la bandeja, donde no hay
+  sitio para las barras.
+- **Diseños** ya no repite el nivel y su progreso: se ven en el menú desde el que
+  se abre el panel.
+- El umbral de "cansado" pasa de 22 % a **20 %** de energía, el mismo al que se
+  sale del agotamiento. Con dos números distintos, al despertar a un pato recién
+  repuesto se volvía a dormir en el acto.
+
+### Corregido
+
+- **El chat se caía sin parar con un antivirus que inspecciona el tráfico.** AVG
+  (y Avast, ESET o un proxy de empresa) sustituye el certificado del servidor por
+  uno suyo, firmado por una raíz que instala en el almacén de Windows. Chromium la
+  da por buena, pero el proceso que mantiene el chat es Node, que sólo se fía de
+  su lista compilada: de ahí el `unable to verify the first certificate` en bucle.
+  Los antivirus lo apañan con `NODE_EXTRA_CA_CERTS`, pero eso sólo alcanza a los
+  procesos que arrancan después de que exista la variable —con una terminal
+  abierta de antes, el chat no levantaba—. Ahora el pato lee las raíces del
+  almacén de Windows al arrancar y se fía de ellas, como haría el navegador.
+- **El panel de estadísticas salía en blanco al abrirlo** y no se rellenaba hasta
+  el siguiente segundo, porque el primer pintado se descartaba al no estar el
+  panel todavía en el documento. De paso, cada apertura dejaba un oyente colgando
+  sobre un panel ya cerrado; ahora se suelta al cerrarlo.
+- **Arrancar con un pato ya en marcha parecía no hacer nada.** Sólo hay un pato
+  por equipo, así que la segunda instancia se retira y muestra la primera; pero
+  lo hacía en silencio, y `npm start` terminaba con éxito y sin ventana, que es
+  justo lo que parece un arranque roto. Ahora lo dice por consola y explica cómo
+  cerrar el que ya estaba.
+
 ## [0.4.0] - 2026-07-30
 
 ### Añadido
@@ -307,7 +368,8 @@ Primera versión.
   funciona con normalidad pero sin chat.
 - El instalador no está firmado, así que Windows SmartScreen mostrará un aviso.
 
-[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.3.2...HEAD
+[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.5.0
 [0.4.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.4.0
 [0.3.2]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.3.2
 [0.3.1]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.3.1
