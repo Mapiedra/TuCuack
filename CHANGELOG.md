@@ -7,6 +7,36 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Añadido
+
+- **La fila 12 del sprite (`regalo`) ya existe en los cinco diseños.** A falta de
+  arte definitivo, el empaquetador la **compone** inclinando el saludo hacia
+  delante desde los pies. Es un apaño declarado —sale del saludo, así que no hay
+  objeto que ofrecer— para que el gesto funcione de punta a punta mientras se
+  dibuja. [`docs/DISENOS.md`](docs/DISENOS.md) describe qué tiene que enseñar el
+  arte final; en cuanto la fila aparezca, el empaquetador la usa y deja de
+  componerla sin tocar código.
+
+### Cambiado
+
+- **Fuera las referencias a macOS.** La app de escritorio es de Windows y en
+  cualquier otro sistema el pato vive en la extensión de Chrome, que no depende
+  del sistema operativo. Se corrigen el README, el comentario del workflow de
+  release y el de `tools/write-supabase-config.js`. *(Las entradas antiguas del
+  changelog se quedan como están: cuentan lo que pasó en su momento.)*
+- **Las notas del Release ya no prometen descargas que no existen.** Anunciaban
+  un `.dmg` para Intel y otro para Apple Silicon que el workflow no compila desde
+  la 0.4.0. Ahora listan lo que se publica de verdad: el instalador de Windows y
+  el zip de la extensión.
+- **El README documenta las visitas**, que entraron en la 0.6.0 y se quedaron sin
+  contar.
+
+### Corregido
+
+- **El recuento de animaciones compuestas ya no miente.** Miraba la distribución
+  declarada en vez de lo que se leyó del arte, así que daba por dibujada una fila
+  vacía —justo la que hay que ir a dibujar—.
+
 ## [0.6.0] - 2026-08-05
 
 ### Añadido

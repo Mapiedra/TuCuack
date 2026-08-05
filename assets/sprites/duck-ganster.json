@@ -69,6 +69,12 @@
       "frames": 6,
       "fps": 10,
       "loop": true
+    },
+    "regalo": {
+      "row": 11,
+      "frames": 6,
+      "fps": 8,
+      "loop": true
     }
   }
 }
