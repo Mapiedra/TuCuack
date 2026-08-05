@@ -5,7 +5,8 @@
  *
  * Lo usa el workflow de release para meter las credenciales del chat en el
  * instalador sin que pasen por el repositorio. Está en Node (y no en el shell)
- * para que funcione igual en los runners de Windows y de macOS.
+ * para que funcione igual en los runners de Windows y de Linux: el instalador se
+ * compila en uno y la extensión en el otro, y los dos necesitan las credenciales.
  *
  * Si no hay credenciales no falla: simplemente no escribe nada y la app se
  * compila sin chat.

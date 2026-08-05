@@ -259,6 +259,23 @@ def normalize(im):
     return canvas
 
 
+def seat_on_ground(im):
+    """Baja o sube un frame hasta que sus pies vuelven a la línea del suelo.
+
+    Es la mitad de `normalize`: sólo reasienta, sin reescalar el cuerpo. Hace
+    falta después de rotar, porque los pies están repartidos y no concentrados en
+    el pivote, así que al inclinarse uno sube y el otro baja.
+
+    Se prefiere a `normalize` cuando el frame YA venía normalizado: reescalar
+    otra vez obliga a volver a medir el cuerpo, y en los diseños con ropa oscura
+    —el capo— esa medida baila lo justo para que el pato dé saltitos.
+    """
+    bb = body_bbox(im)
+    if bb is None:
+        return im
+    return bob(im, int(round(GROUND_Y - bb[3])))
+
+
 def bob(im, dy):
     """Desplaza verticalmente un frame ya normalizado (para dar vida sutil)."""
     out = Image.new('RGBA', im.size, (0, 0, 0, 0))
@@ -442,6 +459,11 @@ LAYOUT_ESTANDAR = [
 # que haya que avisar, sino arte que aún no está hecho.
 OPCIONALES = {'regalo'}
 
+# Cuánto se inclina el pato al ofrecer el regalo compuesto (grados). Es el único
+# número que hay que tocar para que el apaño se note más o menos; pasado de 10 el
+# cuerpo baja tanto que el verificador lo lee como un cambio de tamaño.
+ANGULO_REGALO = 8.0
+
 # Todos los diseños usan la distribución estándar. `LAYOUTS` queda por si algún
 # arte necesitara una propia.
 LAYOUTS = {}
@@ -571,7 +593,12 @@ def pack_one(ident):
 
     # El sheet lleva más filas que el arte: las que no se dibujan se componen a
     # partir de otras. Se marca cuáles para que no parezca un descuadre.
-    dibujadas = {n for _f, n, _fps, _fl in layout}
+    #
+    # Se mira lo que se leyó DE VERDAD del arte (`base`), no lo que la
+    # distribución dice que debería haber: una fila que la distribución declara
+    # pero el arte deja vacía —`regalo`, hoy— se compone, y contarla como
+    # dibujada la escondería justo a quien tiene que ir a dibujarla.
+    dibujadas = {nombre for nombre, *_resto in base}
     n_comp = sum(1 for k in order if k not in dibujadas)
     print(f'sheet {sheet.size} -> {OUT_PNG}')
     print(f'  {len(order)} animaciones = {len(order) - n_comp} del arte '
@@ -606,10 +633,13 @@ def verify(anims, order, ident=None):
     se espera variación.
     """
     # En flap/drag el pato está en el aire (la base oscila a propósito). En play
-    # los pinchos del bate son del mismo naranja que el cuerpo, así que al rotar
-    # alteran la medida de altura sin que el pato cambie de tamaño.
+    # y en regalo los pinchos del bate son del mismo naranja que el cuerpo, así
+    # que al rotar alteran la medida de altura sin que el pato cambie de tamaño:
+    # las dos giran el frame entero, bate incluido. La medida que sí vale ahí es
+    # 'base var', que comprueba lo único que se notaría —que el pato salte—, y
+    # esa se les sigue exigiendo.
     aerial = {'flap', 'drag'}
-    bat_moving = {'play'}
+    bat_moving = {'play', 'regalo'}
     print('\n  verificación:')
     problems = 0
     for name in order:
@@ -699,6 +729,28 @@ def build_synthetic(anims, src):
             amp = np.sin(i / 6.0 * 2 * np.pi)
             drag.append(rotate_about(hap[i % len(hap)], 7 * amp, (OUT_W // 2, 30)))
         anims['drag'] = {'frames': drag, 'fps': 10, 'loop': True}
+
+    # -- REGALO: provisional mientras ningún arte traiga la fila 12 --------
+    # El pato ofrece algo con el ala cuando llega de visita a otra pantalla (ver
+    # src/core/visita/PatoVisitante.js). Hasta que esté dibujado se compone
+    # inclinando el saludo hacia delante desde los PIES, como quien tiende algo
+    # y vuelve a erguirse: el pivote bajo lo distingue de `drag`, que pivota
+    # arriba porque cuelga del cursor.
+    #
+    # Es un apaño declarado, no el resultado final: docs/DISENOS.md describe qué
+    # tiene que dibujarse, y en cuanto la fila 12 exista esto deja de usarse solo.
+    if 'regalo' not in anims:
+        base = hap[0]
+        n = 6
+        regalo = []
+        for i in range(n):
+            # Media onda: se inclina, llega al máximo y vuelve. Sin repetir los
+            # extremos, para que el bucle enlace sin tirón.
+            t = float(np.sin(i / float(n) * np.pi))
+            # Negativo = hacia la derecha, que es hacia donde mira el arte.
+            inclinado = rotate_about(base, -ANGULO_REGALO * t, (OUT_W // 2, GROUND_Y))
+            regalo.append(seat_on_ground(inclinado))
+        anims['regalo'] = {'frames': regalo, 'fps': 8, 'loop': True}
 
 
 if __name__ == '__main__':

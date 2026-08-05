@@ -48,13 +48,44 @@ Una sola imagen con **todos los frames en una rejilla**, fondo transparente.
 | **12** | Regalo *(opcional)* | Ofrece algo con el ala extendida hacia delante, como quien entrega un paquete | 4-6 |
 
 Son **11 filas seguidas, sin huecos**: una por animación, todas dibujadas. La **12 es
-opcional** y ningún diseño la trae todavía.
+opcional**, y hoy **ningún arte la trae**.
 
-La fila 12 es el gesto con el que un pato llega de visita a la pantalla de otro (ver
-`src/core/visita/PatoVisitante.js`). Mientras no esté dibujada, el empaquetador la
-omite —lo dice al ejecutarlo, sin marcarlo como problema— y el visitante saluda con el
-ala (fila 6) en su lugar. En cuanto aparezca en `duro.webp`, un `npm run sprites` la
-activa en los cinco diseños, porque los otros cuatro se tiñen a partir de él.
+### La fila 12, hoy: compuesta
+
+Es el gesto con el que un pato entrega algo al llegar de visita a la pantalla de otro
+(ver [`src/core/visita/PatoVisitante.js`](../src/core/visita/PatoVisitante.js)). Como
+todavía no está dibujada, `tools/pack_sprites.py` **la compone**: coge el primer frame
+del saludo (fila 6) y lo inclina hacia delante desde los pies, como quien tiende algo y
+vuelve a erguirse. Al ejecutar `npm run sprites` lo dice sin marcarlo como problema:
+
+```
+fila 11 (regalo): sin dibujar todavía, se omite
+...
+regalo  6 frames @ 8fps   (compuesta, no se dibuja)
+```
+
+**Es un apaño y se nota**: sale del saludo, así que lleva sus mismas alas y no hay nada
+en el ala que ofrecer. Sirve para que el gesto exista y el conducto funcione de punta a
+punta, no como resultado final.
+
+### La fila 12, cuando se dibuje
+
+Lo que tiene que enseñar el arte definitivo:
+
+- El pato **extiende un ala hacia delante** (hacia la derecha, como todo el arte), con
+  **algo encima**: un paquete con lazo, una caja, una flor. Que se vea el objeto.
+- Arranca **erguido**, extiende, **mantiene** un par de frames el ala fuera —es cuando
+  se lee que está ofreciendo— y **vuelve** a la postura de partida.
+- **Los pies no se mueven**: el pato no anda ni salta, sólo se inclina y estira. La
+  comprobación de `pack_sprites.py` mide justo eso (`base var`, que debe quedar en 0-2).
+- **El cuerpo no cambia de tamaño** entre frames.
+- 4-6 frames, y el bucle tiene que **enlazar sin tirón**: el último frame debe pegar con
+  el primero.
+
+En cuanto la fila 12 aparezca en el arte, el empaquetador la usa y deja de componerla
+—el apaño está detrás de un `if 'regalo' not in anims`—, sin tocar código. Basta con
+dibujarla en `assets/sprites/fuentes/duro.webp` y ejecutar `npm run sprites`: los otros
+cuatro diseños son tintes suyos (`tools/make_placeholder_skins.py`) y la heredan.
 
 Las dos últimas son para cuando se le arrastra y se le lanza por la pantalla. Podrían
 sacarse de la fila 6 moviendo el dibujo, y así se hacía al principio, pero entonces dos

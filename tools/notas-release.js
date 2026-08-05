@@ -32,16 +32,18 @@ if (!cuerpo) {
   cuerpo = `Versión ${version}. Ver [CHANGELOG.md](https://github.com/Mapiedra/TuCuack/blob/main/CHANGELOG.md).`;
 }
 
+// Lo que publica de verdad el workflow de release, y nada más: anunciar una
+// descarga que no está deja al Release prometiendo ficheros inexistentes.
 const descargas = [
   '',
   '',
   '## Descargas',
   '',
   `- **Windows**: \`TuCuack-Setup-${version}.exe\``,
-  `- **macOS (Apple Silicon)**: \`TuCuack-${version}-arm64.dmg\``,
-  `- **macOS (Intel)**: \`TuCuack-${version}.dmg\``,
+  `- **Cualquier sistema**: \`TuCuack-extension-${version}.zip\` (extensión de Chrome)`,
   '',
-  'Si ya lo tienes instalado no hace falta descargar nada: la app se actualiza sola.',
+  'Si ya tienes la app instalada no hace falta descargar nada: se actualiza sola.',
+  'La extensión se actualiza descomprimiendo el zip encima de la carpeta anterior.',
 ].join('\n');
 
 process.stdout.write(cuerpo + descargas + '\n');

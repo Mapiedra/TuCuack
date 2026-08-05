@@ -4,9 +4,9 @@ name: Release
 # Windows y publica el Release con latest.yml, que es el feed que electron-updater
 # consulta para autoactualizarse. Además empaqueta la extensión de Chrome.
 #
-# No se compila para macOS: sin licencia de Apple no se puede firmar ni notarizar,
-# y un .dmg sin firmar da más problemas de los que resuelve. Quien use Mac tiene
-# la extensión.
+# La app de escritorio es de Windows. En cualquier otro sistema el pato vive en la
+# extensión de Chrome, que se empaqueta aquí mismo y no depende del sistema
+# operativo: el mismo núcleo, el mismo canal de chat y los mismos patos.
 #
 # Para publicar una versión:
 #   1. sube "version" en package.json y añade la entrada en CHANGELOG.md

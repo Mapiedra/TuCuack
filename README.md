@@ -1,9 +1,12 @@
 # 🦆 TuCuack
 
-Una mascota de escritorio para Windows: un pato con gafas, cadena de oro y bate que
-**camina sobre la barra de tareas**, se puede **arrastrar y lanzar por la pantalla**,
-se cuida como un **Tamagotchi** y **habla con los patos de otras personas** mediante
-bocadillos de cómic.
+Una mascota de escritorio: un pato con gafas, cadena de oro y bate que **camina sobre
+la barra de tareas**, se puede **arrastrar y lanzar por la pantalla**, se cuida como un
+**Tamagotchi**, **habla con los patos de otras personas** mediante bocadillos de cómic
+y **se va de visita a su pantalla**.
+
+La app de escritorio es de **Windows**; en cualquier otro sistema el mismo pato vive en
+la **extensión de Chrome**, y unos y otros comparten canal.
 
 Construido con **Electron**. Chat con **Supabase Realtime**. Auto-actualización con
 **electron-updater + GitHub Releases**.
@@ -93,6 +96,21 @@ lista de los patos que están en el canal ahora mismo, con el tuyo el primero. E
 lleva la cuenta al lado, y la lista se actualiza sola mientras está abierta según entra
 y sale gente. Sale de la presencia del canal, la misma que ya se usaba para comprobar
 los nombres, así que no hace falta nada más en Supabase.
+
+**Mandar el pato a la pantalla de otro.** Cada pato de **Conectados** tiene un botón
+para mandarle el tuyo, con un **recado opcional**. En su pantalla aparece un segundo
+pato con tu diseño y tu nombre: entra andando desde fuera del cuadro, se planta al lado
+del suyo, saluda con el ala, dice lo que traiga y se marcha por donde vino. El tuyo,
+mientras, sale corriendo a llevarlo y vuelve. Va por el mismo canal, en un evento
+aparte con destinatario, así que las versiones anteriores lo ignoran solas.
+
+> El recado **no es una conversación privada**: viaja por el canal común y lo que hacen
+> los demás patos es descartarlo. El panel lo dice antes de enviar.
+
+Como el canal es de todo el mundo, quien recibe manda: hay un interruptor de **visitas**
+en Ajustes para cerrar la puerta sin renunciar al chat, no se admite más de una visita
+por remitente cada **25 s** y sólo entra un pato a la vez. La espera se ve en el propio
+botón, que se convierte en una **rueda** con los segundos que faltan dentro.
 
 **Se integra sin molestar.** Ventana transparente siempre encima, con **hit-test por
 píxel**: el overlay sólo captura el ratón cuando el cursor está de verdad sobre el
@@ -208,12 +226,13 @@ Se compila el instalador **NSIS** de Windows. El workflow de release lo sube al
 Release junto con el **zip de la extensión de Chrome**, que se ensambla en el
 mismo workflow con `npm run ext`.
 
-### No hay versión de macOS
+### Fuera de Windows
 
-Se retiró. Sin una cuenta de Apple Developer no se puede firmar ni notarizar, y
-una app sin firmar da más problemas de los que resuelve: macOS la bloquea y hay
-que enseñarle a cada persona a saltarse el aviso. **Quien use Mac tiene la
-extensión de Chrome**, que funciona igual en cualquier sistema.
+La app de escritorio es de Windows. En cualquier otro sistema el pato vive en la
+**extensión de Chrome**, que no depende del sistema operativo: mismo núcleo,
+mismo canal de chat y los mismos patos, así que se conversa y se reciben visitas
+entre unos y otros sin distinción. Se instala en modo desarrollador
+(ver [`src/extension/INSTALAR.txt`](src/extension/INSTALAR.txt)).
 
 Para publicar una versión y que las instalaciones se actualicen solas:
 
