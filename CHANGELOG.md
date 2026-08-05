@@ -7,6 +7,44 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.6.0] - 2026-08-05
+
+### Añadido
+
+- **Mandar el pato a la pantalla de otro.** En **Conectados**, cada pato de la
+  lista tiene ahora un botón para mandarle el tuyo, con un **recado opcional**.
+  En la pantalla del otro aparece un **segundo pato** —con tu diseño y tu
+  nombre—, que **entra andando desde fuera del cuadro** por el lado contrario al
+  suyo, se planta a su lado, saluda con el ala y se marcha por donde vino hasta
+  perderse de vista. El trayecto tarda lo mismo mida lo que mida el monitor: la
+  velocidad se saca del ancho, y no al revés.
+- **Y el tuyo se va a llevarlo.** Al mandarlo, tu pato sale corriendo por el
+  borde más cercano, desaparece un momento y vuelve por donde se fue, a su
+  sitio. Son dos segundos de teatro —el recado viaja por el canal al instante— y
+  se corta solo si le agarras con el ratón a mitad de camino.
+- **Interruptor de visitas en Ajustes.** El canal es común a todo el mundo que
+  tenga TuCuack abierto, así que se puede cerrar la puerta sin renunciar al chat.
+  Aunque esté abierta, no se admite más de una visita por remitente cada **25 s**
+  y sólo entra un pato a la vez; el resto espera turno o se descarta.
+- **La espera entre visitas se ve.** El botón de mandar se convierte en una
+  **rueda que se va llenando**, con los segundos que faltan dentro, y no se puede
+  pulsar hasta que se completa. Es por destinatario: que uno esté esperando no
+  impide mandarle el pato a otro. La cuenta la lleva también quien manda —con un
+  margen sobre la de quien recibe—, así que la rueda no llega a cero antes de
+  tiempo.
+- **La presencia del canal viaja ahora con una clave por pato.** Es lo que
+  permite mandarle el pato a uno en concreto cuando hay dos que se llaman igual.
+  Con una versión anterior al otro lado la lista se ve igual, pero sin poder
+  mandar nada.
+
+### Notas
+
+- El recado **no es una conversación privada**: viaja por el canal común y lo que
+  hacen los demás patos es descartarlo. El propio panel lo dice antes de enviar.
+- Queda preparada una fila de sprite **`regalo`** (la 12) para entregar algo con
+  el ala, todavía **sin dibujar en ningún diseño**: mientras no exista, quien
+  pida ese gesto saluda con el ala. Ver `docs/DISENOS.md`.
+
 ## [0.5.0] - 2026-08-04
 
 ### Añadido
@@ -368,7 +406,8 @@ Primera versión.
   funciona con normalidad pero sin chat.
 - El instalador no está firmado, así que Windows SmartScreen mostrará un aviso.
 
-[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.5.0...HEAD
+[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.6.0
 [0.5.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.5.0
 [0.4.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.4.0
 [0.3.2]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.3.2

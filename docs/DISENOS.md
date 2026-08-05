@@ -45,8 +45,16 @@ Una sola imagen con **todos los frames en una rejilla**, fondo transparente.
 | **9** | Chulesco | Pose de sobrado: se ajusta las gafas, se cruza de alas | 4-6 |
 | **10** | Aletear | En el aire, agitando las alas para sostenerse | 4-6 |
 | **11** | Colgando | Sujeto por arriba, pataleando o balanceándose | 4-6 |
+| **12** | Regalo *(opcional)* | Ofrece algo con el ala extendida hacia delante, como quien entrega un paquete | 4-6 |
 
-Son **11 filas seguidas, sin huecos**: una por animación, todas dibujadas.
+Son **11 filas seguidas, sin huecos**: una por animación, todas dibujadas. La **12 es
+opcional** y ningún diseño la trae todavía.
+
+La fila 12 es el gesto con el que un pato llega de visita a la pantalla de otro (ver
+`src/core/visita/PatoVisitante.js`). Mientras no esté dibujada, el empaquetador la
+omite —lo dice al ejecutarlo, sin marcarlo como problema— y el visitante saluda con el
+ala (fila 6) en su lugar. En cuanto aparezca en `duro.webp`, un `npm run sprites` la
+activa en los cinco diseños, porque los otros cuatro se tiñen a partir de él.
 
 Las dos últimas son para cuando se le arrastra y se le lanza por la pantalla. Podrían
 sacarse de la fila 6 moviendo el dibujo, y así se hacía al principio, pero entonces dos
@@ -82,6 +90,9 @@ se parezcan.
 > fila 10, aleteando en el aire para sostenerse;
 > fila 11, colgando de arriba, pataleando.
 > El personaje es: `<descripción del diseño>`
+
+Si además quieres la fila opcional de regalo, pide **12 filas** y añade al final:
+*fila 12, ofreciendo un paquete con el ala extendida hacia delante*.
 
 Descripciones para los que faltan:
 

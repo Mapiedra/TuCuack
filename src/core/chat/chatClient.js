@@ -12,8 +12,13 @@ export class ChatClient {
     this._onStatus = () => {};
     this._onPresence = () => {};
     this._onHistorial = () => {};
+    this._onVisita = () => {};
     this.connected = false;
     this.names = [];        // nombres de los demás patos conectados
+    // Los mismos, con su clave de presencia: dos patos pueden llamarse igual,
+    // así que para mandarle el pato a uno en concreto hace falta la clave.
+    this.presentes = [];
+    this.miClave = '';      // nuestra dirección, la que lleva la visita de vuelta
 
     this.canal.alRecibirEvento((evt) => {
       if (!evt) return;
@@ -23,8 +28,12 @@ export class ChatClient {
         this.connected = !!evt.connected;
         this._onStatus({ connected: this.connected, reason: evt.reason });
       } else if (evt.type === 'presence') {
-        this.names = Array.isArray(evt.names) ? evt.names : [];
+        this._anotarPresencia(evt);
         this._onPresence(this.names);
+      } else if (evt.type === 'visita') {
+        // Quien mantiene la conexión ya ha descartado las visitas dirigidas a
+        // otro: aquí sólo llega lo nuestro.
+        if (evt.visita) this._onVisita(evt.visita);
       } else if (evt.type === 'historial') {
         // Sólo llega donde el canal vive fuera del pato y sobrevive a sus
         // mudanzas: la extensión de Chrome. En el escritorio el histórico se
@@ -38,6 +47,26 @@ export class ChatClient {
   onStatus(cb) { this._onStatus = cb; }
   onPresence(cb) { this._onPresence = cb; }
   onHistorial(cb) { this._onHistorial = cb; }
+  onVisita(cb) { this._onVisita = cb; }
+
+  /**
+   * Guarda quién anda por el canal.
+   *
+   * `presentes` es lo que se usa; `names` se deriva de ahí. Se acepta que llegue
+   * sólo `names` porque el canal puede estar servido por una versión anterior
+   * —el pato de escritorio y el de la extensión se actualizan por su cuenta—, y
+   * entonces se puede listar a la gente aunque no se le pueda mandar el pato.
+   */
+  _anotarPresencia(evt) {
+    if (Array.isArray(evt.presentes)) {
+      this.presentes = evt.presentes;
+      this.names = this.presentes.map((p) => p.nombre);
+    } else {
+      this.names = Array.isArray(evt.names) ? evt.names : [];
+      this.presentes = [];
+    }
+    if (evt.clave) this.miClave = String(evt.clave);
+  }
 
   /**
    * Pregunta el estado actual a quien mantenga la conexión.
@@ -52,7 +81,7 @@ export class ChatClient {
       const st = await this.canal.estado();
       if (!st) return;
       this.connected = !!st.connected;
-      this.names = Array.isArray(st.names) ? st.names : [];
+      this._anotarPresencia(st);
       this._onStatus({ connected: this.connected, reason: 'sync' });
       this._onPresence(this.names);
       // Donde el canal viva fuera del pato, el histórico de la sesión también
@@ -63,6 +92,23 @@ export class ChatClient {
 
   send(from, text) {
     this.canal.enviar({ from, text });
+  }
+
+  /**
+   * Manda el pato a la pantalla de otro.
+   *
+   * @param {{aClave:string, de:string, skin:string, gesto:string, texto?:string}} visita
+   * @returns {boolean} si ha salido de verdad.
+   */
+  enviarVisita(visita) {
+    if (!this.connected || !visita || !visita.aClave) return false;
+    this.canal.enviarVisita({ ...visita, ts: Date.now() });
+    return true;
+  }
+
+  /** ¿Se le puede mandar el pato a alguien? Hace falta saber su clave. */
+  puedeVisitar() {
+    return this.connected && this.presentes.length > 0;
   }
 
   /** Anuncia el nombre en la presencia del canal. */

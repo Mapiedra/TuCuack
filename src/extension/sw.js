@@ -170,9 +170,22 @@ function crearCanal() {
     avisar({ type: 'message', ...mensaje });
   });
 
+  // Visitas: un pato que viene a esta pantalla. Van a todo el canal, así que lo
+  // que no venga dirigido a nosotros se descarta aquí y no llega al pato.
+  ch.on('broadcast', { event: 'visita' }, ({ payload }) => {
+    if (!payload || payload.aClave !== miClave) return;
+    if (puertos.size === 0) {
+      // A diferencia del chat, una visita no se guarda para después: llegar
+      // tarde a una visita es no haberla tenido.
+      console.log(`[chat] visita de "${payload.de}" sin pato a la vista: se descarta`);
+      return;
+    }
+    avisar({ type: 'visita', visita: limpiarVisita(payload) });
+  });
+
   for (const evento of ['sync', 'join', 'leave']) {
     ch.on('presence', { event: evento }, () => {
-      avisar({ type: 'presence', names: nombresPresentes() });
+      avisar({ type: 'presence', names: nombresPresentes(), presentes: presentes() });
     });
   }
   return ch;
@@ -205,7 +218,7 @@ function suscribir() {
           console.error('[chat] no se pudo anunciar la presencia:', e);
         }
       }
-      avisar({ type: 'presence', names: nombresPresentes() });
+      avisar({ type: 'presence', names: nombresPresentes(), presentes: presentes() });
       return;
     }
 
@@ -237,24 +250,74 @@ function programarReintento() {
   }, espera);
 }
 
-/** Nombres de los demás patos conectados (excluye el propio). */
-function nombresPresentes() {
+/**
+ * Los demás patos conectados, con su clave de presencia (excluye el propio).
+ *
+ * La clave hace falta para dirigirle una visita a uno en concreto: dos patos
+ * pueden llamarse igual, pero cada uno tiene su clave.
+ *
+ * @returns {{clave:string, nombre:string}[]}
+ */
+function presentes() {
   if (!canal || !conectado) return [];
   try {
     const estado = canal.presenceState() || {};
-    // Un Set porque un mismo pato puede figurar varias veces: le pasa a quien
-    // siga con una versión que se anunciaba de más.
-    const salida = new Set();
+    const salida = [];
+    const vistos = new Set();
     for (const [clave, metas] of Object.entries(estado)) {
       if (clave === miClave) continue;
       for (const m of metas) {
-        if (m && m.name) salida.add(String(m.name));
+        // Un mismo pato puede figurar varias veces: le pasa a quien siga con una
+        // versión que se anunciaba de más.
+        if (!m || !m.name || vistos.has(clave)) continue;
+        vistos.add(clave);
+        salida.push({ clave: String(clave), nombre: String(m.name) });
       }
     }
-    return [...salida];
+    return salida;
   } catch {
     return [];
   }
+}
+
+/** Nombres de los demás patos conectados (excluye el propio). */
+function nombresPresentes() {
+  return presentes().map((p) => p.nombre);
+}
+
+// ---- Visitas -------------------------------------------------------------
+
+const GESTOS = ['saludo', 'regalo'];
+
+/**
+ * Deja una visita en lo que se puede enseñar sin sustos. Igual que
+ * `limpiarVisita` en src/main/chat.js: los dos extremos del canal recortan lo
+ * mismo. El diseño se comprueba más adelante, ya en el pato, que es quien sabe
+ * qué diseños existen.
+ */
+function limpiarVisita(v) {
+  return {
+    id: String(v.id || '').slice(0, 40),
+    de: String(v.de || 'Pato').slice(0, 40),
+    deClave: String(v.deClave || '').slice(0, 40),
+    aClave: String(v.aClave || '').slice(0, 40),
+    skin: String(v.skin || '').slice(0, 24),
+    gesto: GESTOS.includes(v.gesto) ? v.gesto : 'saludo',
+    texto: String(v.texto || '').slice(0, 280),
+    ts: Number(v.ts) || Date.now()
+  };
+}
+
+function enviarVisita(v) {
+  if (!canal || !conectado || !v || !v.aClave) {
+    console.warn('[chat] NO se envía la visita: el canal no está conectado');
+    return;
+  }
+  canal.send({
+    type: 'broadcast',
+    event: 'visita',
+    payload: limpiarVisita({ ...v, deClave: miClave })
+  });
 }
 
 // ---- Puente con el panel ------------------------------------------------
@@ -294,6 +357,8 @@ chrome.runtime.onConnect.addListener((puerto) => {
     if (!msg) return;
     if (msg.tipo === 'enviar') {
       enviar(msg.msg);
+    } else if (msg.tipo === 'visita') {
+      enviarVisita(msg.visita);
     } else if (msg.tipo === 'nombre') {
       await ponerNombre(msg.nombre);
     }
@@ -304,7 +369,7 @@ chrome.runtime.onConnect.addListener((puerto) => {
   // de la sesión, que él acaba de estrenar documento y no recuerda nada.
   iniciar().then(async () => {
     puerto.postMessage({ type: 'status', connected: conectado, reason: 'sync' });
-    puerto.postMessage({ type: 'presence', names: nombresPresentes() });
+    puerto.postMessage({ type: 'presence', names: nombresPresentes(), presentes: presentes() });
     const mensajes = await leerHistorial();
     if (mensajes.length) puerto.postMessage({ type: 'historial', mensajes });
   });
@@ -356,7 +421,11 @@ chrome.runtime.onMessage.addListener((msg, _emisor, responder) => {
     iniciar()
       .then(() => leerHistorial())
       .then((historial) => responder({
-        connected: conectado, names: nombresPresentes(), historial
+        connected: conectado,
+        names: nombresPresentes(),
+        presentes: presentes(),
+        clave: miClave,
+        historial
       }));
     return true;   // la respuesta llega de forma asíncrona
   }

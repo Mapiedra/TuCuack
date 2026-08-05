@@ -22,6 +22,8 @@ import { Level } from './game/Level.js';
 import { SKINS, skinPorId, estaDesbloqueada, SKIN_POR_DEFECTO } from './game/skins.js';
 import { ChatClient } from './chat/chatClient.js';
 import { SpeechBubbles } from './chat/speechBubble.js';
+import { ColaDeVisitas, ESPERA_ENTRE_VISITAS } from './visita/PatoVisitante.js';
+import { salirYVolver } from './visita/salirYVolver.js';
 import * as sonido from './audio/sounds.js';
 import { normalizarPlataforma } from './platform.js';
 import { configurarAssets, configurarCargadorSheet } from './assets.js';
@@ -32,7 +34,7 @@ import { porId, todos, uno, montar, elementoVisible, objetivoReal } from './stag
 // para que nada reviente si algo se dispara antes de tiempo.
 let api = normalizarPlataforma();
 
-let duck, behavior, tam, chat, speech, level;
+let duck, behavior, tam, chat, speech, level, visitas;
 let settings = { displayName: '', autoLaunch: false };
 let config = { version: '0.0.0', isDev: false };
 
@@ -47,6 +49,7 @@ let overHot = false;         // sobre el pato o sobre un panel/menú
 let overDuck = false;        // sobre el pato en concreto (para el cursor)
 let lastCursor = '';
 let hoverTimer = null;       // cuenta atrás para mostrar las stats en un tooltip
+let paseo = null;            // el pato, fuera de la pantalla llevando un recado
 let grab = { x: 0, y: 0 };
 const openOverlays = new Set(); // menús/paneles/inputs abiertos
 
@@ -207,6 +210,7 @@ export async function arrancarPato(plataforma) {
   });
 
   setupChat();
+  setupVisitas();
   setupInteraction();
   setupTray();
   setupUpdates();
@@ -244,6 +248,22 @@ export async function arrancarPato(plataforma) {
       level,
       darXp: (n) => { level.xp += n; return level.nivel; },
       act: doAction,
+      /** Simula un pato de visita sin tocar la red. */
+      verVisita: (opciones = {}) => visitas.recibir({
+        id: `local-${Date.now()}`,
+        de: opciones.de || 'Vecino',
+        // Sin clave repetida, para que el límite por remitente no bloquee las
+        // pruebas seguidas.
+        deClave: opciones.deClave || `prueba-${Date.now()}`,
+        skin: opciones.skin || 'duro',
+        gesto: opciones.gesto || 'saludo',
+        texto: opciones.texto != null ? opciones.texto : '¡Buenas! Vengo a saludar.',
+        ts: Date.now()
+      }),
+      visitas: () => visitas,
+      /** El paseíllo de "me voy a llevarlo", sin mandar nada a nadie. */
+      verPaseo: () => hacerElPaseo(),
+      paseo: () => paseo,
       chat,
       historial,
       speech,
@@ -271,6 +291,7 @@ function apagar() {
   }
 
   cancelarTooltip();
+  cancelarPaseo();
   closeContextMenu();
   for (const el of [...openOverlays]) unregisterOverlay(el);
   // El animador de sprites corre en su propio bucle, aparte del del pato.
@@ -325,12 +346,15 @@ function cadaCierto(fn, ms) {
 
 function saveNow() {
   const sitioLibre = Math.max(1, window.innerWidth - duck.width);
+  // Si justo ahora anda fuera de la pantalla llevando un recado, se guarda de
+  // dónde salió: apagar en ese par de segundos no debe dejarlo pegado al borde.
+  const x = paseo ? paseo.volverA : duck.x;
   api.guardarEstado({
     stats: tam.stats,
     level: level.toJSON(),
     // Como proporción del sitio disponible, no en píxeles: la ventana de la
     // pestaña siguiente no tiene por qué medir lo mismo.
-    x: Math.min(1, Math.max(0, duck.x / sitioLibre))
+    x: Math.min(1, Math.max(0, x / sitioLibre))
   });
 }
 
@@ -390,6 +414,8 @@ function startDrag(e) {
   dragging = true;
   flying = false;
   cancelarTooltip();
+  // Si le agarras mientras iba de recado, se acabó el recado: manda el ratón.
+  cancelarPaseo();
   grab.x = e.clientX - duck.x;
   grab.y = duck.y - (window.innerHeight - e.clientY);
   trail.length = 0;
@@ -670,6 +696,9 @@ function duckName() {
 
 function openOnline(x, y) {
   const { el, actualizar } = buildOnlinePanel(estadoPresencia(), {
+    onEnviar: (destino, texto) => enviarVisita(destino, texto),
+    esperaDe: (clave) => esperaParaVisitar(clave),
+    esperaTotal: ESPERA_ENTRE_VISITAS + MARGEN_ENVIO,
     onBack: () => volverAlMenu(el, x, y),
     onClose: () => unregisterOverlay(el)
   });
@@ -753,9 +782,17 @@ function colocarPanel(el, x, y) {
 let conectados = [];                 // los demás patos del canal (sin el nuestro)
 const oyentesPresencia = new Set();  // paneles abiertos que quieren enterarse
 
-/** @returns {{yo:string, otros:string[], conectado:boolean}} */
+/** @returns {{yo:string, otros:string[], presentes:object[], conectado:boolean}} */
 function estadoPresencia() {
-  return { yo: duckName(), otros: conectados, conectado: !!(chat && chat.connected) };
+  return {
+    yo: duckName(),
+    otros: conectados,
+    // Los mismos, con su clave: es lo que hace falta para mandarle el pato a uno
+    // en concreto. Viene vacío si al otro lado del canal hay una versión que
+    // todavía no la anuncia, y entonces sólo se puede mirar la lista.
+    presentes: (chat && chat.presentes) || [],
+    conectado: !!(chat && chat.connected)
+  };
 }
 
 function avisarPresencia() {
@@ -804,6 +841,113 @@ function setupChat() {
   // todavía no había nombre porque se acaba de generar. Sin esto, el pato sale
   // sin nombre en la lista de conectados hasta que se abren los Ajustes.
   chat.setName(duckName());
+}
+
+// ---- Visitas ------------------------------------------------------------
+//
+// Un pato de otra pantalla que viene a ésta. Ver core/visita/PatoVisitante.js.
+
+function setupVisitas() {
+  visitas = new ColaDeVisitas({
+    sprites: config.sprites,
+    // La visita se coloca respecto al pato de casa y pisa su mismo suelo, que
+    // cambia con la barra de tareas y con el tamaño del panel.
+    suelo: () => duck.ground,
+    xLocal: () => duck.centerX(),
+    seAdmiten: () => settings.visitas !== false,
+    // Se apunta al admitirla, no al verla: una visita dura unos segundos, y
+    // enterarse después es justo para lo que sirve el histórico.
+    alAnotar: (v) => {
+      const texto = (v.texto || '').trim();
+      historial.anadir({
+        from: v.de,
+        text: texto ? `🛫 vino a saludar: ${texto}` : '🛫 vino a saludar',
+        ts: v.ts || Date.now(),
+        propio: false
+      });
+    },
+    // Y esto cuando ya se le ve entrar, que si no el pato de casa saludaría a
+    // uno que todavía está haciendo cola.
+    alAparecer: () => {
+      sonido.cuack({ agudo: 0.9 });
+      if (behavior) behavior.playOnce('happy', 1.4);
+    }
+  });
+  chat.onVisita((v) => visitas.recibir(v));
+  alApagar(() => visitas.apagar());
+}
+
+// Cuándo se le mandó el pato a cada uno. Vive aquí y no en el panel porque el
+// panel se abre y se cierra, y la espera no.
+const ultimoEnvio = new Map();
+
+// El receptor cuenta su espera desde que RECIBE, y nosotros desde que mandamos:
+// entre una cosa y otra está el viaje por la red. Sin este margen, la cuenta
+// atrás podría llegar a cero justo antes que la suya y el pato se descartaría al
+// otro lado sin que aquí se notara — que es exactamente lo que hay que evitar.
+const MARGEN_ENVIO = 2000;
+
+/**
+ * Cuánto falta para poder mandarle otra vez el pato a alguien (ms; 0 = ya).
+ *
+ * Es la misma espera que aplica quien recibe (ver ESPERA_ENTRE_VISITAS): se
+ * mira aquí para poder enseñarla, porque un pato mandado antes de tiempo se
+ * descarta en la otra punta y el que lo manda no se entera de nada.
+ */
+function esperaParaVisitar(clave) {
+  const cuando = ultimoEnvio.get(clave);
+  if (!cuando) return 0;
+  return Math.max(0, (ESPERA_ENTRE_VISITAS + MARGEN_ENVIO) - (Date.now() - cuando));
+}
+
+/**
+ * Manda el pato a la pantalla de otro.
+ * @returns {boolean} si ha salido de verdad.
+ */
+function enviarVisita(destino, texto) {
+  if (!destino || !destino.clave) return false;
+  // El panel ya no deja pulsar durante la espera; esto es por si acaso, para no
+  // apuntar en el histórico un viaje que no va a llegar.
+  if (esperaParaVisitar(destino.clave) > 0) return false;
+
+  const salio = chat.enviarVisita({
+    aClave: destino.clave,
+    de: duckName(),
+    skin: duck.skinId,
+    gesto: 'saludo',
+    texto: (texto || '').trim()
+  });
+  historial.anadir({
+    from: duckName(),
+    text: `🛫 el pato se ha ido a ver a ${destino.nombre}`,
+    ts: Date.now(),
+    propio: true,
+    fallo: !salio
+  });
+  // La espera empieza a contar sólo si el pato salió: si el canal estaba caído
+  // no ha ido a ninguna parte, y no hay por qué castigar el reintento.
+  if (salio) {
+    ultimoEnvio.set(destino.clave, Date.now());
+    hacerElPaseo();
+  }
+  return salio;
+}
+
+/** El paseíllo de "me voy a llevarlo", si no hay ya uno en marcha. */
+function hacerElPaseo() {
+  if (!duck || !behavior) return;
+  // Estando en el aire no hay paseo que valga: el pato está describiendo una
+  // parábola y meterle un bucle encima lo dejaría clavado a media caída.
+  if (dragging || flying) return;
+  cancelarPaseo();
+  paseo = salirYVolver(duck, behavior);
+}
+
+/** Corta el paseo y devuelve el pato a su sitio. Vale aunque no hubiera ninguno. */
+function cancelarPaseo() {
+  if (!paseo) return;
+  paseo.cancelar();
+  paseo = null;
 }
 
 /**

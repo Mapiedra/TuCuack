@@ -33,7 +33,11 @@ const SHEET_POR_DEFECTO = {
 const STATE_ANIM = {
   idle: 'idle', walk: 'walk', sleep: 'sleep', happy: 'happy', sad: 'sad',
   eat: 'eat', play: 'play', talk: 'talk', cool: 'cool',
-  drag: 'drag', fall: 'flap'
+  drag: 'drag', fall: 'flap',
+  // Entregar algo con el ala. Es la única animación OPCIONAL: los diseños cuyo
+  // arte no la traiga dibujada simplemente no la tienen (ver docs/DISENOS.md y
+  // `tieneAnimacion`), y quien la pida se queda con otra.
+  regalo: 'regalo'
 };
 
 const CANON_DIR = 1; // el arte mira a la derecha
@@ -50,6 +54,7 @@ export class Duck {
     this.y = groundOffset;
     this.facing = 1;             // 1 derecha (canónico), -1 izquierda
     this.tilt = 0;               // inclinación en grados (al volar)
+    this.margenFuera = 0;        // ver setMargenFuera
     this.state = 'idle';
     this.medir();
     this.animator = null;
@@ -75,6 +80,18 @@ export class Duck {
   /** Metadatos del diseño puesto, o los de respaldo si no se conocen. */
   _sheet() {
     return this.metadatos[this.skinId] || SHEET_POR_DEFECTO;
+  }
+
+  /**
+   * ¿El diseño puesto trae dibujada esa animación?
+   *
+   * No todos los sheets tienen las mismas filas: `regalo` es opcional. Quien
+   * quiera enseñar algo que quizá no exista tiene que preguntar antes, porque
+   * `setState` se limita a quedarse en la animación anterior —que es lo correcto
+   * para el pato de casa, pero deja plantado a quien esperaba ver un gesto.
+   */
+  tieneAnimacion(anim) {
+    return !!(anim && this._sheet().animations[anim]);
   }
 
   _loadSheet() {
@@ -128,9 +145,23 @@ export class Duck {
     this.el.appendChild(span);
   }
 
+  /**
+   * Cuánto se le deja asomar por fuera de la pantalla, en píxeles a cada lado.
+   *
+   * Normalmente cero: el pato vive dentro del cuadro y el tope evita perderlo al
+   * lanzarlo contra un borde. Se abre a propósito y por un rato para las idas y
+   * venidas —el pato que se marcha a llevar un recado, la visita que llega de
+   * fuera—, donde salirse es justo la gracia. Ver core/visita/.
+   */
+  setMargenFuera(px) {
+    this.margenFuera = Math.max(0, px || 0);
+    this.setX(this.x);   // por si ya estaba fuera y ahora hay que meterlo
+  }
+
   setX(x) {
-    const max = window.innerWidth - this.width;
-    this.x = Math.max(0, Math.min(max, x));
+    const fuera = this.margenFuera || 0;
+    const max = window.innerWidth - this.width + fuera;
+    this.x = Math.max(-fuera, Math.min(max, x));
     this.el.style.left = `${this.x}px`;
   }
 

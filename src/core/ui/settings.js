@@ -5,7 +5,7 @@ import { panelHeader } from './panelHeader.js';
 import { LIMITES, normalizarFactor } from '../scale.js';
 
 /**
- * @param {{displayName:string, autoLaunch:boolean}} settings
+ * @param {{displayName:string, autoLaunch:boolean, visitas?:boolean}} settings
  * @param {string} version
  * @param {{onSave:(s:object)=>void, onClose:Function,
  *          isNameTaken:(n:string)=>boolean, chatReady:boolean,
@@ -98,6 +98,25 @@ export function buildSettingsPanel(settings, version, handlers) {
   rowEsc.append(lblEsc, lineaEsc);
   el.appendChild(rowEsc);
 
+  // Visitas de otros patos. El canal es común a todo el mundo, así que tiene que
+  // poder cerrarse la puerta sin renunciar al chat.
+  const rowVis = document.createElement('div');
+  rowVis.className = 'row';
+  const lblVis = document.createElement('label');
+  const chkVis = document.createElement('input');
+  chkVis.type = 'checkbox';
+  // Por defecto se admiten: quien nunca haya tocado esto no tiene el ajuste
+  // guardado, y `undefined` no puede significar "no".
+  chkVis.checked = settings.visitas !== false;
+  chkVis.style.marginRight = '6px';
+  lblVis.append(chkVis, document.createTextNode('Dejar que otros patos vengan de visita'));
+  const hintVis = document.createElement('div');
+  hintVis.className = 'muted';
+  hintVis.textContent = 'Cualquier pato conectado puede mandarte el suyo a la '
+    + 'pantalla. Desactívalo y no entrará ninguno.';
+  rowVis.append(lblVis, hintVis);
+  el.appendChild(rowVis);
+
   // Auto-arranque. Sólo donde hay un sistema en el que arrancar: en una
   // extensión no existe tal cosa.
   const chk = document.createElement('input');
@@ -151,6 +170,7 @@ export function buildSettingsPanel(settings, version, handlers) {
     handlers.onSave({
       displayName: value,
       autoLaunch: chk.checked,
+      visitas: chkVis.checked,
       volumen: vol.value / 100,
       silenciado: !!settings.silenciado,
       escala: Number(esc.value)

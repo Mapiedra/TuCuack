@@ -20,6 +20,8 @@ contextBridge.exposeInMainWorld('pato', {
 
   // Chat entre patos.
   sendChat: (msg) => ipcRenderer.send('chat:send', msg),
+  // Mandar el pato a la pantalla de otro.
+  sendVisit: (visita) => ipcRenderer.send('chat:visit', visita),
   onChatEvent: (cb) => ipcRenderer.on('chat:event', (_e, evt) => cb(evt)),
   setChatName: (name) => ipcRenderer.send('chat:set-name', name),
   chatNames: () => ipcRenderer.invoke('chat:names'),
