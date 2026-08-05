@@ -210,6 +210,11 @@ ipcMain.on('chat:send', (_evt, msg) => {
   if (chat && msg) chat.send(msg.from, msg.text);
 });
 
+// Mandar el pato a la pantalla de otro.
+ipcMain.on('chat:visit', (_evt, visita) => {
+  if (chat && visita) chat.sendVisit(visita);
+});
+
 // Nombre anunciado en la presencia del canal (para la comprobación de unicidad).
 ipcMain.on('chat:set-name', (_evt, name) => {
   if (chat) chat.setName(name);
@@ -221,7 +226,9 @@ ipcMain.handle('chat:names', () => (chat ? chat.names() : []));
 // así que éste consulta el estado al arrancar en vez de esperar al evento.
 ipcMain.handle('chat:status', () => ({
   connected: chat ? chat.isReady() : false,
-  names: chat ? chat.names() : []
+  names: chat ? chat.names() : [],
+  presentes: chat ? chat.presentes() : [],
+  clave: chat ? chat.clave() : ''
 }));
 
 ipcMain.on('app:quit', () => app.quit());

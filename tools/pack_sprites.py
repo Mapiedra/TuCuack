@@ -430,7 +430,17 @@ LAYOUT_ESTANDAR = [
     # todos los diseños salían repetitivos.
     (9, 'flap',  14, False),
     (10, 'drag', 10, False),
+    # Entregar algo con el ala: el gesto con el que un pato llega de visita a
+    # otra pantalla (ver src/core/visita/PatoVisitante.js). Todavía sin dibujar
+    # en ningún arte, y por eso está en OPCIONALES: mientras la fila no exista,
+    # el sheet sale exactamente igual que antes y quien pida el gesto se queda
+    # con el saludo.
+    (11, 'regalo', 8, False),
 ]
+
+# Animaciones que el arte puede no traer. Una fila vacía aquí no es un descuido
+# que haya que avisar, sino arte que aún no está hecho.
+OPCIONALES = {'regalo'}
 
 # Todos los diseños usan la distribución estándar. `LAYOUTS` queda por si algún
 # arte necesitara una propia.
@@ -513,7 +523,10 @@ def pack_one(ident):
     for row, name, fps, flip in layout:
         n = frames_en_fila(src, row)
         if n == 0:
-            print(f'  [!] la fila {row} ({name}) está vacía: se omite')
+            if name in OPCIONALES:
+                print(f'  fila {row} ({name}): sin dibujar todavía, se omite')
+            else:
+                print(f'  [!] la fila {row} ({name}) está vacía: se omite')
             continue
         base.append((name, row, n, fps, True, flip))
 
@@ -534,7 +547,9 @@ def pack_one(ident):
 
     # --- Empaquetado ------------------------------------------------------
     order = ['idle', 'walk', 'play', 'eat', 'sleep', 'happy', 'talk', 'cool',
-             'sad', 'flap', 'drag']
+             'sad', 'flap', 'drag', 'regalo']
+    # Lo que no esté dibujado no ocupa fila: así añadir una animación opcional al
+    # final no mueve las que ya existen ni cambia los sheets de hoy.
     order = [k for k in order if k in anims]
     cols = max(len(anims[k]['frames']) for k in order)
     sheet = Image.new('RGBA', (OUT_W * cols, OUT_H * len(order)), (0, 0, 0, 0))

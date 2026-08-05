@@ -46,6 +46,7 @@ export function crearPlataformaElectron() {
 
     chat: {
       enviar: (msg) => pato.sendChat(msg),
+      enviarVisita: (v) => pato.sendVisit(v),
       ponerNombre: (n) => pato.setChatName(n),
       alRecibirEvento: (cb) => pato.onChatEvent(cb),
       estado: () => pato.chatStatus()

@@ -91,13 +91,17 @@ export function conectarChat() {
 
   return {
     enviar: (msg) => enviarAlWorker({ tipo: 'enviar', msg }),
+    enviarVisita: (visita) => enviarAlWorker({ tipo: 'visita', visita }),
     ponerNombre: (nombre) => enviarAlWorker({ tipo: 'nombre', nombre }),
     alRecibirEvento: (cb) => { alRecibir = cb; },
     estado: async () => {
       try {
         return await chrome.runtime.sendMessage({ tipo: 'estado' });
       } catch {
-        return { connected: false, names: [], historial: [], reason: 'worker-dormido' };
+        return {
+          connected: false, names: [], presentes: [], clave: '',
+          historial: [], reason: 'worker-dormido'
+        };
       }
     },
 

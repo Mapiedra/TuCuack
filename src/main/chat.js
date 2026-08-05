@@ -6,6 +6,12 @@
 //
 // Además del chat, el canal mantiene la PRESENCIA de cada pato conectado con su
 // nombre, que es lo que permite comprobar que un nombre no esté ya en uso.
+//
+// Por el mismo canal viajan las VISITAS: un pato que se planta en la pantalla de
+// otro. Van en un evento de broadcast aparte (`visita`) para no ensuciar la
+// conversación, y llevan destinatario. Como el canal es un broadcast público, el
+// recado llega a todos los clientes; el filtro por destinatario se hace AQUÍ, y
+// no en el pato, para que lo dirigido a otro no llegue siquiera al renderer.
 
 const tls = require('tls');
 const { execFile } = require('child_process');
@@ -80,6 +86,20 @@ function initChat(getWin, initialName) {
       return true;
     },
 
+    /**
+     * Manda el pato a la pantalla de otro. `destino` es la clave de presencia
+     * del destinatario: los nombres se repiten, las claves no.
+     */
+    sendVisit(v) {
+      if (!channel || !connected || !v || !v.aClave) return false;
+      channel.send({
+        type: 'broadcast',
+        event: 'visita',
+        payload: limpiarVisita({ ...v, deClave: myKey })
+      });
+      return true;
+    },
+
     /** Actualiza el nombre anunciado en la presencia. */
     async setName(name) {
       const nuevo = String(name || '').slice(0, 40);
@@ -96,7 +116,34 @@ function initChat(getWin, initialName) {
     },
 
     names: () => presentNames(),
+    presentes: () => presentes(),
+    /** Nuestra clave de presencia: es la dirección de vuelta de las visitas. */
+    clave: () => myKey,
     isReady: () => connected
+  };
+}
+
+// --- Visitas --------------------------------------------------------------
+
+const GESTOS = ['saludo', 'regalo'];
+
+/**
+ * Deja una visita en lo que se puede enseñar sin sustos.
+ *
+ * Vale tanto para lo que se manda como para lo que llega: el canal es público y
+ * cualquiera puede poner ahí lo que quiera. El diseño se comprueba más adelante,
+ * ya en el pato, que es quien sabe qué diseños existen.
+ */
+function limpiarVisita(v) {
+  return {
+    id: String(v.id || '').slice(0, 40),
+    de: String(v.de || 'Pato').slice(0, 40),
+    deClave: String(v.deClave || '').slice(0, 40),
+    aClave: String(v.aClave || '').slice(0, 40),
+    skin: String(v.skin || '').slice(0, 24),
+    gesto: GESTOS.includes(v.gesto) ? v.gesto : 'saludo',
+    texto: String(v.texto || '').slice(0, 280),
+    ts: Number(v.ts) || Date.now()
   };
 }
 
@@ -191,10 +238,17 @@ function crearCanal(getWin) {
     });
   });
 
+  // Visitas: un pato que viene a la pantalla de otro. Llegan a todo el canal,
+  // así que lo que no venga dirigido a nosotros se descarta aquí mismo.
+  ch.on('broadcast', { event: 'visita' }, ({ payload }) => {
+    if (!payload || payload.aClave !== myKey) return;
+    notify(getWin, { type: 'visita', visita: limpiarVisita(payload) });
+  });
+
   // Presencia: quién está conectado y con qué nombre.
   for (const evento of ['sync', 'join', 'leave']) {
     ch.on('presence', { event: evento }, () => {
-      notify(getWin, { type: 'presence', names: presentNames() });
+      notify(getWin, { type: 'presence', names: presentNames(), presentes: presentes() });
     });
   }
   return ch;
@@ -256,7 +310,7 @@ function suscribir(getWin) {
           console.error('[chat] no se pudo anunciar la presencia:', e);
         }
       }
-      notify(getWin, { type: 'presence', names: presentNames() });
+      notify(getWin, { type: 'presence', names: presentNames(), presentes: presentes() });
       return;
     }
 
@@ -309,30 +363,48 @@ function programarReintento(getWin) {
 function disabledChat() {
   return {
     send() { return false; },
+    sendVisit() { return false; },
     async setName() {},
     names: () => [],
+    presentes: () => [],
+    clave: () => '',
     isReady: () => false
   };
 }
 
-/** Nombres de los demás patos conectados (excluye el propio). */
-function presentNames() {
+/**
+ * Los demás patos conectados, con su clave de presencia (excluye el propio).
+ *
+ * La clave hace falta para dirigirle una visita a uno en concreto: dos patos
+ * pueden llamarse igual, pero cada uno tiene su clave.
+ *
+ * @returns {{clave:string, nombre:string}[]}
+ */
+function presentes() {
   if (!channel || !connected) return [];
   try {
     const state = channel.presenceState() || {};
-    // Un Set porque un mismo pato puede figurar varias veces: le pasa a quien
-    // siga con una versión que se anunciaba de más.
-    const out = new Set();
+    const out = [];
+    const vistos = new Set();
     for (const [key, metas] of Object.entries(state)) {
       if (key === myKey) continue;
       for (const m of metas) {
-        if (m && m.name) out.add(String(m.name));
+        // Un mismo pato puede figurar varias veces: le pasa a quien siga con una
+        // versión que se anunciaba de más.
+        if (!m || !m.name || vistos.has(key)) continue;
+        vistos.add(key);
+        out.push({ clave: String(key), nombre: String(m.name) });
       }
     }
-    return [...out];
+    return out;
   } catch {
     return [];
   }
+}
+
+/** Nombres de los demás patos conectados (excluye el propio). */
+function presentNames() {
+  return presentes().map((p) => p.nombre);
 }
 
 function notify(getWin, evt) {

@@ -40,9 +40,15 @@ const CONFIG_POR_DEFECTO = { version: '0.0.0', isDev: false, ground: 0, sprites:
 
 const CHAT_DESACTIVADO = {
   enviar: noop,
+  // Mandar el pato a la pantalla de otro. Va por el mismo canal que el chat,
+  // pero en un evento aparte y con destinatario (ver core/visita/).
+  enviarVisita: noop,
   ponerNombre: noop,
   alRecibirEvento: noSuscribir,
-  estado: async () => ({ connected: false, names: [], historial: [], reason: 'sin-plataforma' }),
+  estado: async () => ({
+    connected: false, names: [], presentes: [], clave: '',
+    historial: [], reason: 'sin-plataforma'
+  }),
   // Sólo hace falta donde el canal viva fuera del pato y haya que soltarlo al
   // apagarse, para no dejar puentes abiertos que dupliquen los mensajes.
   cerrar: noop
