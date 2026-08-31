@@ -7,6 +7,8 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.6.1] - 2026-08-05
+
 ### Añadido
 
 - **La fila 12 del sprite (`regalo`) ya existe en los cinco diseños.** A falta de
@@ -436,7 +438,8 @@ Primera versión.
   funciona con normalidad pero sin chat.
 - El instalador no está firmado, así que Windows SmartScreen mostrará un aviso.
 
-[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.6.0...HEAD
+[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.6.1
 [0.6.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.6.0
 [0.5.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.5.0
 [0.4.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.4.0
