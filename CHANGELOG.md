@@ -7,7 +7,7 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
-## [0.6.1] - 2026-08-05
+## [0.6.1] - 2026-08-31
 
 ### Añadido
 
