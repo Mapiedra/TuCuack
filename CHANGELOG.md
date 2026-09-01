@@ -17,6 +17,10 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   siempre. Ahora primero viaja el *hash* de la jugada y sólo cuando los dos están
   comprometidos se revelan los valores, así que cambiar de idea al revelar se
   nota y se dice. Quien no revele a tiempo pierde la ronda.
+- **Un pato de pruebas**, para poder ser dos sin liarla: `npm run pato:pruebas`
+  levanta una instancia aparte, con su propio perfil y el nivel que se le pida,
+  que convive con la de siempre sin tocarle el estado ni los ajustes. Hacía
+  falta para probar el multijugador, que es cosa de dos.
 
 ### Cambiado
 
@@ -25,6 +29,20 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   5. *Tres en raya estaba en el 1, así que quien vaya por debajo del nivel 5 lo
   verá con candado hasta llegar.* A cambio, el catálogo tiene por fin una cuesta
   que subir en vez de un único juego suelto.
+
+### Corregido
+
+- **El recado de una visita ya no se borra mientras lo escribes.** La lista de
+  Conectados se repinta cada vez que alguien entra o sale del canal, y el cajón
+  del recado se reconstruía con ella: perdías lo escrito y el foco a media
+  palabra. Con gente conectada pasaba tan a menudo que era imposible escribir
+  nada. Ahora el cajón se guarda entero y se le devuelven el cursor y el foco.
+- **El resultado de cada ronda se ve.** En piedra, papel o tijera y en par o
+  impar era una línea pequeña que se borraba en algo más de un segundo: no daba
+  tiempo a mirar qué había sacado el otro, que es media gracia del juego. Ahora
+  sale en grande —los iconos enfrentados, o la cuenta de la suma— con el
+  veredicto en color, y dura más del doble. El hueco está reservado siempre, así
+  que el tablero ya no pega un salto entre rondas.
 
 ## [0.7.0] - 2026-09-01
 

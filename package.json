@@ -12,6 +12,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
+    "pato:pruebas": "node tools/pato-de-pruebas.js",
     "banco": "python -m http.server 8777 --bind 127.0.0.1",
     "ext": "node tools/build-extension.js",
     "ext:watch": "node tools/build-extension.js --watch",
