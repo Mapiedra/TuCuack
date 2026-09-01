@@ -7,17 +7,15 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
-## [0.6.1] - 2026-08-31
-
 ### Añadido
 
-- **Minijuegos.** Nueva entrada `🎮 Juegos` en el menú del pato, con un catálogo
-  que se desbloquea por nivel igual que los diseños. Entra jugable **Tres en
-  raya** contra el pato, con una IA que va dejando de fallar a propósito a medida
-  que el pato sube de nivel. Terminar una partida da experiencia (+4, +8 más si
-  se gana) con un tope de ocho al día, para que jugar en bucle no sea la vía
-  rápida para subir; y jugar gasta energía, así que un pato agotado no juega.
-  Las partidas, victorias y récords se guardan por juego.
+- **Minijuegos.** Nueva entrada `🎮 Juegos` en el menú de la mascota, con un
+  catálogo que se desbloquea por nivel igual que los diseños. Entra jugable
+  **Tres en raya** contra tu mascota, con una IA que va dejando de fallar a
+  propósito a medida que sube de nivel. Terminar una partida da experiencia (+4,
+  +8 más si se gana) con un tope de ocho al día, para que jugar en bucle no sea
+  la vía rápida para subir; y jugar gasta energía, así que una mascota agotada
+  no juega. Las partidas, victorias y récords se guardan por juego.
 - **El sistema que gobierna los juegos**, pensado para que añadir uno nuevo sean
   tres pasos y ningún cambio en `app.js`: un catálogo
   ([`src/core/game/minijuegos/index.js`](src/core/game/minijuegos/index.js)),
@@ -25,32 +23,25 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   contar el resultado una sola vez y repartir la experiencia, y un contrato de
   una sola función. Está contado en
   [`docs/MINIJUEGOS.md`](docs/MINIJUEGOS.md).
-- **Juegos de escenario**: un juego puede tomar prestados el pato y la pantalla
+- **Juegos de escenario**: un juego puede tomar prestadas la mascota y la pantalla
   entera en vez de vivir en un panel. La devolución va protegida por cuatro
   capas independientes, porque un préstamo que no se devuelve dejaría la ventana
   transparente capturando el ratón y al usuario sin poder pulsar nada en su
-  escritorio. Sobre páginas web ajenas no se ofrecen: ahí el pato está de
+  escritorio. Sobre páginas web ajenas no se ofrecen: ahí la mascota está de
   prestado.
-- **Partidas por turnos entre patos.** Desde el panel de juegos se puede retar a
-  cualquier pato conectado; al otro le sale un aviso con su cuenta atrás, y si
+- **Partidas por turnos entre mascotas.** Desde el panel de juegos se puede retar a
+  cualquier mascota conectada; al otro le sale un aviso con su cuenta atrás, y si
   está ocupado el reto espera en el menú en vez de saltarle encima de lo que
   estuviera haciendo. Las jugadas viajan por el mismo canal que el chat, en su
-  propio evento y dirigidas a un pato concreto —igual que las visitas—, con
+  propio evento y dirigidas a una mascota concreta —igual que las visitas—, con
   numeración, confirmación y reintentos, de modo que una jugada perdida no cuelga
   la partida. Probado con un rival simulado y pérdida de mensajes provocada.
-- **Identidad estable de pato** (`patoId`), que es lo que permite reconocer al
-  rival a mitad de partida aunque su clave de presencia cambie al reconectar. Un
-  pato con una versión anterior sigue apareciendo en la lista y se le puede
-  hablar y mandar el pato; sencillamente no se le puede retar.
+- **Identidad estable de mascota** (`patoId`), que es lo que permite reconocer al
+  rival a mitad de partida aunque su clave de presencia cambie al reconectar. Una
+  mascota con una versión anterior sigue apareciendo en la lista y se le puede
+  hablar y mandarle la tuya; sencillamente no se le puede retar.
 - **Sonidos de partida** (empezar, victoria, derrota, cambio de turno) y una
   `nota` suelta como ladrillo para los juegos que la necesiten.
-- **La fila 12 del sprite (`regalo`) ya existe en los cinco diseños.** A falta de
-  arte definitivo, el empaquetador la **compone** inclinando el saludo hacia
-  delante desde los pies. Es un apaño declarado —sale del saludo, así que no hay
-  objeto que ofrecer— para que el gesto funcione de punta a punta mientras se
-  dibuja. [`docs/DISENOS.md`](docs/DISENOS.md) describe qué tiene que enseñar el
-  arte final; en cuanto la fila aparezca, el empaquetador la usa y deja de
-  componerla sin tocar código.
 
 ### Cambiado
 
@@ -68,7 +59,7 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   bocadillo**, en vez de una nota pequeña al pie de un tablero muerto. Un aviso
   discreto encima de algo que ya no responde es fácil de no ver, e invita a
   seguir pulsando.
-- **La física del vuelo del pato vive ahora en
+- **La física del vuelo de la mascota vive ahora en
   [`src/core/pet/fisica.js`](src/core/pet/fisica.js)**, fuera de `app.js`. Es
   el mismo comportamiento exacto —se comprobó comparando ambas versiones sobre
   9.680 trayectorias con paso fijo, exigiendo igualdad exacta de posición,
@@ -78,6 +69,20 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   comparten el arrastre y los juegos.
 - **El aviso de subir de nivel anuncia cualquier cosa que se desbloquee**, no
   sólo diseños. Añadir un catálogo nuevo es meterlo en una lista.
+## [0.6.1] - 2026-08-31
+
+### Añadido
+
+- **La fila 12 del sprite (`regalo`) ya existe en los cinco diseños.** A falta de
+  arte definitivo, el empaquetador la **compone** inclinando el saludo hacia
+  delante desde los pies. Es un apaño declarado —sale del saludo, así que no hay
+  objeto que ofrecer— para que el gesto funcione de punta a punta mientras se
+  dibuja. [`docs/DISENOS.md`](docs/DISENOS.md) describe qué tiene que enseñar el
+  arte final; en cuanto la fila aparezca, el empaquetador la usa y deja de
+  componerla sin tocar código.
+
+### Cambiado
+
 - **Fuera las referencias a macOS.** La app de escritorio es de Windows y en
   cualquier otro sistema el pato vive en la extensión de Chrome, que no depende
   del sistema operativo. Se corrigen el README, el comentario del workflow de
@@ -95,7 +100,6 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 - **El recuento de animaciones compuestas ya no miente.** Miraba la distribución
   declarada en vez de lo que se leyó del arte, así que daba por dibujada una fila
   vacía —justo la que hay que ir a dibujar—.
-
 ## [0.6.0] - 2026-08-05
 
 ### Añadido
