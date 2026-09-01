@@ -53,10 +53,20 @@ export function buildOnlinePanel(inicial, handlers) {
   nota.className = 'muted';
   el.appendChild(nota);
 
-  // A quién se le está escribiendo un recado ahora mismo. Se guarda por clave y
-  // no por elemento, porque la lista se repinta entera cada vez que alguien
-  // entra o sale del canal y el compositor tiene que sobrevivir a eso.
+  // A quién se le está escribiendo un recado ahora mismo.
   let componiendo = null;
+  // Y el cajón en sí, GUARDADO ENTERO. La lista se repinta cada vez que alguien
+  // entra o sale del canal —que con gente conectada es a menudo—, y volver a
+  // construir el campo borraba lo que llevases escrito y te quitaba el foco a
+  // media palabra. Guardando el elemento, repintar sólo lo cambia de sitio.
+  /** @type {{clave:string, el:HTMLElement, campo:HTMLInputElement}|null} */
+  let cajon = null;
+
+  /** Cierra el recado y tira el cajón: el siguiente se estrena limpio. */
+  function cerrarRecado() {
+    componiendo = null;
+    cajon = null;
+  }
   // El último estado pintado: el compositor se repinta con la lista y necesita
   // saber con qué.
   let ultimoEstado = inicial;
@@ -72,6 +82,14 @@ export function buildOnlinePanel(inicial, handlers) {
   const actualizar = (estado) => {
     const presentes = Array.isArray(estado.presentes) ? estado.presentes : [];
     const otros = Array.isArray(estado.otros) ? estado.otros : [];
+
+    // Se apunta ANTES de vaciar: al sacar el campo del documento pierde el foco,
+    // así que después ya no habría forma de saber si lo tenía.
+    const recuperarFoco = elCampoTieneElCursor();
+    const cursor = recuperarFoco
+      ? [cajon.campo.selectionStart, cajon.campo.selectionEnd]
+      : null;
+
     lista.textContent = '';
     botones = new Map();
 
@@ -80,7 +98,7 @@ export function buildOnlinePanel(inicial, handlers) {
       titulo.textContent = 'Conectados';
       nota.textContent = 'El chat no está conectado. En cuanto vuelva, la lista '
         + 'se rellena sola.';
-      componiendo = null;
+      cerrarRecado();
       return;
     }
 
@@ -90,7 +108,7 @@ export function buildOnlinePanel(inicial, handlers) {
 
     if (presentes.length) {
       // Si el que estaba componiendo se ha ido del canal, se cierra el recado.
-      if (componiendo && !presentes.some((p) => p.clave === componiendo)) componiendo = null;
+      if (componiendo && !presentes.some((p) => p.clave === componiendo)) cerrarRecado();
       for (const p of ordenar(presentes, (x) => x.nombre)) {
         const li = fila(p, false, handlers.onEnviar ? abrirRecado : null);
         const boton = li.querySelector('.btn-mandar');
@@ -113,6 +131,13 @@ export function buildOnlinePanel(inicial, handlers) {
     nota.textContent = cuantos
       ? ''
       : 'Ahora mismo no hay ninguna otra mascota conectada.';
+
+    // Y se devuelve el foco donde estaba, con el cursor donde estaba. Sin esto,
+    // escribir un recado mientras alguien entra o sale del canal es imposible.
+    if (recuperarFoco && cajon && cajon.el.isConnected) {
+      cajon.campo.focus();
+      try { cajon.campo.setSelectionRange(cursor[0], cursor[1]); } catch { /* da igual */ }
+    }
   };
 
   /**
@@ -169,7 +194,8 @@ export function buildOnlinePanel(inicial, handlers) {
 
   /** Abre (o cierra, si ya estaba) el recado para ese pato. */
   function abrirRecado(destino) {
-    componiendo = componiendo === destino.clave ? null : destino.clave;
+    if (componiendo === destino.clave) cerrarRecado();
+    else { cerrarRecado(); componiendo = destino.clave; }
     actualizar(ultimoEstado);
     if (componiendo) {
       const campo = lista.querySelector('.recado-texto');
@@ -179,6 +205,11 @@ export function buildOnlinePanel(inicial, handlers) {
 
   /** El cajón que se despliega bajo un pato para mandarle el nuestro. */
   function compositor(destino) {
+    // Si ya hay uno abierto para este pato, se devuelve TAL CUAL: con su texto,
+    // su cursor y el estado de su botón. Es lo que hace que repintar la lista no
+    // se lleve por delante lo que estás escribiendo.
+    if (cajon && cajon.clave === destino.clave) return cajon.el;
+
     const li = document.createElement('li');
     li.className = 'recado';
 
@@ -206,7 +237,7 @@ export function buildOnlinePanel(inicial, handlers) {
       // El pato ya va de camino: el cajón se cierra solo para no dejar el botón
       // pulsado invitando a mandar otro.
       setTimeout(() => {
-        componiendo = null;
+        cerrarRecado();
         actualizar(ultimoEstado);
       }, salio ? 1200 : 2500);
     };
@@ -214,11 +245,29 @@ export function buildOnlinePanel(inicial, handlers) {
     enviar.addEventListener('click', mandar);
     campo.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') mandar();
-      else if (e.key === 'Escape') { componiendo = null; actualizar(ultimoEstado); }
+      else if (e.key === 'Escape') { cerrarRecado(); actualizar(ultimoEstado); }
     });
 
     li.append(campo, enviar, aviso);
+    cajon = { clave: destino.clave, el: li, campo };
     return li;
+  }
+
+  /**
+   * ¿Está el cursor en el campo del recado?
+   *
+   * Se pregunta por el elemento activo y no se sigue con eventos de foco: un
+   * `focus()` fija el elemento activo pero NO dispara el evento si la ventana no
+   * tiene el foco del sistema, y entonces el rastro se pierde.
+   *
+   * Y se pregunta a `getRootNode()`, no a `document`: sobre una página ajena el
+   * pato vive en un Shadow DOM, y desde fuera `document.activeElement` sólo
+   * enseña el anfitrión, nunca el campo de dentro.
+   */
+  function elCampoTieneElCursor() {
+    if (!cajon) return false;
+    const raiz = cajon.campo.getRootNode();
+    return !!raiz && raiz.activeElement === cajon.campo;
   }
 
   const actualizarYRecordar = (estado) => {

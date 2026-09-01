@@ -18,6 +18,10 @@ const GANA_A = { piedra: 'tijera', papel: 'piedra', tijera: 'papel' };
 
 const RONDAS_PARA_GANAR = 2;   // al mejor de tres
 
+// Lo que se deja el resultado en pantalla antes de la ronda siguiente. Con
+// menos no da tiempo a mirar qué ha sacado el otro, que es media gracia.
+const PAUSA_MS = 2600;
+
 /**
  * @param {import('./index.js').ContextoPartida} ctx
  * @returns {import('./index.js').Partida}
@@ -60,8 +64,24 @@ export function crearPartida(ctx) {
     botones.set(op.id, b);
   }
 
-  const revelado = document.createElement('p');
-  revelado.className = 'jppt-revelado';
+  // El resultado de la ronda: lo que ha sacado cada uno, en grande. Es el
+  // momento que hay que ver, así que ocupa sitio aunque esté vacío — si
+  // apareciera y desapareciera, el tablero daría un salto en cada ronda.
+  const revelado = document.createElement('div');
+  revelado.className = 'jr-revelado';
+  const manos = document.createElement('div');
+  manos.className = 'jr-manos';
+  const miMano = document.createElement('span');
+  miMano.className = 'jr-mano';
+  const contra = document.createElement('span');
+  contra.className = 'jr-contra';
+  contra.textContent = 'vs';
+  const suMano = document.createElement('span');
+  suMano.className = 'jr-mano';
+  manos.append(miMano, contra, suMano);
+  const veredictoEl = document.createElement('p');
+  veredictoEl.className = 'jr-veredicto';
+  revelado.append(manos, veredictoEl);
   el.appendChild(revelado);
 
   empezarRonda();
@@ -110,10 +130,13 @@ export function crearPartida(ctx) {
     if (veredicto > 0) misRondas++;
     else if (veredicto < 0) susRondas++;
 
-    revelado.textContent = `${iconoDe(r.mio)}  contra  ${iconoDe(r.suyo)}`
-      + (veredicto > 0 ? '  · ganas la ronda'
-        : veredicto < 0 ? '  · la pierdes'
-          : '  · empate');
+    miMano.textContent = iconoDe(r.mio);
+    suMano.textContent = iconoDe(r.suyo);
+    veredictoEl.textContent = veredicto > 0 ? 'Ganas la ronda'
+      : veredicto < 0 ? 'Pierdes la ronda' : 'Empate';
+    veredictoEl.className = 'jr-veredicto '
+      + (veredicto > 0 ? 'gana' : veredicto < 0 ? 'pierde' : 'empate');
+    revelado.classList.add('visible');
     ctx.pato.animar(veredicto > 0 ? 'happy' : veredicto < 0 ? 'sad' : 'play', 1.1);
 
     pintar();
@@ -133,9 +156,9 @@ export function crearPartida(ctx) {
       parar();
       if (terminada) return;
       enPausa = false;
-      revelado.textContent = '';
+      revelado.classList.remove('visible');
       pintar();
-    }, 1400);
+    }, PAUSA_MS);
   }
 
   function acabar(resultado, detalle) {
