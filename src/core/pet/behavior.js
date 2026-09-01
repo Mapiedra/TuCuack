@@ -32,6 +32,14 @@ export class Behavior {
 
   // Reproduce un estado durante `dur` segundos y luego vuelve al ciclo normal.
   playOnce(state, dur) {
+    // Con el pato bajo control externo —colgando del cursor o metido en un
+    // minijuego de escenario— manda quien lo tenga cogido. `update` atiende el
+    // override ANTES de mirar `locked`, así que sin esto un mensaje de chat o
+    // una subida de nivel le cambiarían el sprite en mitad de un peloteo.
+    //
+    // Ojo al orden en quien llame: `land()` hace unlock() y LUEGO playOnce(),
+    // justo para que el pato se sacuda al posarse.
+    if (this.locked) return;
     // Agotado no hay quien lo levante: ni come, ni saluda, ni habla. Se queda
     // dormido hasta reponerse (ver AGOTAMIENTO en game/Tamagotchi.js).
     if (this.tam.agotado) return;

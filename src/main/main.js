@@ -215,6 +215,12 @@ ipcMain.on('chat:visit', (_evt, visita) => {
   if (chat && visita) chat.sendVisit(visita);
 });
 
+// Partidas entre patos. No hace falta canal de vuelta: lo que llega viaja por
+// `chat:event`, como el resto de lo que pasa en el canal.
+ipcMain.on('juego:send', (_evt, mensaje) => {
+  if (chat && mensaje) chat.sendGame(mensaje);
+});
+
 // Nombre anunciado en la presencia del canal (para la comprobación de unicidad).
 ipcMain.on('chat:set-name', (_evt, name) => {
   if (chat) chat.setName(name);
@@ -228,8 +234,15 @@ ipcMain.handle('chat:status', () => ({
   connected: chat ? chat.isReady() : false,
   names: chat ? chat.names() : [],
   presentes: chat ? chat.presentes() : [],
-  clave: chat ? chat.clave() : ''
+  clave: chat ? chat.clave() : '',
+  id: chat ? chat.id() : ''
 }));
+
+// El pato se esconde solo desde su menú. No se cierra: sigue vivo en la bandeja,
+// que es de donde se le vuelve a sacar.
+ipcMain.on('app:hide', () => {
+  if (win && !win.isDestroyed()) win.hide();
+});
 
 ipcMain.on('app:quit', () => app.quit());
 ipcMain.on('open-external', (_evt, url) => {
@@ -253,7 +266,7 @@ if (!gotLock) {
   // arranque roto. Suele pasar con un pato escondido en la bandeja, o con uno
   // lanzado desde otra terminal y olvidado.
   console.log('[app] ya hay un TuCuack en marcha: se muestra ese y esta instancia se cierra. '
-    + 'Para arrancar de cero, ciérralo desde la bandeja o el menú del pato.');
+    + 'Para arrancar de cero, ciérralo desde la bandeja o el menú de la mascota.');
   app.quit();
 } else {
   app.on('second-instance', () => {
@@ -265,8 +278,9 @@ if (!gotLock) {
   app.whenReady().then(() => {
     createWindow();
     tray = createTray(() => win, { isDev });
-    applyAutoLaunch(store.loadSettings());
-    chat = initChat(() => win, store.loadSettings().displayName);
+    const ajustes = store.loadSettings();
+    applyAutoLaunch(ajustes);
+    chat = initChat(() => win, ajustes.displayName, ajustes.patoId);
     if (!isDev) initUpdater(() => win);
 
     app.on('activate', () => {

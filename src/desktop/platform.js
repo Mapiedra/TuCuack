@@ -17,9 +17,11 @@ export function crearPlataformaElectron() {
       capturaRaton: true,
       multiMonitor: true,
       salir: true,
+      ocultar: true,      // se recoge en la bandeja, y de ahí se le vuelve a sacar
       autoArranque: true,
       actualizaciones: true,
-      comandosExternos: true
+      comandosExternos: true,
+      juegosDeEscenario: true
     },
 
     config: () => pato.getConfig(),
@@ -39,6 +41,7 @@ export function crearPlataformaElectron() {
     alCambiarPantalla: (cb) => pato.onDisplayChanged(cb),
 
     salir: () => pato.quit(),
+    ocultar: () => pato.hide(),
     abrirExterno: (url) => pato.openExternal(url),
     alCerrar: (cb) => pato.onBeforeQuit(cb),
     alRecibirComando: (cb) => pato.onTrayCommand(cb),
@@ -47,6 +50,9 @@ export function crearPlataformaElectron() {
     chat: {
       enviar: (msg) => pato.sendChat(msg),
       enviarVisita: (v) => pato.sendVisit(v),
+      enviarJuego: (m) => pato.sendGame(m),
+      // En el escritorio el canal vive en el proceso main y el pato no se muda
+      // a ninguna parte: no hay partida que guardar para nadie.
       ponerNombre: (n) => pato.setChatName(n),
       alRecibirEvento: (cb) => pato.onChatEvent(cb),
       estado: () => pato.chatStatus()

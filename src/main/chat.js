@@ -24,6 +24,14 @@ let channel = null;
 let connected = false;
 let myName = '';
 let myKey = '';
+/** Identidad estable de este pato (settings.patoId). A diferencia de `myKey`,
+ *  sobrevive a las reconexiones: es lo que permite reconocer al rival a mitad
+ *  de una partida aunque su clave de presencia haya cambiado. */
+let myId = '';
+
+/** Tope de un mensaje de partida. El más gordo previsible —un tablero de 10x10
+ *  con su estado— ronda los 600 B, así que sobra por un factor de seis. */
+const TOPE_JUEGO = 4096;
 // Si ya nos hemos anunciado en la presencia con el nombre actual. Repetir el
 // anuncio deja una entrada de más, y el pato sale duplicado en la lista de
 // conectados que ven los demás.
@@ -32,9 +40,14 @@ let anunciado = false;
 /**
  * @param {() => import('electron').BrowserWindow | null} getWin
  * @param {string} initialName
+ * @param {string} [patoId]  identidad estable, de los ajustes
  */
-function initChat(getWin, initialName) {
+function initChat(getWin, initialName, patoId) {
   myName = initialName || '';
+  // Antes de cualquier `track`: si llegara después habría que volver a
+  // anunciarse, y un `track` repetido AÑADE una entrada en la presencia en vez
+  // de reemplazarla — el pato saldría duplicado en la lista de todo el mundo.
+  myId = String(patoId || '');
 
   if (!config.isConfigured()) {
     // Sin credenciales: el chat queda deshabilitado pero la app funciona.
@@ -100,6 +113,29 @@ function initChat(getWin, initialName) {
       return true;
     },
 
+    /**
+     * Manda un mensaje de partida a otro pato.
+     *
+     * Va dirigido, como las visitas: el destinatario es una clave de presencia,
+     * no una "sala" que todo el canal tenga que filtrar. Lo que llega a los
+     * demás patos se descarta en su propio cliente sin llegar a subir.
+     *
+     * El contenido lo compone game/protocolo.js; aquí sólo se comprueba que
+     * quepa. Un mensaje de juego que no cabe es un error de programación, no una
+     * condición de red, así que se dice en voz alta.
+     */
+    sendGame(m) {
+      if (!channel || !connected || !m || !m.aClave) return false;
+      const payload = { ...m, deClave: myKey, de: myId, ts: Date.now() };
+      const bruto = JSON.stringify(payload);
+      if (bruto.length > TOPE_JUEGO) {
+        console.warn(`[juego] mensaje descartado por tamaño (${bruto.length} B)`);
+        return false;
+      }
+      channel.send({ type: 'broadcast', event: 'juego', payload });
+      return true;
+    },
+
     /** Actualiza el nombre anunciado en la presencia. */
     async setName(name) {
       const nuevo = String(name || '').slice(0, 40);
@@ -107,7 +143,7 @@ function initChat(getWin, initialName) {
       myName = nuevo;
       if (channel && connected) {
         try {
-          await channel.track({ name: myName, at: Date.now() });
+          await channel.track({ name: myName, at: Date.now(), id: myId });
           anunciado = true;
         } catch (err) {
           console.error('[chat] no se pudo actualizar el nombre:', err);
@@ -119,6 +155,8 @@ function initChat(getWin, initialName) {
     presentes: () => presentes(),
     /** Nuestra clave de presencia: es la dirección de vuelta de las visitas. */
     clave: () => myKey,
+    /** Nuestra identidad estable: la dirección de vuelta de las partidas. */
+    id: () => myId,
     isReady: () => connected
   };
 }
@@ -245,6 +283,14 @@ function crearCanal(getWin) {
     notify(getWin, { type: 'visita', visita: limpiarVisita(payload) });
   });
 
+  // Partidas: igual que las visitas, van dirigidas y lo de los demás se descarta
+  // aquí, sin llegar al pato. Viaja por el mismo `chat:event` que todo lo demás,
+  // así que no hace falta ni un canal IPC nuevo ni un puente aparte.
+  ch.on('broadcast', { event: 'juego' }, ({ payload }) => {
+    if (!payload || payload.aClave !== myKey) return;
+    notify(getWin, { type: 'juego', mensaje: payload });
+  });
+
   // Presencia: quién está conectado y con qué nombre.
   for (const evento of ['sync', 'join', 'leave']) {
     ch.on('presence', { event: evento }, () => {
@@ -304,7 +350,7 @@ function suscribir(getWin) {
       // en la lista de conectados de todos los demás.
       if (!anunciado) {
         try {
-          await channel.track({ name: myName, at: Date.now() });
+          await channel.track({ name: myName, at: Date.now(), id: myId });
           anunciado = true;
         } catch (e) {
           console.error('[chat] no se pudo anunciar la presencia:', e);
@@ -364,10 +410,12 @@ function disabledChat() {
   return {
     send() { return false; },
     sendVisit() { return false; },
+    sendGame() { return false; },
     async setName() {},
     names: () => [],
     presentes: () => [],
     clave: () => '',
+    id: () => '',
     isReady: () => false
   };
 }
@@ -378,7 +426,12 @@ function disabledChat() {
  * La clave hace falta para dirigirle una visita a uno en concreto: dos patos
  * pueden llamarse igual, pero cada uno tiene su clave.
  *
- * @returns {{clave:string, nombre:string}[]}
+ * `id` es la identidad estable del otro (settings.patoId), y va vacía si al otro
+ * lado hay una versión que todavía no la anuncia: a ése se le puede escribir y
+ * mandarle el pato, pero no jugar, porque una partida tiene que sobrevivir a que
+ * su clave cambie al reconectar.
+ *
+ * @returns {{clave:string, nombre:string, id:string}[]}
  */
 function presentes() {
   if (!channel || !connected) return [];
@@ -393,7 +446,7 @@ function presentes() {
         // versión que se anunciaba de más.
         if (!m || !m.name || vistos.has(key)) continue;
         vistos.add(key);
-        out.push({ clave: String(key), nombre: String(m.name) });
+        out.push({ clave: String(key), nombre: String(m.name), id: String(m.id || '') });
       }
     }
     return out;

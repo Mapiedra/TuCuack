@@ -35,7 +35,10 @@ export function crearPlataformaBanco({ ground = 48 } = {}) {
       multiMonitor: false,
       salir: false,
       actualizaciones: false,
-      comandosExternos: false
+      comandosExternos: false,
+      // El pato tiene la pestaña para él solo, y aquí es donde más cómodo sale
+      // desarrollar un minijuego de escenario: recarga instantánea y DevTools.
+      juegosDeEscenario: true
     },
 
     async config() {

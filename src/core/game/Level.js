@@ -12,10 +12,16 @@ export const XP = {
   CUIDADO: 10,        // atender una necesidad que estaba baja
   CONVIVENCIA: 1,     // por minuto con el pato contento
   RACHA: 50,          // primera atención del día
-  CHAT: 5             // por mensaje enviado (con tope diario)
+  CHAT: 5,            // por mensaje enviado (con tope diario)
+  PARTIDA: 4,         // terminar un minijuego, se gane o no (con tope diario)
+  VICTORIA: 8         // extra por ganarlo; el empate se lleva la mitad
 };
 
 const CHAT_TOPE_DIARIO = 10;   // mensajes que puntúan por día
+// Partidas que puntúan por día. Un minijuego se puede repetir en bucle, así que
+// sin tope sería, con diferencia, la forma más rápida de subir de nivel. Pasado
+// el tope se sigue jugando —que es lo divertido—, pero deja de sumar.
+const JUEGOS_TOPE_DIARIO = 8;
 const UMBRAL_CUIDADO = 50;     // por debajo de esto, atender da XP
 
 // Rangos: cada uno abarca 5 niveles.
@@ -55,6 +61,8 @@ export class Level {
     this.ultimoDia = g.ultimoDia || '';      // último día que se atendió al pato
     this.diaDelChat = g.diaDelChat || '';    // último día que se contaron mensajes
     this.chatHoy = Number(g.chatHoy) || 0;
+    this.diaDelJuego = g.diaDelJuego || '';  // último día que se contaron partidas
+    this.juegosHoy = Number(g.juegosHoy) || 0;
     this._acumuladoMin = 0;
     this._listeners = { xp: [], nivel: [] };
   }
@@ -113,23 +121,60 @@ export class Level {
   }
 
   chat() {
-    this._nuevoDia();
-    if (this.chatHoy >= CHAT_TOPE_DIARIO) return false;
+    if (!this._cabeHoy('diaDelChat', 'chatHoy', CHAT_TOPE_DIARIO)) return false;
     this.chatHoy++;
     this._sumar(XP.CHAT, 'chat');
     return true;
   }
 
-  /** Pone a cero el contador de mensajes cuando cambia el día. */
-  _nuevoDia() {
+  /**
+   * Partida de minijuego terminada.
+   *
+   * Devuelve la XP concedida —y no un booleano como `chat()`— porque el pie de
+   * la partida la enseña: un "+12 XP" explica el sistema mejor que cualquier
+   * ayuda, y un 0 con su motivo evita que el tope parezca un fallo.
+   *
+   * Abandonar no llega hasta aquí: cerrar el panel no es un resultado.
+   *
+   * No toca la racha a propósito. `_rachaDelDia` premia atender al pato, y
+   * jugar con él no es cuidarlo.
+   *
+   * @param {'victoria'|'derrota'|'empate'} resultado
+   * @returns {number} XP concedida, o 0 si ya se llegó al tope del día
+   */
+  minijuego(resultado) {
+    if (!this._cabeHoy('diaDelJuego', 'juegosHoy', JUEGOS_TOPE_DIARIO)) return 0;
+    this.juegosHoy++;
+    const extra = resultado === 'victoria' ? XP.VICTORIA
+      : resultado === 'empate' ? Math.round(XP.VICTORIA / 2)
+        : 0;
+    const total = XP.PARTIDA + extra;
+    this._sumar(total, 'minijuego');
+    return total;
+  }
+
+  /**
+   * Contador diario con tope: pone el contador a cero si ha cambiado el día y
+   * dice si aún queda cupo.
+   *
+   * Cada fuente lleva SU propio día. Compartir uno solo fue el fallo que hubo
+   * que arreglar con el chat: el día de la racha sólo se marca al atender al
+   * pato, así que quien únicamente chateaba no lo actualizaba nunca, el
+   * contador se reiniciaba en cada mensaje y la experiencia por chat se quedaba
+   * sin tope.
+   *
+   * @param {'diaDelChat'|'diaDelJuego'} campoDia
+   * @param {'chatHoy'|'juegosHoy'} campoContador
+   * @param {number} tope
+   * @returns {boolean} si aún queda cupo hoy
+   */
+  _cabeHoy(campoDia, campoContador, tope) {
     const hoy = new Date().toISOString().slice(0, 10);
-    if (this.diaDelChat === hoy) return false;
-    // Se lleva aparte del día de la racha: ese sólo se marca al atender al
-    // pato, así que quien únicamente chatea nunca lo actualizaba y el contador
-    // se reiniciaba en cada mensaje, dejando la experiencia por chat sin tope.
-    this.diaDelChat = hoy;
-    this.chatHoy = 0;
-    return true;
+    if (this[campoDia] !== hoy) {
+      this[campoDia] = hoy;
+      this[campoContador] = 0;
+    }
+    return this[campoContador] < tope;
   }
 
   _rachaDelDia() {
@@ -146,7 +191,8 @@ export class Level {
     return {
       xp: this.xp, racha: this.racha,
       ultimoDia: this.ultimoDia,
-      diaDelChat: this.diaDelChat, chatHoy: this.chatHoy
+      diaDelChat: this.diaDelChat, chatHoy: this.chatHoy,
+      diaDelJuego: this.diaDelJuego, juegosHoy: this.juegosHoy
     };
   }
 }

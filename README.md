@@ -78,6 +78,16 @@ desbloquean diseños de pato, que se ven todos desde el principio pero con un ca
 hasta que se alcanza su nivel. El nivel viaja con los mensajes del chat, así que se
 compara con el de los demás. Detalles en [`docs/DISENOS.md`](docs/DISENOS.md).
 
+**Minijuegos.** En `🎮 Juegos` del menú del pato. Se desbloquean por nivel igual que
+los diseños y se ven todos desde el principio, con candado. De momento hay **tres en
+raya** contra el pato, que juega peor cuanto más bajo es tu nivel y deja de fallar del
+todo a partir del 10. Terminar una partida da experiencia, con un tope diario para que
+jugar en bucle no sea la vía rápida para subir; y jugar cansa al pato, así que uno
+agotado no juega. También se puede **retar a otro pato conectado** y jugar por turnos:
+las jugadas van por el mismo canal que el chat, dirigidas a él. Añadir un juego nuevo
+son tres pasos y ningún cambio en el resto del código:
+[`docs/MINIJUEGOS.md`](docs/MINIJUEGOS.md).
+
 **Chat entre patos.** Todos los patos comparten **un único canal común**. Lo que
 escribes aparece en tu bocadillo y en el de los demás, y viceversa. Cada pato tiene un
 **nombre**, que se comprueba que no esté siendo usado por otro pato conectado.

@@ -4,8 +4,8 @@
 // esquivar, ni contenido de nadie a quien cederle los clics. Lo que comparte con
 // la versión de página —almacenamiento y chat— está en `almacen.js`.
 
-import { conectarChat, leerAjustes, escribirAjustes, leerEstado, escribirEstado, alCerrarDocumento }
-  from './almacen.js';
+import { conectarChat, leerAjustes, escribirAjustes, leerEstado, escribirEstado,
+  alCerrarDocumento, ocultarElPato } from './almacen.js';
 
 /** @returns {import('./core/platform.js').Plataforma} */
 export function crearPlataformaExtension() {
@@ -20,9 +20,12 @@ export function crearPlataformaExtension() {
       capturaRaton: false,
       multiMonitor: false,
       salir: false,
+      ocultar: true,      // vuelve con el menú del icono de la extensión
       autoArranque: false,
       actualizaciones: false,
-      comandosExternos: true
+      comandosExternos: true,
+      // En el panel lateral el pato tiene el documento para él solo.
+      juegosDeEscenario: true
     },
 
     async config() {
@@ -52,6 +55,7 @@ export function crearPlataformaExtension() {
     urlAsset: (rel) => chrome.runtime.getURL(`assets/${rel}`),
 
     abrirExterno: (url) => chrome.tabs.create({ url }),
+    ocultar: () => ocultarElPato(),
     // Guardado final: cerrar el panel destruye el documento sin más aviso.
     alCerrar: alCerrarDocumento,
 

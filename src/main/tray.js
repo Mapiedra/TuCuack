@@ -29,7 +29,7 @@ function createTray(getWin, opts = {}) {
     const visible = win && !win.isDestroyed() && win.isVisible();
     const menu = Menu.buildFromTemplate([
       {
-        label: visible ? 'Ocultar pato' : 'Mostrar pato',
+        label: visible ? 'Ocultar mascota' : 'Mostrar mascota',
         click: () => {
           const w = getWin();
           if (!w || w.isDestroyed()) return;
@@ -53,6 +53,15 @@ function createTray(getWin, opts = {}) {
   };
 
   rebuild();
+
+  // El pato puede esconderse por su cuenta, desde su propio menú. Sin esto, la
+  // bandeja seguiría ofreciendo "Ocultar mascota" con el pato ya escondido.
+  const ventana = getWin();
+  if (ventana && !ventana.isDestroyed()) {
+    ventana.on('hide', rebuild);
+    ventana.on('show', rebuild);
+  }
+
   tray.on('double-click', () => {
     const w = getWin();
     if (w && !w.isDestroyed()) {

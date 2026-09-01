@@ -6,7 +6,7 @@
 // entran y salen por su cuenta, el panel se repinta con `actualizar` mientras
 // está abierto en vez de mostrar una foto fija.
 //
-// Mandarle el pato a alguien necesita su CLAVE de presencia, no su nombre: dos
+// Mandarle tu mascota a alguien necesita su CLAVE de presencia, no su nombre: dos
 // patos pueden llamarse igual. Por eso el botón sólo sale en las filas que
 // vengan de `presentes`; si al otro lado del canal hay una versión que todavía
 // no anuncia claves, la lista se ve igual pero sin poder mandar nada.
@@ -112,7 +112,7 @@ export function buildOnlinePanel(inicial, handlers) {
 
     nota.textContent = cuantos
       ? ''
-      : 'Ahora mismo no hay ningún otro pato conectado.';
+      : 'Ahora mismo no hay ninguna otra mascota conectada.';
   };
 
   /**
@@ -131,7 +131,7 @@ export function buildOnlinePanel(inicial, handlers) {
     if (!esperando) {
       boton.textContent = '🛫';
       boton.style.removeProperty('--progreso');
-      boton.title = `Mandarle el pato a ${nombre}`;
+      boton.title = `Mandarle tu mascota a ${nombre}`;
       return;
     }
     const segundos = Math.ceil(restante / 1000);
@@ -140,7 +140,7 @@ export function buildOnlinePanel(inicial, handlers) {
     // vaciarse. Una rueda que se vacía se lee como algo que se acaba.
     boton.style.setProperty('--progreso',
       String(Math.max(0, Math.min(1, 1 - restante / esperaTotal))));
-    boton.title = `${nombre} acaba de recibir tu pato. `
+    boton.title = `${nombre} acaba de recibir tu mascota. `
       + `Podrás mandárselo otra vez dentro de ${segundos} s.`;
   }
 
@@ -190,7 +190,7 @@ export function buildOnlinePanel(inicial, handlers) {
 
     const enviar = document.createElement('button');
     enviar.className = 'btn';
-    enviar.textContent = '🛫 Mandar el pato';
+    enviar.textContent = '🛫 Mandar la mascota';
 
     const aviso = document.createElement('div');
     aviso.className = 'muted recado-aviso';
@@ -268,7 +268,7 @@ function fila(quien, esYo, onMandar) {
     const boton = document.createElement('button');
     boton.className = 'btn-mandar';
     boton.textContent = '🛫';
-    boton.title = `Mandarle el pato a ${txt.textContent}`;
+    boton.title = `Mandarle tu mascota a ${txt.textContent}`;
     boton.addEventListener('click', () => onMandar(quien));
     li.appendChild(boton);
   }

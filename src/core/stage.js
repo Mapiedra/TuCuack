@@ -62,6 +62,20 @@ export function montar(el) {
 }
 
 /**
+ * Añade algo POR DEBAJO del pato: el fondo de un minijuego de escenario.
+ *
+ * `montar` lo pone al final del contenedor, que es lo que quieren los paneles
+ * —van por delante de todo— y justo lo contrario de lo que quiere un fondo. El
+ * pato y el lienzo son hermanos sin z-index, así que ahí manda el orden del
+ * documento.
+ */
+export function montarAlFondo(el) {
+  const escenario = porId('stage');
+  if (escenario) escenario.prepend(el);
+  else elContenedor().prepend(el);
+}
+
+/**
  * Elemento sobre el que ocurrió de verdad un evento.
  *
  * Los eventos que salen de un Shadow DOM llegan al documento con `target`
