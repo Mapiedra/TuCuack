@@ -7,6 +7,25 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Añadido
+
+- **Dos juegos más: piedra, papel o tijera y par o impar.** Los dos al mejor de
+  tres, contra tu mascota o contra otra por red. En par o impar uno pide par, el
+  otro se queda con impar, y cada uno saca un número del 0 al 5: la suma decide.
+- **Jugadas a la vez, y en secreto.** Es lo que hacía falta para que esos dos
+  juegos sean justos: si mando mi jugada antes que el otro, el otro la ve y gana
+  siempre. Ahora primero viaja el *hash* de la jugada y sólo cuando los dos están
+  comprometidos se revelan los valores, así que cambiar de idea al revelar se
+  nota y se dice. Quien no revele a tiempo pierde la ronda.
+
+### Cambiado
+
+- **Los juegos se ordenan por lo que cuestan y se desbloquean escalonados:**
+  piedra, papel o tijera en el nivel 1; par o impar en el 3; tres en raya en el
+  5. *Tres en raya estaba en el 1, así que quien vaya por debajo del nivel 5 lo
+  verá con candado hasta llegar.* A cambio, el catálogo tiene por fin una cuesta
+  que subir en vez de un único juego suelto.
+
 ## [0.7.0] - 2026-09-01
 
 ### Añadido

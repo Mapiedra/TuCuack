@@ -8,6 +8,8 @@
 // en cada "¿Otra?", y una variable de módulo se filtraría de una partida a la
 // siguiente.
 
+import { sembrar } from './azar.js';
+
 const LINEAS = [
   [0, 1, 2], [3, 4, 5], [6, 7, 8],   // filas
   [0, 3, 6], [1, 4, 7], [2, 5, 8],   // columnas
@@ -247,21 +249,4 @@ function minimax(t, turno, yo, profundidad) {
     mejor = turno === yo ? Math.max(mejor, v) : Math.min(mejor, v);
   }
   return mejor;
-}
-
-/**
- * Aleatoriedad reproducible a partir de la semilla de la partida.
- *
- * No se usa `Math.random` porque en una partida por red los dos lados tienen que
- * poder llegar a lo mismo si hace falta rehacer el estado: con la misma semilla,
- * la misma secuencia.
- */
-function sembrar(semilla) {
-  let s = (Number(semilla) || 1) >>> 0;
-  return function siguiente() {
-    s ^= s << 13; s >>>= 0;
-    s ^= s >> 17;
-    s ^= s << 5; s >>>= 0;
-    return s / 4294967296;
-  };
 }
