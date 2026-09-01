@@ -11,6 +11,39 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ### Añadido
 
+- **Minijuegos.** Nueva entrada `🎮 Juegos` en el menú del pato, con un catálogo
+  que se desbloquea por nivel igual que los diseños. Entra jugable **Tres en
+  raya** contra el pato, con una IA que va dejando de fallar a propósito a medida
+  que el pato sube de nivel. Terminar una partida da experiencia (+4, +8 más si
+  se gana) con un tope de ocho al día, para que jugar en bucle no sea la vía
+  rápida para subir; y jugar gasta energía, así que un pato agotado no juega.
+  Las partidas, victorias y récords se guardan por juego.
+- **El sistema que gobierna los juegos**, pensado para que añadir uno nuevo sean
+  tres pasos y ningún cambio en `app.js`: un catálogo
+  ([`src/core/game/minijuegos/index.js`](src/core/game/minijuegos/index.js)),
+  un marco de partida que se encarga de cargar el módulo, apagar sus bucles,
+  contar el resultado una sola vez y repartir la experiencia, y un contrato de
+  una sola función. Está contado en
+  [`docs/MINIJUEGOS.md`](docs/MINIJUEGOS.md).
+- **Juegos de escenario**: un juego puede tomar prestados el pato y la pantalla
+  entera en vez de vivir en un panel. La devolución va protegida por cuatro
+  capas independientes, porque un préstamo que no se devuelve dejaría la ventana
+  transparente capturando el ratón y al usuario sin poder pulsar nada en su
+  escritorio. Sobre páginas web ajenas no se ofrecen: ahí el pato está de
+  prestado.
+- **Partidas por turnos entre patos.** Desde el panel de juegos se puede retar a
+  cualquier pato conectado; al otro le sale un aviso con su cuenta atrás, y si
+  está ocupado el reto espera en el menú en vez de saltarle encima de lo que
+  estuviera haciendo. Las jugadas viajan por el mismo canal que el chat, en su
+  propio evento y dirigidas a un pato concreto —igual que las visitas—, con
+  numeración, confirmación y reintentos, de modo que una jugada perdida no cuelga
+  la partida. Probado con un rival simulado y pérdida de mensajes provocada.
+- **Identidad estable de pato** (`patoId`), que es lo que permite reconocer al
+  rival a mitad de partida aunque su clave de presencia cambie al reconectar. Un
+  pato con una versión anterior sigue apareciendo en la lista y se le puede
+  hablar y mandar el pato; sencillamente no se le puede retar.
+- **Sonidos de partida** (empezar, victoria, derrota, cambio de turno) y una
+  `nota` suelta como ladrillo para los juegos que la necesiten.
 - **La fila 12 del sprite (`regalo`) ya existe en los cinco diseños.** A falta de
   arte definitivo, el empaquetador la **compone** inclinando el saludo hacia
   delante desde los pies. Es un apaño declarado —sale del saludo, así que no hay
@@ -21,6 +54,30 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ### Cambiado
 
+- **La app habla de "tu mascota", no de "tu pato".** Se está estudiando meter
+  otras mascotas —gatos, perros—, y todo el texto visible daba por hecho que era
+  un pato: "Nombre de tu pato", "Cuidar bien al pato", "no hay ningún otro pato
+  conectado". Ahora es genérico.
+  *Lo que SÍ sigue siendo de pato se queda como está, porque es contenido y no
+  etiqueta:* los diseños (Patito, Pato gánster), los rangos, los cuacks, el
+  nombre que se propone al empezar y el propio nombre de la app. Cuando entre
+  otra mascota traerá los suyos. Los identificadores del código (`Duck`,
+  `patoId`…) tampoco cambian: es un refactor aparte que no aporta nada al que usa
+  la app.
+- **Cuando el rival deja la partida, se cierra el tablero y lo dice en un
+  bocadillo**, en vez de una nota pequeña al pie de un tablero muerto. Un aviso
+  discreto encima de algo que ya no responde es fácil de no ver, e invita a
+  seguir pulsando.
+- **La física del vuelo del pato vive ahora en
+  [`src/core/pet/fisica.js`](src/core/pet/fisica.js)**, fuera de `app.js`. Es
+  el mismo comportamiento exacto —se comprobó comparando ambas versiones sobre
+  9.680 trayectorias con paso fijo, exigiendo igualdad exacta de posición,
+  velocidad, sonidos, inclinación y giro—, pero ahora un minijuego puede
+  pilotarla con otros números en vez de tener que copiarla. La inercia del
+  cursor sale al mismo sitio ([`pet/inercia.js`](src/core/pet/inercia.js)) y la
+  comparten el arrastre y los juegos.
+- **El aviso de subir de nivel anuncia cualquier cosa que se desbloquee**, no
+  sólo diseños. Añadir un catálogo nuevo es meterlo en una lista.
 - **Fuera las referencias a macOS.** La app de escritorio es de Windows y en
   cualquier otro sistema el pato vive en la extensión de Chrome, que no depende
   del sistema operativo. Se corrigen el README, el comentario del workflow de

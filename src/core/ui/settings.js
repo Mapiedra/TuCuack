@@ -23,7 +23,7 @@ export function buildSettingsPanel(settings, version, handlers) {
   const row1 = document.createElement('div');
   row1.className = 'row';
   const lbl1 = document.createElement('label');
-  lbl1.textContent = 'Nombre de tu pato';
+  lbl1.textContent = 'Nombre de tu mascota';
   const name = document.createElement('input');
   name.type = 'text';
   name.maxLength = 24;
@@ -75,7 +75,7 @@ export function buildSettingsPanel(settings, version, handlers) {
   const rowEsc = document.createElement('div');
   rowEsc.className = 'row';
   const lblEsc = document.createElement('label');
-  lblEsc.textContent = 'Tamaño del pato';
+  lblEsc.textContent = 'Tamaño de la mascota';
   const lineaEsc = document.createElement('div');
   lineaEsc.className = 'fila-sonido';
   const esc = document.createElement('input');
@@ -109,10 +109,10 @@ export function buildSettingsPanel(settings, version, handlers) {
   // guardado, y `undefined` no puede significar "no".
   chkVis.checked = settings.visitas !== false;
   chkVis.style.marginRight = '6px';
-  lblVis.append(chkVis, document.createTextNode('Dejar que otros patos vengan de visita'));
+  lblVis.append(chkVis, document.createTextNode('Dejar que otras mascotas vengan de visita'));
   const hintVis = document.createElement('div');
   hintVis.className = 'muted';
-  hintVis.textContent = 'Cualquier pato conectado puede mandarte el suyo a la '
+  hintVis.textContent = 'Cualquier mascota conectada puede mandarte la suya a la '
     + 'pantalla. Desactívalo y no entrará ninguno.';
   rowVis.append(lblVis, hintVis);
   el.appendChild(rowVis);
@@ -158,13 +158,13 @@ export function buildSettingsPanel(settings, version, handlers) {
   save.addEventListener('click', () => {
     const value = name.value.trim();
     if (!value) {
-      setError('Ponle un nombre a tu pato.');
+      setError('Ponle un nombre a tu mascota.');
       return;
     }
     // El nombre identifica al pato en el chat, así que no puede repetirse
     // con el de otro pato conectado ahora mismo.
     if (value !== (settings.displayName || '') && handlers.isNameTaken(value)) {
-      setError(`Ya hay un pato llamado "${value}". Prueba con otro.`);
+      setError(`Ya hay una mascota llamada "${value}". Prueba con otro nombre.`);
       return;
     }
     handlers.onSave({

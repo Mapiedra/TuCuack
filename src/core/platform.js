@@ -27,13 +27,23 @@ const CAPACIDADES_POR_DEFECTO = {
   multiMonitor: false,
   // ¿Tiene sentido un "Salir" en el menú? En una extensión no se sale de nada.
   salir: false,
+  // ¿El pato puede esconderse y volver luego? En el escritorio se recoge en la
+  // bandeja; en la extensión, en el menú del icono. Donde no haya sitio del que
+  // volver a sacarlo, mejor no ofrecerlo: sería una opción sin vuelta atrás.
+  ocultar: false,
   // ¿Se puede arrancar con el sistema? Sólo una app instalada.
   autoArranque: false,
   // ¿Hay autoactualización de la que informar?
   actualizaciones: false,
   // ¿Llegan órdenes desde fuera del documento (bandeja del sistema, menú de la
   // extensión)?
-  comandosExternos: false
+  comandosExternos: false,
+  // ¿Cabe un minijuego que ocupe el escenario entero? En el escritorio y en el
+  // panel lateral, sí: el pato tiene el sitio para él solo. Sobre una página
+  // ajena, no: capturar el ratón de toda la ventana dejaría al usuario sin poder
+  // pulsar nada de la web que estaba leyendo, y eso no es un juego, es un
+  // secuestro.
+  juegosDeEscenario: false
 };
 
 const CONFIG_POR_DEFECTO = { version: '0.0.0', isDev: false, ground: 0, sprites: {} };
@@ -43,11 +53,17 @@ const CHAT_DESACTIVADO = {
   // Mandar el pato a la pantalla de otro. Va por el mismo canal que el chat,
   // pero en un evento aparte y con destinatario (ver core/visita/).
   enviarVisita: noop,
+  // Jugadas de una partida. Van por el mismo canal, en su propio evento y con
+  // destinatario, exactamente igual que las visitas (ver core/game/salas.js).
+  enviarJuego: noop,
+  // Sólo donde el canal viva fuera del pato: le dice que ya no hay partida que
+  // guardar para la próxima pestaña.
+  olvidarPartida: noop,
   ponerNombre: noop,
   alRecibirEvento: noSuscribir,
   estado: async () => ({
-    connected: false, names: [], presentes: [], clave: '',
-    historial: [], reason: 'sin-plataforma'
+    connected: false, names: [], presentes: [], clave: '', id: '',
+    historial: [], partida: null, reason: 'sin-plataforma'
   }),
   // Sólo hace falta donde el canal viva fuera del pato y haya que soltarlo al
   // apagarse, para no dejar puentes abiertos que dupliquen los mensajes.
@@ -96,6 +112,9 @@ export function normalizarPlataforma(p = {}) {
 
     // ---- Ciclo de vida ---------------------------------------------------
     salir: p.salir || noop,
+    // Esconde al pato sin cerrarlo. Cómo se vuelve a sacar es cosa de la
+    // carcasa: la bandeja del sistema o el menú del icono de la extensión.
+    ocultar: p.ocultar || noop,
     abrirExterno: p.abrirExterno || noop,
     alCerrar: p.alCerrar || noSuscribir,
     alRecibirComando: p.alRecibirComando || noSuscribir,

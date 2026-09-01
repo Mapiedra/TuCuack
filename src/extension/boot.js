@@ -37,23 +37,33 @@ async function montar() {
   }
 }
 
-function desmontar() {
+function desmontar(motivo) {
   if (pato) {
     pato.apagar();
     pato = null;
   }
-  mostrarAviso(true);
+  mostrarAviso(true, motivo);
 }
 
-function mostrarAviso(visible) {
+const AVISOS = {
+  mudanza: 'Tu mascota está en otra ventana.<br>Cambia a ella o cierra este panel.',
+  oculto: 'Has escondido a tu mascota.<br>Vuelve a sacarla desde el menú del icono de la extensión.'
+};
+
+function mostrarAviso(visible, motivo) {
   const aviso = document.getElementById('aviso');
   const escenario = document.getElementById('stage');
-  if (aviso) aviso.hidden = !visible;
+  if (aviso) {
+    aviso.hidden = !visible;
+    const texto = aviso.querySelector('.texto');
+    // Sólo literales de aquí: nada de esto viene de fuera.
+    if (texto && visible) texto.innerHTML = AVISOS[motivo] || AVISOS.mudanza;
+  }
   if (escenario) escenario.hidden = visible;
 }
 
 // Mientras no llegue orden del árbitro, el panel está en blanco a propósito: no
-// se enseña "tu pato está en otra ventana" antes de saber si es verdad. Pero si
+// se enseña "tu mascota está en otra ventana" antes de saber si es verdad. Pero si
 // no contesta nadie —service worker caído, por ejemplo— más vale un mensaje que
 // un panel vacío sin explicación.
 let respaldo = setTimeout(() => {
@@ -78,7 +88,7 @@ async function anunciarse() {
     if (!msg) return;
     llegoRespuesta();
     if (msg.tipo === 'montar') montar();
-    else if (msg.tipo === 'desmontar') desmontar();
+    else if (msg.tipo === 'desmontar') desmontar(msg.motivo);
   });
   puerto.onDisconnect.addListener(() => {
     // Si Chrome duerme al service worker, el puerto se cae; se vuelve a abrir y

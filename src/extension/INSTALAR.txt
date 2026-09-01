@@ -1,7 +1,7 @@
 TuCuack — extensión de Chrome
 =============================
 
-Tu pato paseando por las páginas que visitas. No está en la Chrome Web Store a
+Tu mascota paseando por las páginas que visitas. No está en la Chrome Web Store a
 propósito: es un juguete interno, así que se instala a mano.
 
 
@@ -27,16 +27,16 @@ PRIMERA INSTALACIÓN (una sola vez)
 CÓMO SE USA
 -----------
 
-El pato vive en la ventana de Chrome que estés usando: aparece sobre la página
-que tengas abierta, y si abres su panel lateral se muda ahí. Sólo hay un pato,
+La mascota vive en la ventana de Chrome que estés usando: aparece sobre la página
+que tengas abierta, y si abres su panel lateral se muda ahí. Sólo hay una mascota,
 así que siempre está donde estás tú.
 
-Para esconderlo o volver a llamarlo: BOTÓN DERECHO sobre el icono de la
-extensión → "Ocultar el pato" / "Mostrar el pato".
+Para esconderla o volver a llamarla: BOTÓN DERECHO sobre el icono de la
+extensión → "Ocultar la mascota" / "Mostrar la mascota".
 
 Con el botón izquierdo se abre el panel.
 
-Hay sitios donde Chrome no permite entrar a ninguna extensión, y ahí el pato no
+Hay sitios donde Chrome no permite entrar a ninguna extensión, y ahí la mascota no
 puede aparecer: las páginas chrome://, el visor de PDF, la Chrome Web Store y
 las páginas de otras extensiones. Si tienes el panel abierto, se irá al panel.
 
@@ -47,7 +47,7 @@ ACTUALIZAR A UNA VERSIÓN NUEVA
 1. Descomprime el zip nuevo ENCIMA de la misma carpeta, sobrescribiendo.
 2. Vuelve a chrome://extensions y pulsa el icono de recargar (↻) en TuCuack.
 
-No hace falta volver a "Cargar descomprimida", ni pierdes tu pato: sus stats, su
+No hace falta volver a "Cargar descomprimida", ni pierdes tu mascota: sus stats, su
 nivel y su nombre se guardan en Chrome, no en la carpeta.
 
 Aviso: descomprimir encima sobrescribe lo que cambia, pero NO borra ficheros que
@@ -59,16 +59,16 @@ primera instalación.
 SI ALGO NO VA
 -------------
 
-El pato no aparece en ninguna página
-  Comprueba que no esté oculto (botón derecho en el icono). Y recuerda que en
+La mascota no aparece en ninguna página
+  Comprueba que no esté oculta (botón derecho en el icono). Y recuerda que en
   chrome:// y en el visor de PDF no puede estar.
 
-No habla con los patos de los compañeros
+No habla con las mascotas de los compañeros
   Al chat le hacen falta las credenciales, que viajan en el zip como
-  supabase.json. Si ese fichero no está, el pato funciona pero mudo.
+  supabase.json. Si ese fichero no está, la mascota funciona pero muda.
 
-Sale un aviso de que el pato está en otra ventana
-  Es lo previsto: hay un solo pato. Cámbiate a esa ventana o cierra el panel.
+Sale un aviso de que la mascota está en otra ventana
+  Es lo previsto: hay una sola mascota. Cámbiate a esa ventana o cierra el panel.
 
 Chrome dice que la extensión no se puede cargar
   Asegúrate de estar eligiendo la carpeta que contiene manifest.json, y no la

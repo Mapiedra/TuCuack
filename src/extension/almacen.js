@@ -19,6 +19,34 @@ export function contextoVivo() {
   }
 }
 
+/**
+ * Esconde el pato: lo mismo que "Ocultar la mascota" en el menú del icono.
+ *
+ * Lo comparten el panel y las páginas porque es la misma orden y tiene que
+ * hacer lo mismo en los dos sitios.
+ *
+ * Si no se puede, se dice. Un "Ocultar" que no hace nada y encima calla es
+ * indistinguible de un botón roto, que es justo lo que parecía.
+ */
+export function ocultarElPato() {
+  if (!contextoVivo()) {
+    // Pasa después de recargar la extensión: el pato que quedó en la pestaña
+    // sigue pintándose, pero su `chrome.*` ya no lleva a ninguna parte.
+    console.warn('[pato] no se puede ocultar: esta copia quedó huérfana al '
+      + 'recargar la extensión. Recarga la pestaña.');
+    return;
+  }
+  try {
+    const envio = chrome.runtime.sendMessage({ tipo: 'ocultar' });
+    // En MV3 devuelve una promesa; en un content script viejo puede no hacerlo.
+    if (envio && typeof envio.then === 'function') {
+      envio.catch((err) => console.warn('[pato] no se pudo ocultar:', err && err.message));
+    }
+  } catch (err) {
+    console.warn('[pato] no se pudo ocultar:', err && err.message);
+  }
+}
+
 async function leer(clave) {
   try {
     const guardado = await chrome.storage.local.get(clave);
@@ -92,6 +120,8 @@ export function conectarChat() {
   return {
     enviar: (msg) => enviarAlWorker({ tipo: 'enviar', msg }),
     enviarVisita: (visita) => enviarAlWorker({ tipo: 'visita', visita }),
+    enviarJuego: (mensaje) => enviarAlWorker({ tipo: 'juego', mensaje }),
+    olvidarPartida: () => enviarAlWorker({ tipo: 'olvidar-partida' }),
     ponerNombre: (nombre) => enviarAlWorker({ tipo: 'nombre', nombre }),
     alRecibirEvento: (cb) => { alRecibir = cb; },
     estado: async () => {
@@ -99,8 +129,8 @@ export function conectarChat() {
         return await chrome.runtime.sendMessage({ tipo: 'estado' });
       } catch {
         return {
-          connected: false, names: [], presentes: [], clave: '',
-          historial: [], reason: 'worker-dormido'
+          connected: false, names: [], presentes: [], clave: '', id: '',
+          historial: [], partida: null, reason: 'worker-dormido'
         };
       }
     },

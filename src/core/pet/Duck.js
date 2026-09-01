@@ -182,6 +182,33 @@ export class Duck {
 
   onGround() { return this.y <= this.ground + 0.5; }
 
+  /**
+   * Cuerpo del pato para colisiones, en coordenadas de cliente: un círculo
+   * centrado en el punto sobre el que gira al volar (el 50%/67% del lienzo,
+   * o sea el centro del cuerpo, ver `transform-origin` en styles.css).
+   *
+   * Para esto NO sirve `hitTest`, por tres motivos: mira el alpha de un solo
+   * píxel deshaciendo el volteo horizontal pero **no la rotación**, así que con
+   * el pato inclinado en el aire mira el píxel equivocado; obliga a un
+   * `getImageData` por consulta, que es una lectura de vuelta de la GPU; y un
+   * test de punto deja que algo rápido —una paleta— atraviese al pato entre dos
+   * fotogramas sin tocarlo nunca.
+   *
+   * @returns {{cx:number, cy:number, radio:number}}
+   */
+  cuerpo() {
+    // El rect del CONTENEDOR, no el del lienzo: la inclinación se aplica al
+    // lienzo, y el rectángulo de un elemento girado es su caja envolvente, que
+    // crece con el giro. El contenedor no se transforma nunca, así que mide
+    // igual con el pato de pie que dando vueltas por el aire.
+    const r = this.el.getBoundingClientRect();
+    return {
+      cx: r.left + r.width / 2,
+      cy: r.top + r.height * 0.67,
+      radio: r.width * 0.29
+    };
+  }
+
   setDragTransition(on) {
     this.el.style.transition = on ? 'bottom 0.28s cubic-bezier(.34,1.2,.64,1)' : 'none';
   }

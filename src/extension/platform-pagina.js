@@ -9,8 +9,8 @@
 //     `img-src` del sitio lo bloquearía;
 //   - el suelo es el borde inferior de la ventana.
 
-import { conectarChat, leerAjustes, escribirAjustes, leerEstado, escribirEstado, alCerrarDocumento }
-  from './almacen.js';
+import { conectarChat, leerAjustes, escribirAjustes, leerEstado, escribirEstado,
+  alCerrarDocumento, ocultarElPato } from './almacen.js';
 
 /**
  * @param {HTMLElement} anfitrion el div que aloja el Shadow DOM
@@ -28,9 +28,13 @@ export function crearPlataformaPagina(anfitrion) {
       capturaRaton: true,
       multiMonitor: false,
       salir: false,
+      ocultar: true,      // vuelve con el menú del icono de la extensión
       autoArranque: false,
       actualizaciones: false,
-      comandosExternos: true
+      comandosExternos: true,
+      // Aquí no: el pato está de prestado sobre la web de otro, y tomarle la
+      // pantalla entera al usuario mientras lee sería un secuestro.
+      juegosDeEscenario: false
     },
 
     async config() {
@@ -73,6 +77,7 @@ export function crearPlataformaPagina(anfitrion) {
     },
 
     abrirExterno: (url) => chrome.runtime.sendMessage({ tipo: 'abrir', url }),
+    ocultar: () => ocultarElPato(),
     alCerrar: alCerrarDocumento,
 
     // Órdenes que llegan del service worker (por ahora, esconderse).

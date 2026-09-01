@@ -21,7 +21,7 @@ export function buildStatsPanel(tam, handlers) {
   el.className = 'panel hot';
 
   // Título = nombre del pato (el que se configura en Ajustes).
-  el.appendChild(panelHeader(handlers.name || 'Tu pato', handlers));
+  el.appendChild(panelHeader(handlers.name || 'Tu mascota', handlers));
 
   // El nivel va con el resto de indicadores: es una medida más de cómo va el pato.
   const level = handlers.level;

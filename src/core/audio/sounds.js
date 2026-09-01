@@ -184,3 +184,104 @@ export function fanfarria() {
   cuack({ agudo: 1 });
   setTimeout(() => { ultimaVez.cuack = 0; cuack({ agudo: 1.25 }); }, 140);
 }
+
+// ---- Minijuegos ---------------------------------------------------------
+//
+// Los dispara el marco de partida, así que cualquier juego nuevo los tiene sin
+// pedirlos. Un juego puede además usar `nota` para lo suyo.
+
+/**
+ * Una nota suelta. Es el ladrillo de los sonidos de los juegos: lo que necesita
+ * un Simón —cada color, una nota, y siempre la misma— y lo que compone la
+ * victoria y la derrota.
+ *
+ * No lleva límite de repetición: quien la usa como instrumento la quiere
+ * cuando la pide. Los sonidos de más arriba sí lo llevan porque los dispara la
+ * física y podrían salir en ráfaga.
+ */
+export function nota(hz, dur = 0.14, tipo = 'triangle') {
+  const c = audio();
+  if (!c) return;
+  grafoNota(c, master, c.currentTime, hz, dur, tipo);
+}
+
+export function grafoNota(c, destino, t, hz, dur = 0.14, tipo = 'triangle') {
+  const osc = c.createOscillator();
+  osc.type = tipo;
+  osc.frequency.setValueAtTime(hz, t);
+
+  const g = c.createGain();
+  // Ataque corto y caída suave: sin la rampa de entrada, cada nota empieza con
+  // un chasquido.
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.3, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+  osc.connect(g).connect(destino);
+  osc.start(t);
+  osc.stop(t + dur);
+  return dur;
+}
+
+/** Empieza la partida: dos notas subiendo, cortitas. */
+export function empezarPartida() {
+  const c = audio();
+  if (!c || !puedeSonar('empezarPartida', 300)) return;
+  grafoEmpezarPartida(c, master, c.currentTime);
+}
+
+export function grafoEmpezarPartida(c, destino, t) {
+  grafoNota(c, destino, t, 520, 0.1);
+  grafoNota(c, destino, t + 0.1, 780, 0.13);
+  return 0.23;
+}
+
+/**
+ * Victoria: arpegio ascendente y un cuack contento al final.
+ *
+ * Es distinto de `fanfarria`, que es de subir de nivel: ganar una partida está
+ * bien, pero no es lo mismo, y confundirlos abarataría la subida de nivel.
+ */
+export function victoria() {
+  const c = audio();
+  if (!c || !puedeSonar('victoria', 600)) return;
+  grafoVictoria(c, master, c.currentTime);
+}
+
+export function grafoVictoria(c, destino, t) {
+  grafoNota(c, destino, t, 523, 0.12);
+  grafoNota(c, destino, t + 0.11, 659, 0.12);
+  grafoNota(c, destino, t + 0.22, 784, 0.18);
+  grafoCuack(c, destino, t + 0.36, 1.15);
+  return 0.55;
+}
+
+/** Derrota: dos notas cayendo. Sin dramatismo: es un juego. */
+export function derrota() {
+  const c = audio();
+  if (!c || !puedeSonar('derrota', 600)) return;
+  grafoDerrota(c, master, c.currentTime);
+}
+
+export function grafoDerrota(c, destino, t) {
+  grafoNota(c, destino, t, 392, 0.16, 'sine');
+  grafoNota(c, destino, t + 0.15, 262, 0.24, 'sine');
+  return 0.39;
+}
+
+/**
+ * Te toca.
+ *
+ * Suena en cada cambio de turno, así que es lo más discreto del fichero y lo
+ * que lleva el límite más largo: en una partida por red los turnos se suceden, y
+ * un pitido por turno es una tortura.
+ */
+export function turno() {
+  const c = audio();
+  if (!c || !puedeSonar('turno', 500)) return;
+  grafoTurno(c, master, c.currentTime);
+}
+
+export function grafoTurno(c, destino, t) {
+  return grafoNota(c, destino, t, 660, 0.09);
+}

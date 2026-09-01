@@ -20,6 +20,13 @@ import { buildSkinsPanel } from './ui/skinsPanel.js';
 import { buildOnlinePanel } from './ui/onlinePanel.js';
 import { Level } from './game/Level.js';
 import { SKINS, skinPorId, estaDesbloqueada, SKIN_POR_DEFECTO } from './game/skins.js';
+import { MINIJUEGOS, minijuegoPorId } from './game/minijuegos/index.js';
+import { ProgresoJuegos } from './game/minijuegos/progreso.js';
+import { buildJuegosPanel } from './ui/juegosPanel.js';
+import { buildPartidaPanel } from './ui/partidaPanel.js';
+import { prestarEscenario } from './game/minijuegos/escenario.js';
+import { crearGestorDeSalas } from './game/salas.js';
+import { buildRetoPanel } from './ui/retoPanel.js';
 import { ChatClient } from './chat/chatClient.js';
 import { SpeechBubbles } from './chat/speechBubble.js';
 import { ColaDeVisitas, ESPERA_ENTRE_VISITAS } from './visita/PatoVisitante.js';
@@ -29,22 +36,30 @@ import { normalizarPlataforma } from './platform.js';
 import { configurarAssets, configurarCargadorSheet } from './assets.js';
 import { fijarFactor, normalizarFactor } from './scale.js';
 import { porId, todos, uno, montar, elementoVisible, objetivoReal } from './stage.js';
+import * as fisica from './pet/fisica.js';
+import { crearInercia } from './pet/inercia.js';
 
 // La instala `arrancarPato`. Hasta entonces, una plataforma que no hace nada,
 // para que nada reviente si algo se dispara antes de tiempo.
 let api = normalizarPlataforma();
 
-let duck, behavior, tam, chat, speech, level, visitas;
+let duck, behavior, tam, chat, speech, level, visitas, juegos, salas;
 let settings = { displayName: '', autoLaunch: false };
 let config = { version: '0.0.0', isDev: false };
 
 // ---- Estado de interacción ----------------------------------------------
 let dragging = false;
-let flying = false;          // en el aire: volando/botando tras un lanzamiento
-let vx = 0;                  // velocidad en px/s
-let vy = 0;
-const trail = [];            // muestras recientes del cursor (para la inercia)
-const VELOCITY_WINDOW = 90;  // ms sobre los que se promedia la velocidad
+// El vuelo del pato: posición, velocidad y si está en el aire. Va en un objeto
+// y no en variables sueltas porque un minijuego de escenario lo pilota prestado
+// (ver game/minijuegos/escenario.js) y hay que poder pasárselo.
+const vuelo = fisica.crearVuelo();
+const inercia = crearInercia();  // velocidad del cursor, para lanzar al soltar
+let escena = null;               // minijuego que tiene prestado el escenario
+// El panel de la partida en curso, para poder hablarle desde fuera: en una
+// revancha hay que cerrarlo y abrir el de la partida nueva.
+let partidaAbierta = null;
+/** Cerrando un panel para abrir el de la partida siguiente, no para irse. */
+let cambiandoDePartida = false;
 let overHot = false;         // sobre el pato o sobre un panel/menú
 let overDuck = false;        // sobre el pato en concreto (para el cursor)
 let lastCursor = '';
@@ -150,6 +165,7 @@ export async function arrancarPato(plataforma) {
   // Experiencia y diseño elegido (si el guardado apunta a uno que ya no está
   // desbloqueado o no existe, se vuelve al de por defecto).
   level = new Level(saved.level);
+  juegos = new ProgresoJuegos(saved.minijuegos);
   const skin = skinPorId(settings.skin);
   const skinValida = skin && estaDesbloqueada(skin, level.nivel) ? skin.id : SKIN_POR_DEFECTO;
 
@@ -200,11 +216,7 @@ export async function arrancarPato(plataforma) {
 
   // Al subir de nivel se avisa, y se cuenta si eso ha desbloqueado un diseño.
   level.on('nivel', ({ nivel, rango }) => {
-    const nuevas = SKINS.filter((s) => s.nivel === nivel);
-    const extra = nuevas.length
-      ? `<br>Nuevo diseño: <b>${nuevas.map((s) => s.nombre).join(', ')}</b>`
-      : '';
-    avisoNivel(`¡Nivel <b>${nivel}</b>! · ${rango}${extra}`);
+    avisoNivel(`¡Nivel <b>${nivel}</b>! · ${rango}${novedadesDeNivel(nivel)}`);
     sonido.fanfarria();
     behavior.playOnce('happy', 1.6);
   });
@@ -230,23 +242,94 @@ export async function arrancarPato(plataforma) {
         if (x != null) duck.setX(x);
         duck.setY(y);
         dragging = false;
-        flying = true;
-        vx = vx0;
-        vy = vy0;
+        fisica.arrancarVuelo(vuelo, { x: duck.x, y: duck.y, vx: vx0, vy: vy0 });
         duck.setState('fall');
       },
-      state: () => ({ x: duck.x, y: duck.y, vx, vy, flying }),
+      state: () => ({ ...vuelo }),
+      fisica,
+      /**
+       * La física sola, sin reloj ni pantalla: N pasos con dt fijo sobre un
+       * vuelo de usar y tirar. Es lo que permite comparar trayectorias entre
+       * versiones sin depender de cuántos fotogramas haya dado el navegador.
+       */
+      simular: (inicio, dt = 1 / 60, pasos = 600, ajustes) => {
+        const v = fisica.crearVuelo({ ...inicio, volando: true });
+        const limites = fisica.limitesDeVentana(duck);
+        const traza = [];
+        for (let i = 0; i < pasos; i++) {
+          const s = fisica.paso(v, dt, limites, ajustes);
+          traza.push({ ...v, ...s });
+          if (s.posado) break;
+        }
+        return traza;
+      },
       hover: () => ({ overDuck, overHot, dragging, cursor: lastCursor,
                       paneles: openOverlays.size, timer: !!hoverTimer }),
       verTooltip: () => showStatsTooltip(tam, duckName(), duckAnchor(), level),
       verMenu: () => { const p = duckAnchor(); openDuckMenu(p.x, p.y); },
       verSkins: () => { const p = duckAnchor(); openSkins(p.x, p.y); },
+      verJuegos: () => { const p = duckAnchor(); openJuegos(p.x, p.y); },
+      verPartida: (id, modo = 'solo') => {
+        const p = duckAnchor();
+        openPartida(minijuegoPorId(id), modo, {}, p.x, p.y);
+      },
+      juegos: () => juegos.toJSON(),
+      salas: () => salas,
+      /** Juega una partida entera contra un rival simulado, sin tocar la red. */
+      pruebaDeSalas: (opciones) => import('./game/rivalDePruebas.js')
+        .then((m) => m.probarSalas(opciones)),
+      /**
+       * Inyecta un reto entrante de mentira. Va por el camino de siempre —lo
+       * recibe el gestor de salas y él decide— para que la prueba valga: entrar
+       * por detrás sólo enseñaría el panel, no comprobaría nada.
+       */
+      simularReto: (juegoId = 'tresenraya') => {
+        salas.recibir({
+          pv: 1, t: 'reto', sala: `s-prueba-${Date.now().toString(36)}`,
+          aClave: chat.miClave, deClave: 'k-prueba', de: 'p-prueba00001',
+          n: 0, mid: Math.random().toString(36).slice(2),
+          d: { juego: juegoId, nombre: 'Vecino' }
+        });
+        return salas.retos().length;
+      },
+      escena: () => (escena ? escena.id : null),
+      /**
+       * Presta el escenario a un juego de mentira, para comprobar lo único que
+       * de verdad no puede fallar: que el pato SIEMPRE vuelve. Con
+       * `{revienta:true}` el juego lanza en el primer fotograma; con
+       * `{revientaAlMontar:true}`, al construirse.
+       */
+      probarEscena: (opciones = {}) => {
+        abrirEscena({
+          id: 'prueba', nombre: 'Prueba', superficie: 'escenario',
+          cargar: async () => ({
+            crearPartida(ctx) {
+              if (opciones.revientaAlMontar) throw new Error('prueba: revienta al montar');
+              let n = 0;
+              return {
+                actualizar(dt, pista) {
+                  if (opciones.revienta) throw new Error('prueba: revienta en un fotograma');
+                  n++;
+                  pista.marcador(`${n}`);
+                  pista.pintor.fillStyle = 'rgba(255,183,3,.5)';
+                  pista.pintor.fillRect(20, 20, 60, 60);
+                  if (n >= (opciones.fotogramas || 30)) ctx.alTerminar({ resultado: 'victoria' });
+                },
+                destroy() {}
+              };
+            }
+          })
+        }, 'solo', {});
+        return true;
+      },
       verStats: () => { const p = duckAnchor(); openStats(p.x, p.y); },
       verConectados: () => { const p = duckAnchor(); openOnline(p.x, p.y); },
       verHablar: () => { const p = duckAnchor(); openTalk(p.x, p.y); },
       verAjustes: () => { const p = duckAnchor(); openSettings(p.x, p.y); },
       level,
-      darXp: (n) => { level.xp += n; return level.nivel; },
+      // Por `_sumar` y no tocando `level.xp` a pelo: así se emiten los eventos
+      // de subida de nivel y se puede probar el aviso de desbloqueo.
+      darXp: (n) => { level._sumar(n, 'depuración'); return level.nivel; },
       act: doAction,
       /** Simula un pato de visita sin tocar la red. */
       verVisita: (opciones = {}) => visitas.recibir({
@@ -284,6 +367,14 @@ export async function arrancarPato(plataforma) {
  * paneles abiertos. Guarda antes, que es lo último que hace un pato educado.
  */
 function apagar() {
+  // Antes de guardar: si una partida de escenario devolviera el pato DESPUÉS,
+  // se habría persistido la posición de mitad de partida en vez de la suya.
+  if (escena) {
+    try { escena.terminar('apagado'); } catch (err) {
+      console.warn('[pato] fallo al cerrar la partida', err);
+    }
+  }
+
   try {
     saveNow();
   } catch (err) {
@@ -296,6 +387,9 @@ function apagar() {
   for (const el of [...openOverlays]) unregisterOverlay(el);
   // El animador de sprites corre en su propio bucle, aparte del del pato.
   if (duck) duck.detener();
+  // Antes de soltar el puente, no después: el aviso de que abandonamos la
+  // partida tiene que salir por él.
+  if (salas) { try { salas.cerrar(); } catch (err) { console.warn('[pato] fallo al cerrar la sala', err); } }
   // Y el chat puede tener un puente abierto con quien mantenga la conexión.
   if (api.chat && api.chat.cerrar) api.chat.cerrar();
 
@@ -315,8 +409,11 @@ function startLoops(statusBubbles) {
   const frame = (t) => {
     const dt = Math.min((t - last) / 1000, 0.1);
     last = t;
-    updateFlight(dt);
-    behavior.update(dt);
+    // Con una partida de escenario en marcha, el pato lo pilota ella: la física
+    // es la misma, pero con sus números y sus límites.
+    if (escena) escena.actualizar(dt);
+    else updateFlight(dt);
+    behavior.update(dt);   // bloqueado durante la partida: no hace nada
     pedido = requestAnimationFrame(frame);
   };
   pedido = requestAnimationFrame(frame);
@@ -328,14 +425,16 @@ function startLoops(statusBubbles) {
     level.convivencia(1, tam.mood() === 'contento');
   }, 1000);
 
-  // Burbuja de ánimo (2 s).
+  // Burbuja de ánimo (2 s). Durante una partida de escenario estorba: el pato
+  // está haciendo otra cosa y el globo taparía el juego.
   cadaCierto(() => {
-    if (!dragging) updateBubbles(statusBubbles, tam.mood());
+    if (!dragging && !escena) updateBubbles(statusBubbles, tam.mood());
   }, 2000);
   updateBubbles(statusBubbles, tam.mood());
 
-  // Guardado periódico (15 s).
-  cadaCierto(saveNow, 15000);
+  // Guardado periódico (15 s). En mitad de una partida de escenario la posición
+  // del pato es la de la pelota, no la suya: se guarda al devolverlo.
+  cadaCierto(() => { if (!escena) saveNow(); }, 15000);
 }
 
 /** setInterval que se para solo cuando el pato se apaga. */
@@ -352,6 +451,7 @@ function saveNow() {
   api.guardarEstado({
     stats: tam.stats,
     level: level.toJSON(),
+    minijuegos: juegos.toJSON(),
     // Como proporción del sitio disponible, no en píxeles: la ventana de la
     // pestaña siguiente no tiene por qué medir lo mismo.
     x: Math.min(1, Math.max(0, x / sitioLibre))
@@ -360,19 +460,22 @@ function saveNow() {
 
 // ---- Interacción: arrastre + menú clic derecho --------------------------
 function setupInteraction() {
+  // Con una partida de escenario en marcha, el ratón es suyo: ni hover, ni
+  // tooltip, ni arrastre, ni menú. Se cortocircuita aquí en vez de quitar y
+  // reponer los listeners porque `escuchar` lleva la cuenta para el apagado, y
+  // añadirlos a mano a mitad rompería esa contabilidad.
   escuchar(document, 'mousemove', (e) => {
+    if (escena) { escena.entrada.mover(e); return; }
     if (dragging) {
       // Si el botón se soltó fuera de la ventana (p. ej. justo al cruzar de
       // monitor), el mouseup no llega y el pato se quedaría pegado al cursor.
       if (e.buttons === 0) { endDrag(); return; }
       duck.setX(e.clientX - grab.x);
       duck.setY((window.innerHeight - e.clientY) + grab.y);
-      pushTrail(e);           // para calcular la inercia al soltar
+      inercia.anotar(e.clientX, e.clientY);   // para lanzarlo al soltar
       // Mira hacia donde se le está moviendo.
-      if (trail.length >= 2) {
-        const dx = trail[trail.length - 1].x - trail[0].x;
-        if (Math.abs(dx) > 8) duck.setFacing(dx > 0 ? 1 : -1);
-      }
+      const dx = inercia.avanceX();
+      if (Math.abs(dx) > 8) duck.setFacing(dx > 0 ? 1 : -1);
       return;
     }
     const sobreElPato = duck.hitTest(e.clientX, e.clientY);
@@ -388,14 +491,21 @@ function setupInteraction() {
 
   escuchar(document, 'mousedown', (e) => {
     if (e.button !== 0) return;
+    if (escena) { escena.entrada.pulsar(e); return; }
     if (isOverHotElement(objetivoReal(e))) return; // paneles/menús se gestionan solos
     if (duck.hitTest(e.clientX, e.clientY)) startDrag(e);
   });
 
-  escuchar(document, 'mouseup', () => { if (dragging) endDrag(); });
+  escuchar(document, 'mouseup', (e) => {
+    if (escena) { escena.entrada.soltar(e); return; }
+    if (dragging) endDrag();
+  });
 
   escuchar(document, 'contextmenu', (e) => {
     e.preventDefault();
+    // Durante una partida no hay menú: se sale con Esc o con el botón del
+    // marcador.
+    if (escena) return;
     if (isOverHotElement(objetivoReal(e))) return;
     // El menú se ancla al pato (no al cursor) y se abre por encima de él.
     if (duck.hitTest(e.clientX, e.clientY)) {
@@ -412,37 +522,19 @@ function setupInteraction() {
 
 function startDrag(e) {
   dragging = true;
-  flying = false;
+  fisica.detenerVuelo(vuelo);
   cancelarTooltip();
   // Si le agarras mientras iba de recado, se acabó el recado: manda el ratón.
   cancelarPaseo();
   grab.x = e.clientX - duck.x;
   grab.y = duck.y - (window.innerHeight - e.clientY);
-  trail.length = 0;
-  pushTrail(e);
+  inercia.limpiar();
+  inercia.anotar(e.clientX, e.clientY);
   duck.setDragTransition(false);
   duck.setTilt(0);          // por si se le agarra mientras volaba
   behavior.lock();          // el pato cuelga del cursor
   api.empezarArrastre();    // donde haya varios monitores, se vigila si cruza
   updateMouseCapture();
-}
-
-// Muestras recientes del cursor, para saber a qué velocidad se lanza el pato.
-function pushTrail(e) {
-  const now = performance.now();
-  trail.push({ x: e.clientX, y: e.clientY, t: now });
-  while (trail.length > 2 && now - trail[0].t > VELOCITY_WINDOW) trail.shift();
-}
-
-/** Velocidad del cursor en px/s, promediada en los últimos ms. */
-function pointerVelocity() {
-  if (trail.length < 2) return { vx: 0, vy: 0 };
-  const a = trail[0];
-  const b = trail[trail.length - 1];
-  const dt = (b.t - a.t) / 1000;
-  if (dt <= 0.001) return { vx: 0, vy: 0 };
-  // El eje Y del pato crece hacia arriba; el del cursor, hacia abajo.
-  return { vx: (b.x - a.x) / dt, vy: -(b.y - a.y) / dt };
 }
 
 // Al soltarlo sale despedido con la inercia del ratón y describe una parábola,
@@ -453,90 +545,45 @@ function endDrag() {
   api.terminarArrastre();
   updateMouseCapture();
 
-  const v = pointerVelocity();
-  vx = clamp(v.vx, -MAX_THROW, MAX_THROW);
-  vy = clamp(v.vy, -MAX_THROW, MAX_THROW);
-  trail.length = 0;
+  const v = inercia.velocidad();
+  const impulso = fisica.limitarLanzamiento(v.vx, v.vy);
+  inercia.limpiar();
 
-  if (duck.onGround() && Math.abs(vx) < 60 && vy <= 0) {
+  if (duck.onGround() && Math.abs(impulso.vx) < 60 && impulso.vy <= 0) {
     behavior.unlock();
     return;
   }
-  flying = true;
+  fisica.arrancarVuelo(vuelo, { x: duck.x, y: duck.y, vx: impulso.vx, vy: impulso.vy });
   duck.setDragTransition(false);
   duck.setState('fall');
-  if (Math.abs(vx) > 40) duck.setFacing(vx > 0 ? 1 : -1);
+  if (Math.abs(impulso.vx) > 40) duck.setFacing(impulso.vx > 0 ? 1 : -1);
 }
 
 // --- Física del vuelo ----------------------------------------------------
-const GRAVITY = 1750;          // px/s²
-const MAX_THROW = 2600;        // tope de la velocidad de lanzamiento (px/s)
-const AIR_DRAG = 0.55;         // rozamiento horizontal (1/s)
-const GLIDE_SPEED = 240;       // velocidad de caída cuando planea aleteando
-const GLIDE_THRESHOLD = 300;   // por debajo de esta velocidad, aletea y frena
-const WALL_BOUNCE = 0.6;       // rebote en los lados
-const GROUND_BOUNCE = 0.42;    // rebote contra el suelo
-const GROUND_FRICTION = 0.7;   // el suelo frena el avance en cada bote
-const REST_SPEED = 70;         // por debajo de esto, deja de botar
-
-function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+//
+// Los números y la integración viven en pet/fisica.js, que no sabe de sonido ni
+// de sprites. Aquí sólo se traduce lo que ha pasado a lo que se ve y se oye.
+// El orden de los sonidos es el de siempre: primero el aleteo, luego la pared y
+// luego el suelo.
 
 function updateFlight(dt) {
-  if (!flying) return;
+  if (!vuelo.volando) return;
 
-  vy -= GRAVITY * dt;
-  vx -= vx * AIR_DRAG * dt;
+  const s = fisica.paso(vuelo, dt, fisica.limitesDeVentana(duck));
 
-  // Cuando va despacio el pato aletea y frena la caída: así un simple soltar
-  // se convierte en un aterrizaje suave, mientras que un lanzamiento fuerte
-  // conserva su parábola.
-  if (Math.hypot(vx, vy) < GLIDE_THRESHOLD && vy < -GLIDE_SPEED) {
-    vy = -GLIDE_SPEED;
-    sonido.aleteo();          // sólo suena mientras aletea para frenar
-  }
+  if (s.aleteo) sonido.aleteo();          // sólo suena mientras aletea para frenar
+  // `!== null` y no un simple `if`: un choque de fuerza cero es un choque, y
+  // suena. Ver el comentario de `Sucesos` en pet/fisica.js.
+  if (s.pared !== null) sonido.boing(s.pared);
+  if (s.suelo !== null) sonido.boing(s.suelo);
 
-  let nx = duck.x + vx * dt;
-  let ny = duck.y + vy * dt;
+  if (s.posado) { land(); return; }
 
-  // Rebote en los lados.
-  const maxX = window.innerWidth - duck.width;
-  if (nx <= 0 || nx >= maxX) {
-    nx = nx <= 0 ? 0 : maxX;
-    vx = (nx === 0 ? Math.abs(vx) : -Math.abs(vx)) * WALL_BOUNCE;
-    sonido.boing(Math.abs(vx) / MAX_THROW);
-  }
-
-  // Techo: no se escapa por arriba.
-  const maxY = window.innerHeight - duck.height;
-  if (ny >= maxY) { ny = maxY; vy = -Math.abs(vy) * 0.35; }
-
-  // Suelo: bota y va perdiendo energía hasta quedarse quieto.
-  if (ny <= duck.ground) {
-    ny = duck.ground;
-    if (Math.abs(vy) > REST_SPEED) {
-      sonido.boing(Math.abs(vy) / MAX_THROW);
-      vy = Math.abs(vy) * GROUND_BOUNCE;
-      vx *= GROUND_FRICTION;
-    } else {
-      land(nx);
-      return;
-    }
-  }
-
-  duck.setX(nx);
-  duck.setY(ny);
-  duck.setState('fall');
-
-  // Se inclina hacia donde vuela y mira en esa dirección.
-  duck.setTilt(clamp(-vx * 0.035, -45, 45));
-  if (Math.abs(vx) > 120) duck.setFacing(vx > 0 ? 1 : -1);
+  fisica.aplicar(duck, vuelo);
 }
 
-function land(nx) {
-  flying = false;
-  vx = 0;
-  vy = 0;
-  duck.setX(nx);
+function land() {
+  duck.setX(vuelo.x);
   duck.toGround();
   duck.setTilt(0);
   behavior.unlock();
@@ -548,16 +595,32 @@ function openDuckMenu(x, y) {
   cancelarTooltip();
   // Cuidar al pato ya no son opciones del menú: se hace desde la botonera de la
   // cabecera, con las barras delante y sin que el menú se cierre en cada gesto.
-  const items = [
+  const items = [];
+  // Los retos pendientes van primero: caducan solos, así que llegar tarde es
+  // perderlos.
+  const pendientesDeReto = salas ? salas.retos() : [];
+  if (pendientesDeReto.length) {
+    items.push({
+      label: `⚔️ Retos · ${pendientesDeReto.length}`,
+      ancho: true,
+      onClick: () => abrirPanelDeReto(pendientesDeReto[pendientesDeReto.length - 1])
+    });
+  }
+  // Las cuatro cosas que se hacen CON el pato, en dos filas limpias.
+  items.push(
     { label: '💬 Hablar…', onClick: () => openTalk(x, y) },
     { label: etiquetaConectados(), onClick: () => openOnline(x, y) },
     { label: '👕 Diseños', onClick: () => openSkins(x, y) },
-    { label: '⚙️ Ajustes…', onClick: () => openSettings(x, y) }
-  ];
-  // "Salir" sólo donde hay algo de lo que salir: en una extensión el pato no
-  // tiene proceso propio que cerrar.
-  if (api.capacidades.salir) {
-    items.push({ sep: true }, { label: '❌ Salir', ancho: true, onClick: () => api.salir() });
+    { label: '🎮 Juegos', onClick: () => openJuegos(x, y) }
+  );
+  // Y abajo, tras la raya, las dos que son sobre el pato y no con él. Van juntas
+  // para que la última fila quede completa: Ajustes solo dejaba un hueco.
+  items.push({ sep: true }, { label: '⚙️ Ajustes…', onClick: () => openSettings(x, y) });
+  if (api.capacidades.ocultar) {
+    // Esconderse, no cerrarse: vuelve desde la bandeja del sistema o desde el
+    // menú del icono de la extensión. Cerrar del todo sigue estando en la
+    // bandeja, que es donde no se pulsa sin querer.
+    items.push({ label: '🙈 Ocultar', onClick: () => api.ocultar() });
   }
 
   // La misma vista que sale al dejar el ratón sobre el pato, aquí con botonera:
@@ -709,6 +772,216 @@ function openOnline(x, y) {
   mountPanel(el, x, y);
 }
 
+function openJuegos(x, y) {
+  const { el, actualizar } = buildJuegosPanel(level, juegos, estadoPresencia(), api.capacidades, {
+    onJugar: (juego, modo, opciones) => {
+      unregisterOverlay(el);
+      openPartida(juego, modo, opciones, x, y);
+    },
+    onBack: () => volverAlMenu(el, x, y),
+    onClose: () => unregisterOverlay(el)
+  });
+  // Los rivales entran y salen del canal mientras el panel está abierto.
+  oyentesPresencia.add(actualizar);
+  el.addEventListener('panel:cerrado', () => oyentesPresencia.delete(actualizar), { once: true });
+  mountPanel(el, x, y);
+}
+
+/**
+ * Abre una partida.
+ *
+ * Es el único sitio donde se juntan el pato, la red y el disco: el marco y los
+ * juegos reciben rendijas ya cerradas. Es la misma división que hay entre
+ * `doAction` y los paneles de cuidados.
+ */
+function openPartida(juego, modo, opciones, x, y) {
+  if (!juego) return;
+  // Una partida cada vez, sea de la superficie que sea.
+  if (escena) return;
+
+  // Retar es el paso previo, no la partida: no hay nada que abrir hasta que el
+  // otro conteste. Cuando conteste, la sala avisa y se vuelve por aquí con
+  // `opciones.sala` ya puesta.
+  if (modo === 'turnos' && opciones.rival && !opciones.sala) {
+    if (!salas.retar(opciones.rival, juego.id)) {
+      toast('Ahora mismo no se puede retar a nadie.');
+    }
+    return;
+  }
+  // Jugar cansa, igual que jugar con el bate: un pato agotado no juega a nada.
+  if (tam.agotado) {
+    toast(`Está agotado: duerme hasta recuperar el ${AGOTAMIENTO.DESPIERTA} % de energía.`);
+    return;
+  }
+  // El coste en stats, pero sin pasar por `doAction`: eso encadenaría
+  // `level.cuidado` y jugar acabaría dando experiencia de cuidados.
+  tam.play();
+
+  if (juego.superficie === 'escenario') { abrirEscena(juego, modo, opciones); return; }
+
+  const enRed = modo === 'turnos' && !!opciones.sala;
+
+  const panel = buildPartidaPanel(juego, modo, {
+    // Sólo los datos: el marco pone las herramientas de ciclo de vida, porque es
+    // quien tiene que apagarlas entre una partida y la siguiente.
+    ctx: datosDePartida(juego, modo, opciones),
+    // Anotar, puntuar y guardar, en un solo sitio: el marco no sabe de
+    // experiencia ni de disco, y los juegos menos.
+    onFin: (r) => anotarPartida(juego, r),
+    // En red, "¿Otra?" es una propuesta: la partida nueva la abre la sala cuando
+    // los dos hayan dicho que sí (ver `empiezaLaPartida`).
+    onRevancha: enRed ? () => salas.proponerRevancha() : undefined,
+    onDejarlo: enRed ? () => salas.rechazarRevancha() : undefined,
+    onBack: () => { unregisterOverlay(panel.el); openJuegos(x, y); },
+    onClose: () => unregisterOverlay(panel.el)
+  });
+
+  const el = panel.el;
+  if (enRed) {
+    partidaAbierta = panel;
+    el.addEventListener('panel:cerrado', () => {
+      if (partidaAbierta === panel) partidaAbierta = null;
+      // Cerrar el panel es irse, se haya usado el botón de salir o la ×. Si no
+      // se avisa, el rival se queda esperando a alguien que ya no está hasta
+      // que salte su plazo de ausencia, que es minuto y medio mirando a nada.
+      //
+      // Salvo que estemos cambiando de partida: en una revancha este panel se
+      // cierra para dejar sitio al siguiente, y avisar ahí sería abandonar la
+      // partida que acabamos de aceptar.
+      if (!cambiandoDePartida) salas.abandonar();
+    }, { once: true });
+  }
+  mountPanel(el, x, y);
+}
+
+/**
+ * Una partida que se juega en el escenario entero: el juego pilota al pato y la
+ * pantalla, y cuando acaba se los devuelve.
+ *
+ * No hay panel: el marcador y el botón de salir los pone el propio préstamo.
+ */
+function abrirEscena(juego, modo, opciones) {
+  const limpieza = [];
+  let contada = false;
+
+  const prestamo = prestarEscenario({
+    pato: duck, behavior, vuelo, alApagar, toast, nombre: juego.nombre,
+    registrarOverlay: registerOverlay,
+    soltarOverlay: unregisterOverlay,
+    // Pase lo que pase —fin normal, Esc, error del juego o apagado— esto se
+    // ejecuta, y el pato vuelve a ser del usuario.
+    alDevolver: () => {
+      escena = null;
+      for (const fn of limpieza.splice(0)) {
+        try { fn(); } catch (err) { console.warn('[pato] fallo al recoger la partida', err); }
+      }
+      fisica.detenerVuelo(vuelo);
+      duck.setTilt(0);
+      duck.toGround();
+      behavior.unlock();
+      updateMouseCapture();
+      saveNow();
+    }
+  });
+
+  const ctx = {
+    ...datosDePartida(juego, modo, opciones),
+    ...herramientasDePartida(limpieza),
+    escenario: prestamo.pista,
+    alTerminar: (r) => {
+      if (contada) return;
+      contada = true;
+      const res = anotarPartida(juego, r);
+      // Sin panel donde pintar el pie, el resultado se dice en un cartel.
+      toast(res.xp > 0
+        ? `${veredicto(r.resultado)} · +${res.xp} XP`
+        : `${veredicto(r.resultado)} · hoy ya no da experiencia`);
+      sonido[r.resultado === 'victoria' ? 'victoria' : 'derrota']();
+      prestamo.terminar('fin');
+    }
+  };
+
+  // Por el descriptor y no por `cargarMinijuego(id)`: es lo mismo para un juego
+  // del catálogo, y permite probar el préstamo con uno de mentira.
+  juego.cargar().then((modulo) => {
+    const enMarcha = prestamo.ejecutar(modulo.crearPartida(ctx));
+    // `ejecutar` devuelve null si el escenario ya se devolvió mientras cargaba
+    // (el usuario cerró, o el pato se mudó de pestaña).
+    if (!enMarcha) return;
+    escena = enMarcha;
+    sonido.empezarPartida();
+  }).catch((err) => {
+    console.error(`[juego:${juego.id}] no se pudo abrir`, err);
+    toast('No se ha podido abrir este juego.');
+    prestamo.terminar('error');
+  });
+}
+
+function veredicto(r) {
+  return r === 'victoria' ? '¡Ganaste!' : r === 'empate' ? 'Empate' : 'Perdiste';
+}
+
+/** Anota el resultado, suma la experiencia y guarda. Un solo sitio. */
+function anotarPartida(juego, r) {
+  juegos.anotar(juego.id, r);
+  const xp = level.minijuego(r.resultado);
+  saveNow();     // un récord no se pierde por cerrar antes del guardado
+  return { xp };
+}
+
+/**
+ * Los datos que recibe un juego, sin las herramientas de ciclo de vida: ésas
+ * las pone quien monta la partida, porque tiene que poder apagarlas —el panel al
+ * cerrarse o al empezar otra, el préstamo al devolver el escenario—.
+ */
+function datosDePartida(juego, modo, opciones) {
+  return {
+    juego,
+    modo,
+    nivel: level.nivel,
+    yo: duckName(),
+    jugadores: opciones.jugadores || [duckName()],
+    anfitrion: opciones.anfitrion !== false,
+    // En red la semilla la reparte el anfitrión: los dos lados tienen que
+    // barajar igual, y eso no se puede sortear por separado.
+    semilla: opciones.semilla != null ? opciones.semilla : (Math.random() * 2 ** 31) | 0,
+    marcas: juegos.de(juego.id),
+    sonido,
+    pato: { animar: (estado, dur) => behavior.playOnce(estado, dur || 1.4) },
+    decir: (t) => toast(t),
+    sala: opciones.sala || null,
+    escenario: null
+  };
+}
+
+/** Las cuatro herramientas del contrato, atadas a una lista de apagado. */
+function herramientasDePartida(limpieza) {
+  const registrar = (fn) => { limpieza.push(fn); return fn; };
+  return {
+    cadaFrame(fn) {
+      let pedido = 0;
+      let ultimo = performance.now();
+      const paso = (t) => {
+        const dt = Math.min((t - ultimo) / 1000, 0.1);
+        ultimo = t;
+        fn(dt);
+        pedido = requestAnimationFrame(paso);
+      };
+      pedido = requestAnimationFrame(paso);
+      return registrar(() => cancelAnimationFrame(pedido));
+    },
+    cadaCierto(fn, ms) {
+      const id = setInterval(fn, ms);
+      return registrar(() => clearInterval(id));
+    },
+    escuchar(objetivo, evento, fn, opciones) {
+      objetivo.addEventListener(evento, fn, opciones);
+      registrar(() => objetivo.removeEventListener(evento, fn, opciones));
+    },
+    alDestruir: registrar
+  };
+}
+
 function openSkins(x, y) {
   const { el } = buildSkinsPanel(level, duck.skinId, {
     onElegir: (id) => {
@@ -723,6 +996,23 @@ function openSkins(x, y) {
 }
 
 /** Cartelito de subida de nivel, sobre el pato. */
+// Catálogos que se desbloquean por nivel. Añadir uno nuevo —marcos, sonidos, lo
+// que sea— es meterlo en esta lista: el aviso de subida de nivel lo anuncia solo.
+const DESBLOQUEABLES = [
+  { lista: SKINS, singular: 'Nuevo diseño', plural: 'Nuevos diseños' },
+  { lista: MINIJUEGOS, singular: 'Nuevo juego', plural: 'Nuevos juegos' }
+];
+
+/** Qué se estrena al llegar a un nivel, ya como HTML propio (sin datos ajenos). */
+function novedadesDeNivel(nivel) {
+  return DESBLOQUEABLES.map(({ lista, singular, plural }) => {
+    const nuevos = lista.filter((x) => x.nivel === nivel);
+    if (!nuevos.length) return '';
+    const etiqueta = nuevos.length > 1 ? plural : singular;
+    return `<br>${etiqueta}: <b>${nuevos.map((x) => x.nombre).join(', ')}</b>`;
+  }).join('');
+}
+
 function avisoNivel(html) {
   const el = document.createElement('div');
   el.className = 'levelup';
@@ -829,10 +1119,23 @@ function setupChat() {
     // ven: la lista de antes ya no vale.
     if (!chat.connected) conectados = [];
     avisarPresencia();
+    if (salas) salas.canalCambio(chat.connected);
   });
   chat.onPresence((names) => {
     conectados = names;
     avisarPresencia();
+    // Al rival le puede cambiar la clave al reconectar: la sala lo vuelve a
+    // localizar por su identidad estable.
+    if (salas) salas.presenciaCambio(chat.presentes);
+  });
+  chat.onJuego((m) => { if (salas) salas.recibir(m); });
+  // Sólo en la extensión: había una partida en marcha cuando el pato se mudó de
+  // pestaña. Rehacer su estado es cosa pendiente, así que de momento se dice lo
+  // que ha pasado y se suelta, en vez de dejar una partida a medias que no
+  // responde. El rival se entera por su propio plazo de ausencia.
+  chat.onPartidaGuardada(() => {
+    chat.olvidarPartida();
+    toast('La partida se quedó atrás al cambiar de pestaña.');
   });
   // El canal ya puede estar conectado antes de llegar aquí.
   chat.sync();
@@ -841,6 +1144,146 @@ function setupChat() {
   // todavía no había nombre porque se acaba de generar. Sin esto, el pato sale
   // sin nombre en la lista de conectados hasta que se abren los Ajustes.
   chat.setName(duckName());
+  setupSalas();
+}
+
+// ---- Partidas entre patos -----------------------------------------------
+
+function setupSalas() {
+  salas = crearGestorDeSalas({
+    transporte: { enviar: (m) => chat.enviarJuego(m) },
+    yo: () => ({ id: chat.miId, nombre: duckName() }),
+    rivales: () => chat.rivales(),
+    hayCanal: () => chat.connected,
+    cadaCierto
+  });
+
+  // Antes de que el chat suelte el puente: el aviso de abandono tiene que salir
+  // por él. Aun así, el otro extremo no depende de recibirlo.
+  alApagar(() => salas.cerrar());
+
+  salas.alCambiar((s) => {
+    if (s.tipo === 'reto') return llegaUnReto(s.reto);
+    if (s.tipo === 'empieza') return empiezaLaPartida(s.sala);
+    if (s.tipo === 'rechazado') {
+      toast(s.motivo === 'ocupado'
+        ? `${s.nombre} está jugando ahora mismo.`
+        : `${s.nombre} no quiere jugar ahora.`);
+      return;
+    }
+    if (s.tipo === 'sin-respuesta') { toast(`${s.nombre} no ha contestado.`); return; }
+    if (s.tipo === 'revancha-pedida') {
+      if (partidaAbierta) partidaAbierta.revanchaPedida(s.nombre);
+      else toast(`${s.nombre} quiere otra partida.`);
+      return;
+    }
+    if (s.tipo === 'revancha-esperando') {
+      if (partidaAbierta) partidaAbierta.revanchaEsperando(s.nombre);
+      return;
+    }
+    if (s.tipo === 'revancha-rechazada') {
+      cerrarPartidaPorElRival(s.nombre, 'Lo dejo aquí. ¡Otro día seguimos!');
+      return;
+    }
+    // Ausente no es lo mismo que ido: todavía puede volver, así que se avisa
+    // dentro del panel y no se cierra nada.
+    if (s.tipo === 'rival-ausente') {
+      if (partidaAbierta) partidaAbierta.revanchaCancelada('Tu rival lleva un rato sin dar señales.');
+      else toast('Tu rival lleva un rato sin dar señales.');
+      return;
+    }
+    if (s.tipo === 'fin') {
+      const nombre = s.sala && s.sala.rival ? s.sala.rival.nombre : '';
+      if (s.motivo === 'abandono-rival') {
+        cerrarPartidaPorElRival(nombre, '¡Me tengo que ir! Otra vez será.');
+      } else if (s.motivo === 'rival-desconectado' || s.motivo === 'desconexion') {
+        // Aquí el rival no ha dicho nada: se ha caído. Poner palabras en su boca
+        // sería mentir sobre lo que ha pasado.
+        cerrarPartidaPorElRival(null, `Se ha perdido la conexión con ${nombre || 'tu rival'}.`);
+      }
+      return;
+    }
+    if (s.tipo === 'retando') { toast('Reto enviado. A ver si contesta…'); return; }
+    if (s.tipo === 'suspendida') { toast('Sin conexión: la partida espera.'); return; }
+    if (s.tipo === 'reanudada') { toast('De vuelta.'); return; }
+    if (s.tipo === 'aviso') { toast(s.texto); return; }
+  });
+}
+
+/**
+ * Se acabó, y no por decisión nuestra: el rival se ha ido o se ha caído.
+ *
+ * Se cierra el panel y se cuenta en un bocadillo, que es como habla todo lo
+ * demás en esta app. Dejar el tablero muerto delante con una nota pequeña al pie
+ * es fácil de no ver, y encima invita a seguir pulsando algo que ya no responde.
+ *
+ * @param {string|null} nombre  quién lo dice; null si nadie ha dicho nada y
+ *   sólo se está informando de una desconexión.
+ * @param {string} texto
+ */
+function cerrarPartidaPorElRival(nombre, texto) {
+  if (partidaAbierta) {
+    // Marcado como cambio de partida: el rival YA se ha ido, así que anunciarle
+    // a él que abandonamos no tiene sentido.
+    cambiandoDePartida = true;
+    try { unregisterOverlay(partidaAbierta.el); } finally { cambiandoDePartida = false; }
+    partidaAbierta = null;
+  }
+  if (nombre) {
+    speech.show(nombre, texto, { self: false });
+    sonido.cuack({ agudo: 0.9 });
+  } else {
+    toast(texto);
+  }
+}
+
+/**
+ * Llega un reto.
+ *
+ * Se avisa siempre —con cartel, cuack y un gesto del pato, que se ve aunque esté
+ * en una esquina— pero el panel sólo se monta si el pato está libre. Saltarle
+ * una ventana encima a alguien que está haciendo otra cosa no es avisar.
+ */
+function llegaUnReto(reto) {
+  const juego = minijuegoPorId(reto.juego);
+  toast(`${reto.rival.nombre} te reta a ${juego ? juego.nombre : 'una partida'}`);
+  sonido.cuack({ agudo: 1.25 });
+  if (behavior) behavior.playOnce('happy', 1.6);
+  if (openOverlays.size === 0 && !dragging && !escena) abrirPanelDeReto(reto);
+}
+
+function abrirPanelDeReto(reto) {
+  const juego = minijuegoPorId(reto.juego);
+  if (!juego) { salas.rechazar(reto.sala, 'no'); return; }
+  const p = duckAnchor();
+  const { el } = buildRetoPanel(reto, juego.nombre, {
+    onAceptar: () => { unregisterOverlay(el); salas.aceptar(reto.sala); },
+    onRechazar: () => { unregisterOverlay(el); salas.rechazar(reto.sala, 'no'); },
+    onClose: () => unregisterOverlay(el)
+  });
+  mountPanel(el, p.x, p.y);
+}
+
+/**
+ * El reto cuajó (o los dos han querido otra): se abre la partida con la sala ya
+ * montada. En una revancha hay que cerrar antes el panel de la anterior, que
+ * sigue enseñando el resultado.
+ */
+function empiezaLaPartida(sala) {
+  const juego = minijuegoPorId(sala.juego);
+  if (!juego) { salas.abandonar(); return; }
+  if (partidaAbierta) {
+    cambiandoDePartida = true;
+    try { unregisterOverlay(partidaAbierta.el); } finally { cambiandoDePartida = false; }
+    partidaAbierta = null;
+  }
+  const p = duckAnchor();
+  openPartida(juego, 'turnos', {
+    sala: salas.paraElJuego(),
+    jugadores: sala.jugadores,
+    anfitrion: sala.anfitrion,
+    semilla: sala.semilla
+  }, p.x, p.y);
 }
 
 // ---- Visitas ------------------------------------------------------------
@@ -919,7 +1362,7 @@ function enviarVisita(destino, texto) {
   });
   historial.anadir({
     from: duckName(),
-    text: `🛫 el pato se ha ido a ver a ${destino.nombre}`,
+    text: `🛫 tu mascota se ha ido a ver a ${destino.nombre}`,
     ts: Date.now(),
     propio: true,
     fallo: !salio
@@ -938,7 +1381,7 @@ function hacerElPaseo() {
   if (!duck || !behavior) return;
   // Estando en el aire no hay paseo que valga: el pato está describiendo una
   // parábola y meterle un bucle encima lo dejaría clavado a media caída.
-  if (dragging || flying) return;
+  if (dragging || vuelo.volando) return;
   cancelarPaseo();
   paseo = salirYVolver(duck, behavior);
 }

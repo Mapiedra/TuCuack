@@ -482,7 +482,11 @@ html, body {
   margin-bottom: 10px;
 }
 
-.skin-card {
+/* Las tarjetas de juego son las mismas que las de diseño: se extiende el
+   selector en vez de copiar el bloque, y así el hover, el candado, el atenuado
+   y el tick valen para los dos sin duplicar una regla. */
+.skin-card,
+.juego-card {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -497,7 +501,8 @@ html, body {
   color: var(--ink);
   overflow: hidden;
 }
-.skin-card:hover:not(:disabled) { border-color: var(--accent); background: rgba(255, 183, 3, 0.16); }
+.skin-card:hover:not(:disabled),
+.juego-card:hover:not(:disabled) { border-color: var(--accent); background: rgba(255, 183, 3, 0.16); }
 .skin-card.puesta { border-color: var(--ink); background: rgba(255, 183, 3, 0.22); }
 
 /* Retrato: el primer frame del sheet (idle), recortado al pato.
@@ -514,9 +519,12 @@ html, body {
 .skin-nombre { font-size: 10px; text-align: center; line-height: 1.15; }
 
 /* Bloqueada: se ve, pero apagada y con el candado encima. */
-.skin-card.bloqueada { cursor: default; background: rgba(0, 0, 0, 0.06); }
+.skin-card.bloqueada,
+.juego-card.bloqueada { cursor: default; background: rgba(0, 0, 0, 0.06); }
 .skin-card.bloqueada .skin-mini { filter: grayscale(1) brightness(0.55) opacity(0.55); }
-.skin-card.bloqueada .skin-nombre { color: #999; }
+.juego-card.bloqueada .juego-icono { filter: grayscale(1) opacity(0.5); }
+.skin-card.bloqueada .skin-nombre,
+.juego-card.bloqueada .skin-nombre { color: #999; }
 .skin-lock {
   position: absolute;
   top: 50%;
@@ -758,3 +766,83 @@ html, body {
 .muted { color: #777; font-size: 11px; margin-top: 4px; }
 .muted.error { color: #c1121f; font-weight: 600; }
 .text-input.invalid, .panel input[type="text"].invalid { border-color: #c1121f; }
+
+/* ---- Minijuegos --------------------------------------------------------- */
+
+/* A dos columnas y no a tres como los diseños: las tarjetas llevan texto
+   (el modo, cuántos jugadores) y a tres no cabría. */
+.panel-juegos { width: 330px; }
+.juegos-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 7px;
+  margin-bottom: 10px;
+}
+.juego-icono { font-size: 26px; line-height: 1.1; }
+.juego-modo { font-size: 9px; color: #8a8a95; text-align: center; }
+.juego-elegir { display: flex; flex-direction: column; gap: 7px; }
+.juego-elegir .btn { width: 100%; }
+
+/* El panel se ancla sobre el pato y se coloca solo: si el tablero crece de
+   aquí, `colocarPanel` lo tira debajo y el panel entra en scroll. Los juegos
+   tienen 280x300 px de presupuesto. */
+.panel-partida { width: 300px; }
+.juego-cuerpo { min-height: 60px; }
+
+.juego-fin { border-top: 1px solid rgba(0, 0, 0, 0.12); margin-top: 8px; padding-top: 7px; }
+.juego-veredicto { margin: 0 0 4px; font-weight: 700; font-size: 15px; }
+.juego-fin .xp { margin: 4px 0 8px; color: var(--accent-2); font-weight: 700; }
+.juego-fin .muted { margin: 4px 0; }
+
+/* ---- Tres en raya ---- */
+.jt-aviso { margin: 0 0 8px; font-size: 12px; min-height: 16px; }
+.jt-tablero {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  width: 100%;
+  max-width: 240px;
+  margin: 0 auto;
+}
+.jt-casilla {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  line-height: 1;
+  background: rgba(0, 0, 0, 0.04);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--ink);
+}
+.jt-casilla:hover:not(:disabled) { border-color: var(--accent); background: rgba(255, 183, 3, 0.16); }
+.jt-casilla:disabled { cursor: default; }
+.jt-gana { background: rgba(255, 183, 3, 0.3); border-color: var(--ink); }
+
+/* ---- Juegos de escenario ---- */
+.juego-lienzo { position: absolute; inset: 0; }
+.juego-hud {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, .2);
+  padding: 6px 12px;
+  font-size: 13px;
+}
+.juego-hud .marcador { font-weight: 700; color: var(--accent-2); }
+
+/* ---- Reto de partida ---- */
+.panel-reto { width: 250px; }
+.reto-quien { margin: 0 0 2px; font-weight: 700; font-size: 15px; color: var(--accent-2); }
+.panel-reto p { margin: 4px 0; font-size: 13px; }

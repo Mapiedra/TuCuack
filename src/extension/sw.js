@@ -22,8 +22,32 @@ let canal = null;
 let conectado = false;
 let miNombre = '';
 let miClave = '';
+/** Identidad estable de este pato (ajustes.patoId), la que aguanta una
+ *  reconexión a mitad de partida. Ver `asegurarPatoId`. */
+let miId = '';
 /** Si ya nos hemos anunciado en la presencia con el nombre actual. */
 let anunciado = false;
+
+/** Tope de un mensaje de partida (ver el mismo en src/main/chat.js). */
+const TOPE_JUEGO = 4096;
+
+/**
+ * La identidad estable de este pato, estrenándola si aún no la tiene.
+ *
+ * Es el gemelo de lo que hace src/main/store.js en el escritorio: cada carcasa
+ * la genera donde guarda sus ajustes, igual que ya pasa con `miClave`.
+ */
+async function asegurarPatoId(ajustes) {
+  const guardado = (ajustes && ajustes.patoId) || '';
+  if (/^p-[a-z0-9]{6,24}$/.test(guardado)) return guardado;
+  const nuevo = `p-${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-6)}`;
+  try {
+    await chrome.storage.local.set({ ajustes: { ...(ajustes || {}), patoId: nuevo } });
+  } catch (err) {
+    console.warn('[chat] no se pudo guardar la identidad del pato:', err);
+  }
+  return nuevo;
+}
 
 /** Paneles abiertos escuchando. Normalmente uno; puede haber varios si el
  *  usuario tiene varias ventanas de Chrome. */
@@ -79,6 +103,60 @@ function anotarEnHistorial(mensaje) {
   return colaHistorial;
 }
 
+// ---- Partida en curso ---------------------------------------------------
+//
+// Mismo problema que el histórico, y peor: el árbitro muda al pato de pestaña
+// cada vez que el usuario cambia de una a otra, o sea cada pocos segundos. Si
+// una partida muriera con la mudanza, el multijugador sería inservible en Chrome.
+//
+// Así que el worker guarda los mensajes de la partida —los que llegan Y los que
+// se envían— y se los entrega al pato cuando reaparece. No guarda el estado del
+// juego: el worker no sabe jugar a nada y no debe saberlo. Quien reconstruye la
+// partida es el gestor de salas del núcleo, reaplicando los mensajes por orden.
+const CLAVE_PARTIDA = 'partida';
+const TOPE_PARTIDA = 60;   // sobra para una partida entera de cualquiera de los juegos
+
+let colaPartida = Promise.resolve();
+
+/** @returns {Promise<{sala:string, mensajes:object[]}|null>} */
+async function leerPartida() {
+  try {
+    const guardado = await chrome.storage.session.get(CLAVE_PARTIDA);
+    const p = guardado[CLAVE_PARTIDA];
+    return p && Array.isArray(p.mensajes) ? p : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Anota un mensaje de partida. Si cambia la sala, se olvida la anterior. */
+function anotarEnPartida(m) {
+  if (!m || !m.sala) return colaPartida;
+  colaPartida = colaPartida.then(async () => {
+    try {
+      const actual = await leerPartida();
+      const mensajes = (actual && actual.sala === m.sala) ? actual.mensajes : [];
+      mensajes.push(m);
+      await chrome.storage.session.set({
+        [CLAVE_PARTIDA]: { sala: m.sala, mensajes: mensajes.slice(-TOPE_PARTIDA) }
+      });
+    } catch (err) {
+      console.warn('[juego] no se pudo anotar la partida:', err);
+    }
+  });
+  return colaPartida;
+}
+
+/** La partida terminó o se abandonó: se olvida. */
+function olvidarPartida() {
+  colaPartida = colaPartida.then(async () => {
+    try {
+      await chrome.storage.session.remove(CLAVE_PARTIDA);
+    } catch { /* si no se puede, caducará al cerrar Chrome */ }
+  });
+  return colaPartida;
+}
+
 // ---- Credenciales -------------------------------------------------------
 // No se versionan: el ensamblado copia supabase.json si existe (ver
 // tools/build-extension.js y docs/CONFIGURACION.md).
@@ -127,6 +205,10 @@ async function conectar() {
   const { ajustes } = await chrome.storage.local.get('ajustes');
   miNombre = (ajustes && ajustes.displayName) || '';
   miClave = `pato-${Math.random().toString(36).slice(2, 10)}`;
+  // La identidad estable, que a diferencia de la clave sobrevive a reconectar.
+  // Se lee ANTES del primer `track`: si llegara después habría que anunciarse
+  // otra vez, y un `track` repetido duplica la entrada en la presencia.
+  miId = await asegurarPatoId(ajustes);
 
   console.log(`[chat] conectando a ${cred.url} · canal "${CANAL}" · como "${miNombre || '(sin nombre)'}"`);
 
@@ -172,6 +254,15 @@ function crearCanal() {
 
   // Visitas: un pato que viene a esta pantalla. Van a todo el canal, así que lo
   // que no venga dirigido a nosotros se descarta aquí y no llega al pato.
+  // Partidas: dirigidas, como las visitas. A diferencia de ellas, una jugada SÍ
+  // se guarda si no hay pato a la vista: el pato se muda de pestaña cada dos por
+  // tres y llegar tarde a una jugada no puede costar la partida.
+  ch.on('broadcast', { event: 'juego' }, ({ payload }) => {
+    if (!payload || payload.aClave !== miClave) return;
+    anotarEnPartida(payload);
+    avisar({ type: 'juego', mensaje: payload });
+  });
+
   ch.on('broadcast', { event: 'visita' }, ({ payload }) => {
     if (!payload || payload.aClave !== miClave) return;
     if (puertos.size === 0) {
@@ -212,7 +303,7 @@ function suscribir() {
       // anterior en la presencia, la duplica.
       if (!anunciado) {
         try {
-          await canal.track({ name: miNombre, at: Date.now() });
+          await canal.track({ name: miNombre, at: Date.now(), id: miId });
           anunciado = true;
         } catch (e) {
           console.error('[chat] no se pudo anunciar la presencia:', e);
@@ -271,7 +362,7 @@ function presentes() {
         // versión que se anunciaba de más.
         if (!m || !m.name || vistos.has(clave)) continue;
         vistos.add(clave);
-        salida.push({ clave: String(clave), nombre: String(m.name) });
+        salida.push({ clave: String(clave), nombre: String(m.name), id: String(m.id || '') });
       }
     }
     return salida;
@@ -306,6 +397,23 @@ function limpiarVisita(v) {
     texto: String(v.texto || '').slice(0, 280),
     ts: Number(v.ts) || Date.now()
   };
+}
+
+function enviarJuego(m) {
+  if (!canal || !conectado || !m || !m.aClave) {
+    console.warn('[juego] NO se envía: el canal no está conectado');
+    return;
+  }
+  const payload = { ...m, deClave: miClave, de: miId, ts: Date.now() };
+  const bruto = JSON.stringify(payload);
+  if (bruto.length > TOPE_JUEGO) {
+    console.warn(`[juego] mensaje descartado por tamaño (${bruto.length} B)`);
+    return;
+  }
+  // Lo propio se anota igual que lo que llega: al mudarse de pestaña, una
+  // partida con las jugadas del rival y ninguna nuestra no se puede rehacer.
+  anotarEnPartida(payload);
+  canal.send({ type: 'broadcast', event: 'juego', payload });
 }
 
 function enviarVisita(v) {
@@ -359,6 +467,10 @@ chrome.runtime.onConnect.addListener((puerto) => {
       enviar(msg.msg);
     } else if (msg.tipo === 'visita') {
       enviarVisita(msg.visita);
+    } else if (msg.tipo === 'juego') {
+      enviarJuego(msg.mensaje);
+    } else if (msg.tipo === 'olvidar-partida') {
+      olvidarPartida();
     } else if (msg.tipo === 'nombre') {
       await ponerNombre(msg.nombre);
     }
@@ -372,6 +484,9 @@ chrome.runtime.onConnect.addListener((puerto) => {
     puerto.postMessage({ type: 'presence', names: nombresPresentes(), presentes: presentes() });
     const mensajes = await leerHistorial();
     if (mensajes.length) puerto.postMessage({ type: 'historial', mensajes });
+    // Y si se estaba jugando algo cuando el pato se mudó, se le devuelve.
+    const partida = await leerPartida();
+    if (partida) puerto.postMessage({ type: 'partida', partida });
   });
 });
 
@@ -404,7 +519,7 @@ async function ponerNombre(nombre) {
   miNombre = nuevo;
   if (canal && conectado) {
     try {
-      await canal.track({ name: miNombre, at: Date.now() });
+      await canal.track({ name: miNombre, at: Date.now(), id: miId });
       anunciado = true;
     } catch (err) {
       console.error('[chat] no se pudo actualizar el nombre:', err);
@@ -419,19 +534,36 @@ chrome.runtime.onMessage.addListener((msg, _emisor, responder) => {
     // instala sus oyentes DESPUÉS de abrirlo, así que un envío que llegue justo
     // en medio se perdería. Al preguntar él, no hay carrera que valga.
     iniciar()
-      .then(() => leerHistorial())
-      .then((historial) => responder({
+      .then(() => Promise.all([leerHistorial(), leerPartida()]))
+      .then(([historial, partida]) => responder({
         connected: conectado,
         names: nombresPresentes(),
         presentes: presentes(),
         clave: miClave,
-        historial
+        id: miId,
+        historial,
+        partida
       }));
     return true;   // la respuesta llega de forma asíncrona
   }
   if (msg.tipo === 'abrir' && typeof msg.url === 'string' && /^https?:\/\//.test(msg.url)) {
     chrome.tabs.create({ url: msg.url });
     return false;
+  }
+  // El pato se esconde a sí mismo desde su menú. Es lo mismo que hace el menú
+  // del botón derecho sobre el icono de la extensión.
+  //
+  // Se responde cuando está hecho, y no antes: cerrar el canal en cuanto llega
+  // el mensaje deja al worker sin nada que lo mantenga despierto, y Manifest V3
+  // puede reciclarlo a mitad del `await` sin llegar a esconder nada.
+  if (msg.tipo === 'ocultar') {
+    ponerVisible(false)
+      .then(() => responder({ ok: true }))
+      .catch((err) => {
+        console.error('[pato] no se pudo ocultar:', err);
+        responder({ ok: false });
+      });
+    return true;
   }
   return false;
 });
@@ -565,7 +697,12 @@ async function echarDe(sitio) {
   if (sitio.tipo === 'panel') {
     const puerto = panelesAbiertos.get(sitio.windowId);
     if (puerto) {
-      try { puerto.postMessage({ tipo: 'desmontar' }); } catch { /* ya se fue */ }
+      // El motivo importa: no es lo mismo que el pato se haya ido a otra
+      // ventana que haberlo escondido a propósito. El panel enseña un cartel
+      // distinto en cada caso, y con el de "está en otra ventana" parecía que
+      // Ocultar no hubiera funcionado.
+      const motivo = visible ? 'mudanza' : 'oculto';
+      try { puerto.postMessage({ tipo: 'desmontar', motivo }); } catch { /* ya se fue */ }
     }
     return;
   }
@@ -636,7 +773,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, cambios) => {
 const ID_MENU = 'tucuack-alternar';
 
 function textoDelMenu() {
-  return visible ? 'Ocultar el pato' : 'Mostrar el pato';
+  return visible ? 'Ocultar la mascota' : 'Mostrar la mascota';
 }
 
 function refrescarMenu() {
@@ -660,11 +797,23 @@ async function crearMenu() {
 
 chrome.contextMenus.onClicked.addListener(async (info) => {
   if (info.menuItemId !== ID_MENU) return;
-  visible = !visible;
+  await ponerVisible(!visible);
+});
+
+/**
+ * Esconde o saca al pato. Lo usan el menú del icono y el propio pato, desde su
+ * opción "Ocultar": las dos tienen que hacer exactamente lo mismo, o el texto
+ * del menú y la realidad dejarían de coincidir.
+ */
+async function ponerVisible(v) {
+  visible = !!v;
+  console.log(`[pato] ${visible ? 'se muestra' : 'se esconde'}`);
   await chrome.storage.local.set({ [CLAVE_VISIBLE]: visible });
   refrescarMenu();
-  recalcular();
-});
+  // Se espera al reparto: si el worker se durmiera antes de que termine, el pato
+  // se quedaría montado en una pestaña con `visible` ya en false.
+  await recalcular();
+}
 
 // ---- Ciclo de vida ------------------------------------------------------
 

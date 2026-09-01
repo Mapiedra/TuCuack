@@ -79,7 +79,7 @@ function bloqueAyuda() {
   det.appendChild(sum);
 
   const p = document.createElement('p');
-  p.textContent = 'Cuidar bien al pato da experiencia. No sirve de nada machacar '
+  p.textContent = 'Cuidar bien a tu mascota da experiencia. No sirve de nada machacar '
     + 'los botones: sólo cuenta cuando de verdad lo necesita.';
   det.appendChild(p);
 
@@ -102,7 +102,7 @@ function bloqueAyuda() {
 
   const nota = document.createElement('p');
   nota.className = 'muted';
-  nota.textContent = 'Un pato descuidado deja de sumar por convivencia, pero nunca '
+  nota.textContent = 'Una mascota descuidada deja de sumar por convivencia, pero nunca '
     + 'se pierde nivel. Con el ordenador apagado no se acumula experiencia.';
   det.appendChild(nota);
 
