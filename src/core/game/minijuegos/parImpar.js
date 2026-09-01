@@ -15,6 +15,10 @@ import { sembrar } from './azar.js';
 const NUMEROS = [0, 1, 2, 3, 4, 5];
 const RONDAS_PARA_GANAR = 2;   // al mejor de tres
 
+// El mismo respiro que en piedra, papel o tijera: aquí encima hay una cuenta
+// que leer, así que menos todavía valdría.
+const PAUSA_MS = 2600;
+
 /**
  * @param {import('./index.js').ContextoPartida} ctx
  * @returns {import('./index.js').Partida}
@@ -75,8 +79,18 @@ export function crearPartida(ctx) {
     botones.set(n, b);
   }
 
-  const revelado = document.createElement('p');
-  revelado.className = 'jppt-revelado';
+  // La cuenta de la ronda, en grande y con su sitio reservado (ver el mismo
+  // bloque en piedraPapelTijera.js).
+  const revelado = document.createElement('div');
+  revelado.className = 'jr-revelado';
+  const cuenta = document.createElement('div');
+  cuenta.className = 'jr-manos';
+  const sumaEl = document.createElement('span');
+  sumaEl.className = 'jr-suma';
+  cuenta.appendChild(sumaEl);
+  const veredictoEl = document.createElement('p');
+  veredictoEl.className = 'jr-veredicto';
+  revelado.append(cuenta, veredictoEl);
   el.appendChild(revelado);
 
   // Si canta el rival, hay que esperar a que lo diga.
@@ -150,8 +164,10 @@ export function crearPartida(ctx) {
     const gano = salio === miApuesta;
     if (gano) misRondas++; else susRondas++;
 
-    revelado.textContent = `${r.mio} + ${r.suyo} = ${suma}, ${salio}`
-      + (gano ? '  · tu ronda' : '  · la suya');
+    sumaEl.textContent = `${r.mio} + ${r.suyo} = ${suma}`;
+    veredictoEl.textContent = `Salió ${salio} · ${gano ? 'tu ronda' : 'la suya'}`;
+    veredictoEl.className = 'jr-veredicto ' + (gano ? 'gana' : 'pierde');
+    revelado.classList.add('visible');
     ctx.pato.animar(gano ? 'happy' : 'sad', 1.1);
 
     pintar();
@@ -170,9 +186,9 @@ export function crearPartida(ctx) {
       parar();
       if (terminada) return;
       enPausa = false;
-      revelado.textContent = '';
+      revelado.classList.remove('visible');
       pintar();
-    }, 1500);
+    }, PAUSA_MS);
   }
 
   function acabar(resultado, detalle) {

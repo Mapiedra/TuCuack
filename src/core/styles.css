@@ -849,7 +849,28 @@ html, body {
 
 /* ---- Piedra, papel o tijera · Par o impar ---- */
 .jppt-marcador { margin: 0 0 4px; font-size: 13px; font-weight: 700; }
-.jppt-revelado { margin: 8px 0 0; font-size: 13px; min-height: 18px; text-align: center; }
+
+/* El resultado de la ronda. Guarda su sitio siempre —si apareciera y
+   desapareciera, el tablero pegaría un salto en cada ronda— y sólo se enciende
+   cuando hay algo que enseñar. */
+.jr-revelado {
+  margin: 10px 0 0;
+  min-height: 64px;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+.jr-revelado.visible { opacity: 1; }
+
+.jr-manos { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.jr-mano { font-size: 34px; line-height: 1; }
+.jr-contra { font-size: 12px; color: #8a8a95; }
+.jr-suma { font-size: 26px; font-weight: 700; letter-spacing: 0.5px; }
+
+.jr-veredicto { margin: 4px 0 0; font-size: 14px; font-weight: 700; }
+.jr-veredicto.gana { color: var(--accent-2); }
+.jr-veredicto.pierde { color: #c1121f; }
+.jr-veredicto.empate { color: #8a8a95; }
 
 .jppt-opciones { display: flex; gap: 8px; justify-content: center; }
 .jppt-opcion {
