@@ -40,6 +40,7 @@ jobs:
           for f in manifest.json sw.js content.js panel.html boot.js \
                    core/app.js core/game/minijuegos/index.js \
                    core/game/minijuegos/tresEnRaya.js \
+                   core/game/minijuegos/rondaSimultanea.js \
                    core/game/salas.js core/game/protocolo.js \
                    vendor/supabase.js assets/sprites/index.json INSTALAR.txt; do
             if [ ! -f "dist/extension/$f" ]; then

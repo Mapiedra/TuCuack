@@ -5,7 +5,13 @@ abren desde `🎮 Juegos` en el menú del pato.
 
 | Juego | Nivel | Modos | Superficie |
 |---|---|---|---|
-| ⭕ Tres en raya | 1 | solo · red (2) | panel |
+| ✌️ Piedra, papel o tijera | 1 | solo · red (2) | panel |
+| 🎲 Par o impar | 3 | solo · red (2) | panel |
+| ⭕ Tres en raya | 5 | solo · red (2) | panel |
+
+La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
+segundo, después los de pensar. Queda hueco por delante para los que faltan —la
+paleta, el ahorcado, hundir la flota—, que son bastante más largos.
 
 Se puede jugar **solo**, contra el pato, o **por turnos contra otro pato
 conectado**, retándole desde el propio panel.
@@ -199,6 +205,51 @@ El service worker ya guarda los mensajes de la partida y se los devuelve al pato
 cuando reaparece, pero **rehacer el estado (`salas.reanudar`) está pendiente**:
 de momento el pato avisa de que la partida se quedó atrás y la suelta limpiamente.
 En el escritorio esto no pasa, porque el pato no se muda a ninguna parte.
+
+## Jugadas a la vez
+
+Piedra-papel-tijera y par o impar tienen un problema que tres en raya no tiene:
+**los dos eligen al mismo tiempo**. Si mando mi jugada antes que el otro, el otro
+la ve y gana siempre.
+
+Y no vale con "enviar a la vez": la sala lleva **un solo contador de secuencia**,
+así que dos envíos simultáneos se pisan —los dos suben a la misma `n`, y cada
+lado descarta la del otro por "ya aplicada", encima confirmándosela—. Es un fallo
+silencioso, de los peores.
+
+Para eso está
+[`minijuegos/rondaSimultanea.js`](../src/core/game/minijuegos/rondaSimultanea.js).
+Un juego le pide una ronda y se despreocupa:
+
+```js
+const ronda = crearRondaSimultanea(ctx, {
+  eligeLaMascota: () => unoDe(OPCIONES, azar).id,   // el rival en modo solo
+  alResolver: ({ mio, suyo, tramposo, plantado }) => { … }
+});
+ronda.elegir('piedra');
+```
+
+Por debajo es **compromiso y revelación**: primero cada uno manda el *hash* de su
+jugada, que no dice nada, y sólo cuando los dos están comprometidos se revelan
+los valores. Quien cambie su jugada al revelar no cuadra con lo que prometió, y
+sale `tramposo: true`. Como el canal alterna, el intercambio también:
+
+```
+1. anfitrión → compromiso      3. anfitrión → revelación
+2. invitado  → compromiso      4. invitado  → revelación
+```
+
+Queda una rendija, y conviene saberla: **el invitado ve la revelación del
+anfitrión antes de mandar la suya**. No puede cambiarla —está comprometido— pero
+sí puede callarse si ve que pierde. Por eso hay un plazo: quien no revela a
+tiempo, pierde la ronda (`plantado: true`).
+
+Un detalle que cuesta un bug si se pasa por alto: **la ronda siguiente se abre en
+cuanto la anterior se resuelve**, no cuando termina la pausa de "mira lo que ha
+salido". Si se esperara, el compromiso de un rival más rápido llegaría sin nadie
+escuchando y se perdería, porque la sala ya lo habría confirmado.
+
+En modo solo no hay nada de esto: la mascota elige y se resuelve al momento.
 
 ## Experiencia
 

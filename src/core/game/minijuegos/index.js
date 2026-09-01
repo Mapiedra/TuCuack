@@ -37,6 +37,11 @@
  */
 
 /**
+ * El orden de la lista es el orden en que se ven, y va de menos a más: primero
+ * los de decidir en un segundo, después los de pensar. El nivel acompaña a esa
+ * misma cuesta, con hueco de sobra por delante para los que faltan —la paleta,
+ * el ahorcado, hundir la flota—, que son bastante más largos.
+ *
  * No hay campo de experiencia por juego, y es a propósito: sería la puerta de
  * la granja de XP. El día que alguien meta un juego de cinco segundos, subiría
  * de nivel mientras cena. Lo que da un minijuego lo decide `Level.minijuego`,
@@ -44,10 +49,10 @@
  */
 export const MINIJUEGOS = [
   {
-    id: 'tresenraya',
-    nombre: 'Tres en raya',
-    icono: '⭕',
-    descripcion: 'El de siempre. Contra tu mascota o contra otra.',
+    id: 'piedrapapeltijera',
+    nombre: 'Piedra, papel o tijera',
+    icono: '✌️',
+    descripcion: 'Al mejor de tres. Los dos eligen a la vez.',
     nivel: 1,
     modos: ['solo', 'turnos'],
     jugadores: { min: 2, max: 2 },
@@ -55,6 +60,30 @@ export const MINIJUEGOS = [
     marca: null,
     // La ruta va escrita literal y no `import('./' + id + '.js')`: así la
     // dependencia se ve, y no depende de que nadie empaquete nada.
+    cargar: () => import('./piedraPapelTijera.js')
+  },
+  {
+    id: 'parimpar',
+    nombre: 'Par o impar',
+    icono: '🎲',
+    descripcion: 'Uno pide par, el otro impar, y la suma decide.',
+    nivel: 3,
+    modos: ['solo', 'turnos'],
+    jugadores: { min: 2, max: 2 },
+    superficie: 'panel',
+    marca: null,
+    cargar: () => import('./parImpar.js')
+  },
+  {
+    id: 'tresenraya',
+    nombre: 'Tres en raya',
+    icono: '⭕',
+    descripcion: 'El de siempre. Contra tu mascota o contra otra.',
+    nivel: 5,
+    modos: ['solo', 'turnos'],
+    jugadores: { min: 2, max: 2 },
+    superficie: 'panel',
+    marca: null,
     cargar: () => import('./tresEnRaya.js')
   }
 ];

@@ -846,3 +846,49 @@ html, body {
 .panel-reto { width: 250px; }
 .reto-quien { margin: 0 0 2px; font-weight: 700; font-size: 15px; color: var(--accent-2); }
 .panel-reto p { margin: 4px 0; font-size: 13px; }
+
+/* ---- Piedra, papel o tijera · Par o impar ---- */
+.jppt-marcador { margin: 0 0 4px; font-size: 13px; font-weight: 700; }
+.jppt-revelado { margin: 8px 0 0; font-size: 13px; min-height: 18px; text-align: center; }
+
+.jppt-opciones { display: flex; gap: 8px; justify-content: center; }
+.jppt-opcion {
+  flex: 1;
+  aspect-ratio: 1;
+  max-width: 76px;
+  font-size: 30px;
+  line-height: 1;
+  background: rgba(0, 0, 0, 0.04);
+  border: 2px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--ink);
+}
+
+/* Seis números en dos filas: con seis en línea no se acierta al pulsar. */
+.jpi-numeros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.jpi-numero {
+  aspect-ratio: 1.5;
+  font-size: 20px;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.04);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--ink);
+}
+
+.jppt-opcion:hover:not(:disabled),
+.jpi-numero:hover:not(:disabled) { border-color: var(--accent); background: rgba(255, 183, 3, 0.16); }
+.jppt-opcion:disabled,
+.jpi-numero:disabled { cursor: default; opacity: 0.55; }
+/* La elegida se queda marcada mientras se espera al rival: si no, con todo
+   apagado no se sabe qué llegaste a pulsar. */
+.jppt-opcion.elegida,
+.jpi-numero.elegida {
+  opacity: 1;
+  border-color: var(--ink);
+  background: rgba(255, 183, 3, 0.3);
+}
