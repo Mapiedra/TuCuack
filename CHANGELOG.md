@@ -7,6 +7,8 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.7.0] - 2026-09-01
+
 ### Añadido
 
 - **Minijuegos.** Nueva entrada `🎮 Juegos` en el menú de la mascota, con un
@@ -499,7 +501,8 @@ Primera versión.
   funciona con normalidad pero sin chat.
 - El instalador no está firmado, así que Windows SmartScreen mostrará un aviso.
 
-[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.6.1...HEAD
+[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.7.0
 [0.6.1]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.6.1
 [0.6.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.6.0
 [0.5.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.5.0
