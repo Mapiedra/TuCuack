@@ -7,6 +7,7 @@ import { LIMITES, normalizarFactor } from '../scale.js';
 /**
  * @param {{displayName:string, autoLaunch:boolean, visitas?:boolean}} settings
  * @param {string} version
+ * @param {boolean} handlers.actualizaciones  si esta carcasa se actualiza sola
  * @param {{onSave:(s:object)=>void, onClose:Function,
  *          isNameTaken:(n:string)=>boolean, chatReady:boolean,
  *          onSonido:(s:object)=>void, onEscala:(pct:number)=>void,
@@ -146,6 +147,79 @@ export function buildSettingsPanel(settings, version, handlers) {
   ver.style.marginTop = '10px';
   ver.textContent = `TuCuack v${version}`;
   el.appendChild(ver);
+
+  // ---- Actualizaciones ----------------------------------------------------
+  //
+  // Lo automático sigue funcionando igual. Esto es para las dos veces en que no
+  // basta: cuando el pato lleva abierto desde antes de que saliera la versión
+  // (sólo mira al arrancar), y cuando la descarga está lista pero no se aplica
+  // porque cerrar la ventana no es salir de la app.
+  let botonAct = null;
+  let notaAct = null;
+  if (handlers.actualizaciones) {
+    botonAct = document.createElement('button');
+    botonAct.className = 'btn';
+    botonAct.type = 'button';
+    botonAct.style.marginTop = '6px';
+
+    notaAct = document.createElement('div');
+    notaAct.className = 'muted';
+
+    botonAct.addEventListener('click', () => {
+      if (botonAct.dataset.accion === 'instalar') handlers.onInstalarActualizacion();
+      else handlers.onBuscarActualizacion();
+    });
+
+    el.appendChild(botonAct);
+    el.appendChild(notaAct);
+  }
+
+  /**
+   * Pinta en qué anda la actualización.
+   *
+   * El botón cambia de trabajo según el estado: normalmente busca, y cuando hay
+   * una descargada pasa a instalarla. Son dos cosas distintas y no merecen dos
+   * botones: el segundo estaría apagado el 99 % del tiempo.
+   */
+  function pintarActualizacion(estado) {
+    if (!botonAct) return;
+    const e = estado || { tipo: 'desconocido' };
+    const version = e.version ? `v${e.version}` : 'la nueva versión';
+
+    if (e.tipo === 'lista') {
+      botonAct.dataset.accion = 'instalar';
+      botonAct.disabled = false;
+      botonAct.textContent = `⬇️ Reiniciar e instalar ${version}`;
+      notaAct.textContent = 'Se cierra el pato, se instala y vuelve.';
+      notaAct.classList.remove('error');
+      return;
+    }
+
+    botonAct.dataset.accion = 'buscar';
+    botonAct.disabled = e.tipo === 'comprobando' || e.tipo === 'descargando';
+    botonAct.textContent = '🔄 Buscar actualizaciones';
+    notaAct.classList.toggle('error', e.tipo === 'error');
+    notaAct.textContent = {
+      comprobando: 'Mirando si hay algo nuevo…',
+      descargando: e.porcentaje != null
+        ? `Descargando ${version}… ${e.porcentaje} %`
+        : `Descargando ${version}…`,
+      ninguna: 'Ya tienes la última.',
+      error: `No se pudo comprobar: ${e.mensaje || 'sin detalle'}`,
+      'no-disponible': 'En desarrollo no hay actualizaciones que buscar.',
+      desconocido: ''
+    }[e.tipo] || '';
+  }
+
+  pintarActualizacion(handlers.estadoActualizacion && handlers.estadoActualizacion());
+
+  // El panel se entera del avance mientras siga abierto —una descarga tarda— y
+  // se da de baja al cerrarse. Se apunta él solo: quien lo abre no tiene por qué
+  // acordarse de darlo de alta, y menos de darlo de baja.
+  if (botonAct && handlers.alCambiarActualizacion) {
+    const baja = handlers.alCambiarActualizacion(pintarActualizacion);
+    el.addEventListener('panel:cerrado', baja, { once: true });
+  }
 
   const setError = (msg) => {
     hint.textContent = msg || '';

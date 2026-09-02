@@ -42,6 +42,9 @@ export function crearPlataformaElectron() {
 
     salir: () => pato.quit(),
     ocultar: () => pato.hide(),
+    estadoActualizacion: () => pato.estadoActualizacion(),
+    buscarActualizacion: () => pato.buscarActualizacion(),
+    instalarActualizacion: () => pato.instalarActualizacion(),
     abrirExterno: (url) => pato.openExternal(url),
     alCerrar: (cb) => pato.onBeforeQuit(cb),
     alRecibirComando: (cb) => pato.onTrayCommand(cb),

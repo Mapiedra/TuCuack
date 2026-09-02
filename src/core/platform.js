@@ -119,6 +119,12 @@ export function normalizarPlataforma(p = {}) {
     alCerrar: p.alCerrar || noSuscribir,
     alRecibirComando: p.alRecibirComando || noSuscribir,
     alRecibirActualizacion: p.alRecibirActualizacion || noSuscribir,
+    // Actualizaciones a mano: mirar ahora y aplicar ahora. Donde no haya
+    // actualizaciones —la extensión se actualiza sola desde Chrome— esto no se
+    // ofrece; ver `capacidades.actualizaciones`.
+    estadoActualizacion: p.estadoActualizacion || (async () => ({ tipo: 'no-disponible' })),
+    buscarActualizacion: p.buscarActualizacion || noop,
+    instalarActualizacion: p.instalarActualizacion || noop,
 
     // ---- Chat entre patos ------------------------------------------------
     chat: { ...CHAT_DESACTIVADO, ...(p.chat || {}) }
