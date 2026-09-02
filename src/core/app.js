@@ -711,6 +711,20 @@ function openSettings(x, y) {
     isNameTaken: (n) => chat.isNameTaken(n),
     chatReady: chat.connected,
     puedeAutoArrancar: api.capacidades.autoArranque,
+    actualizaciones: api.capacidades.actualizaciones,
+    estadoActualizacion: () => ultimaActualizacion,
+    alCambiarActualizacion: (cb) => {
+      oyentesActualizacion.add(cb);
+      return () => oyentesActualizacion.delete(cb);
+    },
+    onBuscarActualizacion: () => {
+      // Se pinta ya, sin esperar al primer aviso: pulsar un botón y que no pase
+      // nada visible durante un segundo parece que no ha funcionado.
+      ultimaActualizacion = { tipo: 'comprobando' };
+      avisarActualizacion();
+      api.buscarActualizacion();
+    },
+    onInstalarActualizacion: () => api.instalarActualizacion(),
     // El tamaño se ve al momento mientras se mueve el control, y se guarda ya:
     // si el pato queda enorme, cerrar el panel sin más no debería perder el
     // ajuste con el que el usuario se ha quedado.
@@ -1443,12 +1457,45 @@ function setupTray() {
 }
 
 // ---- Actualizaciones ----------------------------------------------------
+// Lo último que se sabe de la actualización, y quién quiere enterarse.
+//
+// Se recuerda porque los avisos vuelan antes de que nadie los escuche: la
+// comprobación del arranque termina mucho antes de que se abra Ajustes, y sin
+// esto el panel se abriría en blanco.
+let ultimaActualizacion = { tipo: 'desconocido' };
+const oyentesActualizacion = new Set();
+
+function avisarActualizacion() {
+  for (const cb of oyentesActualizacion) {
+    try { cb(ultimaActualizacion); } catch (err) { console.warn('[pato] oyente falló', err); }
+  }
+}
+
 function setupUpdates() {
   api.alRecibirActualizacion((evt) => {
     if (!evt) return;
+    // Los avisos de siempre, que no cambian.
     if (evt.type === 'available') toast(`Descargando actualización v${evt.version}…`);
     else if (evt.type === 'ready') toast('¡Nueva versión lista! Se aplicará al reiniciar.');
+
+    // Y lo nuevo: recordarlo para Ajustes. El proceso principal manda ahora el
+    // estado con `tipo`; los avisos de arriba llegan con `type` desde siempre y
+    // se dejan como están para no tocar lo que ya funciona.
+    if (evt.tipo) {
+      ultimaActualizacion = evt;
+      avisarActualizacion();
+    }
   });
+
+  // Y se pregunta una vez al arrancar: puede haber pasado ya de todo antes de
+  // que el pato estuviera montado.
+  Promise.resolve(api.estadoActualizacion())
+    .then((estado) => {
+      if (!estado) return;
+      ultimaActualizacion = estado;
+      avisarActualizacion();
+    })
+    .catch(() => { /* sin actualizaciones que consultar */ });
 }
 
 function toast(text) {

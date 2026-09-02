@@ -4,7 +4,8 @@ const { app, BrowserWindow, screen, ipcMain, shell } = require('electron');
 const path = require('path');
 const store = require('./store');
 const { createTray } = require('./tray');
-const { initUpdater } = require('./updater');
+const { initUpdater, estadoActualizacion, buscarActualizacion, instalarActualizacion }
+  = require('./updater');
 const { initChat } = require('./chat');
 
 const isDev = process.argv.includes('--dev');
@@ -237,6 +238,12 @@ ipcMain.handle('chat:status', () => ({
   clave: chat ? chat.clave() : '',
   id: chat ? chat.id() : ''
 }));
+
+// Actualizaciones a mano. Lo automático sigue igual: esto es para poder mirar
+// cuando uno quiera y aplicarla sin esperar a salir de la app.
+ipcMain.handle('update:status', () => estadoActualizacion());
+ipcMain.on('update:check', () => buscarActualizacion());
+ipcMain.on('update:install', () => instalarActualizacion(() => win));
 
 // El pato se esconde solo desde su menú. No se cierra: sigue vivo en la bandeja,
 // que es de donde se le vuelve a sacar.

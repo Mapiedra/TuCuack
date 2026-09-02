@@ -26,6 +26,10 @@ contextBridge.exposeInMainWorld('pato', {
   sendGame: (mensaje) => ipcRenderer.send('juego:send', mensaje),
   // Esconder el pato en la bandeja, sin cerrarlo.
   hide: () => ipcRenderer.send('app:hide'),
+  // Actualizaciones a mano.
+  estadoActualizacion: () => ipcRenderer.invoke('update:status'),
+  buscarActualizacion: () => ipcRenderer.send('update:check'),
+  instalarActualizacion: () => ipcRenderer.send('update:install'),
   onChatEvent: (cb) => ipcRenderer.on('chat:event', (_e, evt) => cb(evt)),
   setChatName: (name) => ipcRenderer.send('chat:set-name', name),
   chatNames: () => ipcRenderer.invoke('chat:names'),

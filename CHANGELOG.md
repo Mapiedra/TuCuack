@@ -7,6 +7,20 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Añadido
+
+- **Buscar actualizaciones a mano, y aplicarlas sin esperar.** En Ajustes, bajo
+  la versión. Lo automático sigue exactamente igual —comprueba al arrancar,
+  descarga sola e instala al salir—, pero tenía dos huecos que se notaban: sólo
+  mira UNA vez, al arrancar, así que un pato que lleve abierto desde antes de
+  que saliera la versión no se entera por mucho que espere; e instala al SALIR,
+  y el pato vive en la bandeja, donde cerrar la ventana no es salir. De ahí lo
+  de abrir y cerrar varias veces hasta que se aplica. Ahora se puede mirar
+  cuando uno quiera, se ve en qué anda (comprobando, descargando con su
+  porcentaje, al día, o el error), y cuando hay una descargada el mismo botón
+  pasa a **Reiniciar e instalar**. En la extensión no aparece: de ésa se encarga
+  Chrome.
+
 ## [0.9.0] - 2026-09-02
 
 ### Añadido
