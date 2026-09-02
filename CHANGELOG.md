@@ -21,6 +21,12 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   pasa a **Reiniciar e instalar**. En la extensión no aparece: de ésa se encarga
   Chrome.
 
+  *Con red de seguridad en todas las salidas:* si la comprobación no contesta en
+  20 s, si resuelve sin decir nada, o si no hay actualizador que preguntar, se
+  dice — en vez de dejar el "Mirando si hay algo nuevo…" puesto para siempre. Y
+  "Reiniciar e instalar" no cierra el pato si no hay nada descargado que
+  instalar.
+
 ## [0.9.0] - 2026-09-02
 
 ### Añadido

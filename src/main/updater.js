@@ -44,16 +44,29 @@ function anotar(nuevo) {
 }
 
 /**
+ * Abre el canal de avisos hacia el pato.
+ *
+ * Va aparte de `initUpdater` a propósito: eso sólo arranca en producción, y sin
+ * esto, en desarrollo, lo que se anotara se emitiría al vacío —el pato pediría
+ * comprobar, aquí se respondería "no disponible", y ese "no disponible" no
+ * llegaría a ninguna parte—. Se llama siempre.
+ *
  * @param {() => import('electron').BrowserWindow | null} getWin
  */
-function initUpdater(getWin) {
-  if (!autoUpdater) return;
-  iniciado = true;
-
+function configurarAvisos(getWin) {
   avisar = (evt) => {
     const win = getWin();
     if (win && !win.isDestroyed()) win.webContents.send('update:event', evt);
   };
+}
+
+/**
+ * @param {() => import('electron').BrowserWindow | null} getWin
+ */
+function initUpdater(getWin) {
+  configurarAvisos(getWin);
+  if (!autoUpdater) return;
+  iniciado = true;
 
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
@@ -88,15 +101,52 @@ function estadoActualizacion() {
   return { ...estado };
 }
 
-/** Mirar ahora, sin esperar al próximo arranque. */
+/**
+ * Cuánto se espera a que la comprobación diga algo.
+ *
+ * Hace falta un tope porque `checkForUpdates` puede quedarse colgado sin
+ * resolver ni lanzar —una red que no contesta, un proxy que se traga la
+ * petición—, y entonces la interfaz se quedaría en "comprobando" para siempre.
+ */
+const TOPE_COMPROBACION_MS = 20000;
+
+/** Para saber si lo que llega tarde es de la comprobación que aún se espera. */
+let comprobacion = 0;
+
+/**
+ * Mirar ahora, sin esperar al próximo arranque.
+ *
+ * Lo importante aquí es que NINGUNA salida sea muda: quien pulsa el botón ya
+ * está viendo un "comprobando", y si esta función se va sin decir nada ese
+ * mensaje se queda puesto para siempre.
+ */
 function buscarActualizacion() {
-  if (!autoUpdater || !iniciado) return;
+  if (!autoUpdater || !iniciado) {
+    anotar({ tipo: 'no-disponible' });
+    return;
+  }
+
+  const mia = ++comprobacion;
   anotar({ tipo: 'comprobando' });
-  // El resultado llega por los eventos de arriba; aquí sólo hay que evitar que
-  // un fallo de red tumbe el proceso.
-  Promise.resolve(autoUpdater.checkForUpdates()).catch((err) => {
-    anotar({ tipo: 'error', mensaje: String(err && err.message ? err.message : err) });
-  });
+
+  setTimeout(() => {
+    if (mia === comprobacion && estado.tipo === 'comprobando') {
+      anotar({ tipo: 'error', mensaje: 'no contestó a tiempo' });
+    }
+  }, TOPE_COMPROBACION_MS);
+
+  Promise.resolve(autoUpdater.checkForUpdates())
+    .then((resultado) => {
+      // Si no hay nada que actualizar, `checkForUpdates` puede devolver null sin
+      // emitir ningún evento. Sin esto, otra vez a esperar eternamente.
+      if (!resultado && mia === comprobacion && estado.tipo === 'comprobando') {
+        anotar({ tipo: 'ninguna' });
+      }
+    })
+    .catch((err) => {
+      if (mia !== comprobacion) return;
+      anotar({ tipo: 'error', mensaje: String(err && err.message ? err.message : err) });
+    });
 }
 
 /**
@@ -128,6 +178,7 @@ function instalarActualizacion(getWin) {
 
 module.exports = {
   initUpdater,
+  configurarAvisos,
   estadoActualizacion,
   buscarActualizacion,
   instalarActualizacion

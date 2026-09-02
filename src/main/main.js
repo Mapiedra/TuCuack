@@ -4,7 +4,7 @@ const { app, BrowserWindow, screen, ipcMain, shell } = require('electron');
 const path = require('path');
 const store = require('./store');
 const { createTray } = require('./tray');
-const { initUpdater, estadoActualizacion, buscarActualizacion, instalarActualizacion }
+const { initUpdater, configurarAvisos, estadoActualizacion, buscarActualizacion, instalarActualizacion }
   = require('./updater');
 const { initChat } = require('./chat');
 
@@ -284,6 +284,10 @@ if (!gotLock) {
 
   app.whenReady().then(() => {
     createWindow();
+    // El canal de avisos de actualización se abre SIEMPRE, aunque no haya
+    // actualizador: si no, en desarrollo el pato preguntaría y la respuesta
+    // —"aquí no hay nada que buscar"— no llegaría a ninguna parte.
+    configurarAvisos(() => win);
     tray = createTray(() => win, { isDev });
     const ajustes = store.loadSettings();
     applyAutoLaunch(ajustes);

@@ -196,7 +196,11 @@ export function buildSettingsPanel(settings, version, handlers) {
     }
 
     botonAct.dataset.accion = 'buscar';
-    botonAct.disabled = e.tipo === 'comprobando' || e.tipo === 'descargando';
+    // Apagado mientras se está mirando, y también donde no hay nada que mirar:
+    // un botón que se puede pulsar y no hace nada es peor que uno apagado.
+    botonAct.disabled = e.tipo === 'comprobando'
+      || e.tipo === 'descargando'
+      || e.tipo === 'no-disponible';
     botonAct.textContent = '🔄 Buscar actualizaciones';
     notaAct.classList.toggle('error', e.tipo === 'error');
     notaAct.textContent = {
