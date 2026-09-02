@@ -275,6 +275,22 @@ export async function arrancarPato(plataforma) {
       },
       juegos: () => juegos.toJSON(),
       salas: () => salas,
+      /** Un vistazo a la partida por red, para ver dónde se ha atascado. */
+      estadoDeJuego: () => {
+        const s = salas && salas.sala();
+        return {
+          chatConectado: chat.connected,
+          miId: chat.miId,
+          rivalesJugables: chat.rivales().map((r) => r.nombre),
+          sala: s ? {
+            fase: s.fase, n: s.n, anfitrion: s.anfitrion,
+            rival: s.rival && s.rival.nombre, juego: s.juego,
+            suspendida: !!s.suspendidaDesde
+          } : null,
+          panelAbierto: !!document.querySelector('.panel-partida'),
+          aviso: (document.querySelector('.jt-aviso') || {}).textContent || ''
+        };
+      },
       /** Juega una partida entera contra un rival simulado, sin tocar la red. */
       pruebaDeSalas: (opciones) => import('./game/rivalDePruebas.js')
         .then((m) => m.probarSalas(opciones)),
@@ -1155,7 +1171,8 @@ function setupSalas() {
     yo: () => ({ id: chat.miId, nombre: duckName() }),
     rivales: () => chat.rivales(),
     hayCanal: () => chat.connected,
-    cadaCierto
+    cadaCierto,
+    traza: !!config.isDev
   });
 
   // Antes de que el chat suelte el puente: el aviso de abandono tiene que salir

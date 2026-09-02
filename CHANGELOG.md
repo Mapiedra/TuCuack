@@ -7,6 +7,33 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Corregido
+
+- **Las partidas por red ya no se quedan colgadas nada más empezar.** Los dos
+  jugadores elegían y se quedaban esperando al otro para siempre. La sala se
+  monta en cuanto arranca la partida, pero el juego tarda un poco más —su módulo
+  se trae con `import()`, y en la extensión eso se nota—; si el rival era
+  rápido, su primera jugada llegaba en ese hueco, la sala la confirmaba y
+  avanzaba la secuencia, y luego no había nadie a quien dársela. Se perdía para
+  siempre. Ahora se guarda hasta que el juego esté escuchando.
+- **Un pato podía no verificar el compromiso del otro.** El de escritorio firma
+  con `sha256` y el que vive sobre una página `http://` cae a un respaldo,
+  porque `crypto.subtle` sólo existe en contexto seguro. Se recalculaba con el
+  algoritmo de casa, así que entre esos dos NINGUNA jugada cuadraba y todas se
+  daban por trampa. Ahora se verifica con el algoritmo que dice el propio
+  compromiso.
+- **El invitado ya no puede esperar indefinidamente.** El plazo para revelar lo
+  armaba sólo el anfitrión; ahora lo arman los dos, y sólo cuando ambos están
+  comprometidos (antes no sería justo: el otro puede estar pensándoselo).
+
+### Añadido
+
+- **Rastro de las partidas por red en desarrollo.** Una partida pasa por cuatro
+  sitios —dos patos y dos transportes— y sin ver los mensajes no hay forma de
+  saber en cuál se corta; encontrar lo de arriba fue exactamente eso. También
+  `__pato.estadoDeJuego()` para un vistazo rápido. Y una jugada que no puede
+  salir lo dice, en vez de callarse.
+
 ## [0.8.0] - 2026-09-01
 
 ### Añadido

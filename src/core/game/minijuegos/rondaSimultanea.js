@@ -125,13 +125,18 @@ export function crearRondaSimultanea(ctx, { eligeLaMascota, alResolver }) {
     }
     if (!mandeCompromiso || !suCompromiso) return;
 
+    // Con los dos comprometidos, lo que queda es automático y va en un suspiro.
+    // A partir de aquí SÍ vale poner plazo, y lo ponen los dos: antes no, porque
+    // el otro puede estar tomándose su tiempo para elegir y no sería justo.
+    //
+    // El plazo lo armaba sólo el anfitrión, y eso dejaba al invitado esperando
+    // para siempre si algo se perdía por el camino.
+    armarPlazo();
+
     // Fase 2: la revelación, con los dos ya comprometidos.
     if (!mandeRevelacion && (primero || suValor !== null)) {
       mandeRevelacion = true;
       ctx.sala.enviar({ t: 'revelacion', valor: miValor, sal: miSal });
-      // El anfitrión revela primero, así que es el que puede quedarse esperando
-      // a alguien que ha visto que pierde y se calla.
-      if (primero) armarPlazo();
     }
     if (suValor === null) return;
 

@@ -24,8 +24,18 @@ import * as P from './protocolo.js';
  * @param {() => boolean} opciones.hayCanal
  * @param {(fn:Function, ms:number) => (() => void)} opciones.cadaCierto
  *   El del pato, que se apaga solo: aquí no se crean relojes a mano.
+ * @param {boolean} [opciones.traza]
+ *   En desarrollo, deja por consola lo que sale y lo que entra. Una partida por
+ *   red pasa por cuatro sitios —dos patos y dos transportes— y sin ver los
+ *   mensajes no hay forma de saber en cuál se corta.
  */
-export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCierto }) {
+export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCierto, traza }) {
+  const rastro = traza
+    ? (dir, m, extra) => console.log(`[sala] ${dir} ${m.t}`
+        + (m.n ? ` n=${m.n}` : '')
+        + (m.d && m.d.jugada && m.d.jugada.t ? ` (${m.d.jugada.t})` : '')
+        + (extra ? ` · ${extra}` : ''))
+    : () => {};
   /** @type {Object|null} */
   let sala = null;
   /** Retos recibidos y sin contestar, por id de sala. */
@@ -156,10 +166,45 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
   function interfazDeJuego() {
     const alRecibirCbs = new Set();
     const alIrseCbs = new Set();
+
+    // Jugadas que han llegado antes de que el juego estuviera escuchando.
+    //
+    // La sala se monta en cuanto empieza la partida, pero el juego tarda un poco
+    // más: su módulo se trae con `import()`, que es asíncrono, y en la extensión
+    // —donde el módulo viaja por `chrome-extension://`— ese poco se nota. Si el
+    // rival era rápido, su primera jugada llegaba en ese hueco: la sala la
+    // confirmaba y avanzaba la secuencia, y luego no había nadie a quien
+    // dársela. Se perdía para siempre, y los dos se quedaban esperando al otro
+    // sin que nada volviera a moverse.
+    //
+    // Por eso se guarda hasta que haya oyente, en vez de tirarla.
+    const enEspera = [];
+    let repartiendo = false;
+
+    const repartir = (jugada, de) => {
+      if (!alRecibirCbs.size) { enEspera.push([jugada, de]); return; }
+      for (const cb of [...alRecibirCbs]) cb(jugada, de);
+    };
+
+    /**
+     * Suelta lo guardado, en orden. Se recorren los oyentes de nuevo en cada
+     * jugada a propósito: atender una puede crear otro oyente —en par o impar,
+     * el canto es lo que abre la primera ronda— y esa ronda tiene que recibir lo
+     * que venga detrás.
+     */
+    const repartirLoGuardado = () => {
+      if (repartiendo || !enEspera.length || !alRecibirCbs.size) return;
+      repartiendo = true;
+      try {
+        while (enEspera.length) {
+          const [jugada, de] = enEspera.shift();
+          for (const cb of [...alRecibirCbs]) cb(jugada, de);
+        }
+      } finally { repartiendo = false; }
+    };
+
     if (sala) {
-      sala.alRecibirJugada = (jugada, de) => {
-        for (const cb of alRecibirCbs) cb(jugada, de);
-      };
+      sala.alRecibirJugada = repartir;
       sala.alIrseElRival = (quien) => {
         for (const cb of alIrseCbs) cb(quien);
       };
@@ -172,7 +217,13 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
         sala.ultimoContacto = Date.now();
         return true;
       },
-      alRecibir(cb) { alRecibirCbs.add(cb); return () => alRecibirCbs.delete(cb); },
+      alRecibir(cb) {
+        alRecibirCbs.add(cb);
+        // En un microtask, no ya: así al juego le da tiempo a poner todos sus
+        // oyentes antes de recibir nada.
+        Promise.resolve().then(repartirLoGuardado);
+        return () => alRecibirCbs.delete(cb);
+      },
       alIrseUnJugador(cb) { alIrseCbs.add(cb); return () => alIrseCbs.delete(cb); }
     };
   }
@@ -276,7 +327,12 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
       avisar({ tipo: 'aviso', texto: 'Alguien te ha retado desde otra versión de TuCuack.' });
       return;
     }
-    if (!P.esValido(m)) return;
+    if (!P.esValido(m)) {
+      if (traza) console.warn('[sala] ← mensaje descartado por inválido', m);
+      return;
+    }
+
+    rastro('←', m);
 
     // Duplicados: el reenvío es normal, no un error.
     if (vistos.includes(m.mid)) {
@@ -292,7 +348,7 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
     // apuntara igual, el reenvío que viene detrás se descartaría por duplicado y
     // esa jugada se perdería para siempre: la partida se quedaría colgada sin
     // que nadie pudiera explicar por qué.
-    if (!despachar(m)) return;
+    if (!despachar(m)) { rastro('·', m, 'guardado para luego'); return; }
 
     vistos.push(m.mid);
     if (vistos.length > TOPE_VISTOS) vistos.shift();
@@ -554,6 +610,7 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
    * repetidas y sólo atiende la primera que llegue.
    */
   function mandarYa(m) {
+    rastro('→', m, 'despedida');
     for (let i = 0; i < 3; i++) {
       try { transporte.enviar(m); } catch (err) {
         console.warn('[sala] no salió la despedida', err);
@@ -586,7 +643,10 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
     while (cola.length && credito > 0) {
       credito--;
       const m = cola.shift();
-      try { transporte.enviar(m); } catch (err) { console.warn('[sala] no salió', err); }
+      try {
+        const fue = transporte.enviar(m);
+        rastro('→', m, fue === false ? 'NO SALIÓ' : '');
+      } catch (err) { console.warn('[sala] no salió', err); }
     }
   }
 

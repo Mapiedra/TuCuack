@@ -139,7 +139,16 @@ export class ChatClient {
    * @returns {boolean} si ha salido de verdad
    */
   enviarJuego(mensaje) {
-    if (!this.connected || !mensaje || !mensaje.aClave) return false;
+    // Callarse aquí era lo peor: una jugada que no sale deja la partida colgada
+    // sin que nadie sepa por qué. Si no puede salir, que al menos quede escrito.
+    if (!this.connected) {
+      console.warn('[juego] no sale: el canal no está conectado');
+      return false;
+    }
+    if (!mensaje || !mensaje.aClave) {
+      console.warn('[juego] no sale: falta el destinatario', mensaje);
+      return false;
+    }
     this.canal.enviarJuego(mensaje);
     return true;
   }

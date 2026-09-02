@@ -164,10 +164,10 @@ export function sal() {
  * @param {string} texto
  * @returns {Promise<string>}
  */
-export async function compromiso(texto) {
+export async function compromiso(texto, algoritmo) {
   const s = String(texto);
   const sub = (globalThis.crypto || {}).subtle;
-  if (sub && typeof sub.digest === 'function') {
+  if (algoritmo !== 'fnv' && sub && typeof sub.digest === 'function') {
     try {
       const datos = new TextEncoder().encode(s);
       const buf = await sub.digest('SHA-256', datos);
@@ -193,8 +193,21 @@ function fnv128(s) {
 }
 
 /** ¿El secreto revelado es el que se prometió? */
+/**
+ * ¿El secreto revelado es el que se prometió?
+ *
+ * Se recalcula con EL ALGORITMO QUE DICE EL COMPROMISO, no con el que use este
+ * lado. Los dos extremos no tienen por qué poder lo mismo: `crypto.subtle` sólo
+ * existe en contexto seguro, así que el pato de escritorio firma con sha256 y el
+ * que vive sobre una página `http://` cae al respaldo. Recalculando con el
+ * preferido de casa, NINGUNA partida entre esos dos cuadraba nunca: cada jugada
+ * del otro se daba por trampa.
+ */
 export async function cumpleCompromiso(secreto, salt, prometido) {
-  if (!prometido) return false;
-  const calculado = await compromiso(`${salt}:${secreto}`);
+  if (!prometido || typeof prometido !== 'string') return false;
+  const algoritmo = prometido.startsWith('fnv:') ? 'fnv' : 'sha256';
+  // Un sha256 no se puede comprobar sin `crypto.subtle`: mejor decir que no se
+  // pudo verificar —lo que aquí es "no cuadra"— que fingir que sí.
+  const calculado = await compromiso(`${salt}:${secreto}`, algoritmo);
   return calculado === prometido;
 }
