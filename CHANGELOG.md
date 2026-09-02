@@ -7,6 +7,18 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Añadido
+
+- **Toques con la paleta** (nivel 7). Mantener a la mascota en el aire sin que
+  toque el suelo, dándole con una paleta que sigue al ratón. Se cuenta cada
+  toque y se guarda el récord. Es el primer juego que **toma prestada la
+  pantalla entera**: en vez de un tablero dentro de un panel, pilota a la propia
+  mascota con la misma física con la que vuela cuando la lanzas — sólo cambian
+  los números, y quién manda. Golpear con el borde la desvía, y el movimiento de
+  la paleta se le pega, así que se puede colocar el toque siguiente. Sólo se
+  ofrece donde la mascota tiene la pantalla para ella: escritorio y panel
+  lateral, no sobre una página ajena.
+
 ## [0.8.1] - 2026-09-02
 
 ### Corregido
