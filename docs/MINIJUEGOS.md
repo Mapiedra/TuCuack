@@ -8,6 +8,7 @@ abren desde `🎮 Juegos` en el menú del pato.
 | ✌️ Piedra, papel o tijera | 1 | solo · red (2) | panel |
 | 🎲 Par o impar | 3 | solo · red (2) | panel |
 | ⭕ Tres en raya | 5 | solo · red (2) | panel |
+| 🏓 Toques con la paleta | 7 | solo | escenario |
 
 La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
 segundo, después los de pensar. Queda hueco por delante para los que faltan —la
@@ -124,7 +125,11 @@ panel se coloca debajo del pato y entra en scroll.
 ## Juegos de escenario
 
 Un juego de superficie `'escenario'` no vive en un panel: toma prestado el pato,
-el suelo y la pantalla entera. Recibe una `pista` en `ctx.escenario`:
+el suelo y la pantalla entera. El que hay es
+[**toques con la paleta**](../src/core/game/minijuegos/paleta.js), y sirve de
+ejemplo de todo lo que sigue.
+
+Recibe una `pista` en `ctx.escenario`:
 
 ```js
 export function crearPartida(ctx) {

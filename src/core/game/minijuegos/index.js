@@ -85,6 +85,18 @@ export const MINIJUEGOS = [
     superficie: 'panel',
     marca: null,
     cargar: () => import('./tresEnRaya.js')
+  },
+  {
+    id: 'paleta',
+    nombre: 'Toques con la paleta',
+    icono: '🏓',
+    descripcion: 'Que no toque el suelo. Se juega en la pantalla entera.',
+    nivel: 7,
+    modos: ['solo'],
+    jugadores: { min: 1, max: 1 },
+    superficie: 'escenario',
+    marca: { etiqueta: 'toques', mejor: 'mas' },
+    cargar: () => import('./paleta.js')
   }
 ];
 
