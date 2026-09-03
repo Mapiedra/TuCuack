@@ -77,6 +77,7 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
     retar,
     aceptar,
     rechazar,
+    reanudar,
     proponerRevancha,
     rechazarRevancha,
     abandonar,
@@ -157,6 +158,116 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
     mandar(P.sobre(P.TIPOS.RESPUESTA, reto.sala, reto.rival.clave, {
       ok: false, motivo: 'ocupado', nombre: yo().nombre
     }));
+  }
+
+  // ---- Reanudar ----------------------------------------------------------
+
+  /**
+   * Rehace una partida que se quedó en otra pestaña.
+   *
+   * En la extensión el pato se muda cada vez que el usuario cambia de pestaña, y
+   * en cada página estrena documento con la memoria en blanco. Quien sí se
+   * acuerda es el service worker, que va apuntando los mensajes de la partida
+   * —los que llegan y los que salen—; aquí se rehace la sala a partir de ellos.
+   *
+   * Se reconstruye SÓLO la sala: quién juega, por dónde iba la numeración y a
+   * quién hay que hablarle. Lo jugado se le devuelve al juego, que es el único
+   * que sabe qué hacer con ello.
+   *
+   * @param {{sala:string, mensajes:object[]}} guardado
+   * @returns {boolean} si se ha podido rehacer
+   */
+  function reanudar(guardado) {
+    if (sala && sala.fase !== 'terminada') return false;   // ya hay una en marcha
+    if (!guardado || !Array.isArray(guardado.mensajes)) return false;
+
+    const mensajes = guardado.mensajes.filter(P.esValido);
+    if (!mensajes.length) return false;
+
+    const yoId = yo().id;
+    if (!yoId) return false;
+
+    // Sin `inicio` la partida no llegó a empezar, y con un `fin` o un `abandono`
+    // ya se acabó: en los dos casos no hay nada que rehacer.
+    //
+    // Se busca el ÚLTIMO inicio, no el primero: una revancha manda otro, y lo
+    // que vale es la partida que se estaba jugando, no la de hace tres.
+    const desde = ultimoIndice(mensajes, (m) => m.t === P.TIPOS.INICIO);
+    if (desde < 0) return false;
+    const inicio = mensajes[desde];
+    if (mensajes.some((m) => m.t === P.TIPOS.ABANDONO || m.t === P.TIPOS.FIN)) return false;
+
+    // Quién reparte se sabe por quién mandó el inicio.
+    const anfitrion = inicio.de === yoId;
+    const suyo = mensajes.find((m) => m.de && m.de !== yoId && m.deClave);
+    if (!suyo) return false;
+
+    sala = nuevaSala(guardado.sala, String(inicio.d.juego || ''), {
+      id: suyo.de,
+      clave: suyo.deClave,
+      nombre: nombreDelRival(mensajes, yoId)
+    }, anfitrion, 'jugando');
+    sala.n = mensajes.reduce((alto, m) => Math.max(alto, m.n || 0), 0);
+    sala.semilla = Number(inicio.d.semilla) || 1;
+    sala.jugadores = Array.isArray(inicio.d.jugadores) ? inicio.d.jugadores.slice(0, 8) : [];
+
+    // Lo que ya se atendió no se vuelve a atender: el rival lleva reenviando su
+    // última jugada desde que nos fuimos —nadie se la ha confirmado— y sin esto
+    // se aplicaría dos veces nada más volver.
+    for (const m of mensajes) {
+      if (m.de !== yoId && !vistos.includes(m.mid)) vistos.push(m.mid);
+    }
+    while (vistos.length > TOPE_VISTOS) vistos.shift();
+
+    avisar({ tipo: 'reanudada', sala, jugadas: jugadasDesde(mensajes, desde, yoId) });
+
+    // Lo nuestro que se quedó sin confirmar, otra vez a la cola.
+    //
+    // Se sabe cuál es porque el worker apuntó también las confirmaciones del
+    // rival: lo que quede por encima de su último `hasta` es lo que puede que
+    // nunca le llegara. Sin esto, una jugada enviada justo antes de mudarse
+    // dejaría la partida esperando a un mensaje que ya no existe en ninguna
+    // parte —la lista de pendientes se fue con la pestaña anterior—. Va con el
+    // mismo `mid`, para que si al final sí le llegó lo descarte por repetido.
+    const confirmado = mensajes.reduce((alto, m) => (
+      m.de !== yoId && m.t === P.TIPOS.ACK ? Math.max(alto, Number(m.d.hasta) || 0) : alto
+    ), 0);
+    for (const m of mensajes.slice(desde)) {
+      if (m.de !== yoId || m.n <= confirmado) continue;
+      if (m.t !== P.TIPOS.JUGADA && m.t !== P.TIPOS.INICIO) continue;
+      mandarSeguro({ ...m, aClave: sala.rival.clave });
+    }
+
+    // Y se le confirma lo último, que es lo que le hace dejar de reenviar.
+    confirmar(sala.n);
+    return true;
+  }
+
+  /** El índice del último que cumpla, o -1. */
+  function ultimoIndice(lista, cumple) {
+    for (let i = lista.length - 1; i >= 0; i--) if (cumple(lista[i])) return i;
+    return -1;
+  }
+
+  /** El nombre del rival, de donde se dijera: el reto o su respuesta. */
+  function nombreDelRival(mensajes, yoId) {
+    const dicho = mensajes.find((m) => m.de !== yoId && m.d && m.d.nombre);
+    return dicho ? String(dicho.d.nombre).slice(0, 40) : 'Tu rival';
+  }
+
+  /**
+   * Lo que se jugó en la partida en curso, en orden y diciendo de quién fue.
+   *
+   * Hace falta el "de quién" porque el juego tiene que rehacer el tablero
+   * entero, no sólo lo del otro: sus propias jugadas también se perdieron con el
+   * documento anterior.
+   */
+  function jugadasDesde(mensajes, desde, yoId) {
+    return mensajes
+      .slice(desde)
+      .filter((m) => m.t === P.TIPOS.JUGADA && m.d && m.d.jugada !== undefined)
+      .sort((a, b) => a.n - b.n)
+      .map((m) => ({ mia: m.de === yoId, jugada: m.d.jugada }));
   }
 
   // ---- Partida -----------------------------------------------------------

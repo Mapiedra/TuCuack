@@ -39,7 +39,9 @@ async function montar() {
 
 function desmontar(motivo) {
   if (pato) {
-    pato.apagar();
+    // El motivo viaja hasta el pato: si sólo se está mudando, una partida por
+    // red no debe darse por abandonada.
+    pato.apagar(motivo);
     pato = null;
   }
   mostrarAviso(true, motivo);

@@ -205,11 +205,40 @@ Lo que **no** está probado por ahí es la resincronización por huecos de
 secuencia: con turnos estrictamente alternos nunca se produce un hueco. El
 camino existe (`pedir-sincro`), pero no se ejercita.
 
-**Límite conocido:** en la extensión, el pato se muda de pestaña continuamente.
-El service worker ya guarda los mensajes de la partida y se los devuelve al pato
-cuando reaparece, pero **rehacer el estado (`salas.reanudar`) está pendiente**:
-de momento el pato avisa de que la partida se quedó atrás y la suelta limpiamente.
-En el escritorio esto no pasa, porque el pato no se muda a ninguna parte.
+## Mudarse de pestaña no es abandonar
+
+En la extensión el pato se muda cada vez que el usuario cambia de pestaña, y en
+cada página estrena documento con la memoria en blanco. Si eso terminara la
+partida, el multijugador sería inservible en Chrome. En el escritorio no pasa:
+el pato no se muda a ninguna parte.
+
+Tres piezas, y ninguna sabe de las otras:
+
+1. **`apagar(motivo)`** ([core/app.js](../src/core/app.js)). El motivo `'mudanza'`
+   —lo mandan `extension/boot.js` y `extension/content.js`— hace que NO se avise
+   al rival ni al cerrar la sala ni al cerrar el panel. Sin esto el pato se
+   rendiría cada vez que su dueño mira otra pestaña.
+2. **El worker se acuerda.** `sw.js` apunta los mensajes de la sala —los que
+   llegan **y los que salen**— en `chrome.storage.session`, y se los devuelve al
+   pato en cuanto reaparece. No guarda el estado del juego: el worker no sabe
+   jugar a nada y no debe saberlo.
+3. **`salas.reanudar(guardado)`** rehace la sala con eso: quién juega, por dónde
+   iba la numeración y a quién hay que hablarle. Da por vistos los mensajes del
+   rival que ya se atendieron —si no, su último reenvío se aplicaría dos veces— y
+   le confirma lo último, que es lo que le hace dejar de reenviar. Lo jugado se
+   lo pasa al juego en `ctx.previas`, que es el único que sabe qué hacer con ello.
+
+**Qué se recupera y qué no.** El tablero de tres en raya, entero: una casilla
+puesta es una casilla puesta. El marcador de piedra-papel-tijera y par o impar,
+también. Lo que **no** se recupera es la ronda en vuelo de esos dos: el
+compromiso se firmó con una sal que sólo vivía en memoria y se fue con el
+documento anterior, así que esa ronda se vuelve a elegir. Lo que el rival hubiera
+mandado de ella se le devuelve a la ronda nueva por la misma puerta que el canal
+(`repartirPrevias`), de modo que él no tiene que repetir nada ni enterarse de que
+nos hemos movido.
+
+Un juego que no mire `ctx.previas` no se rompe: empieza de cero. Se pierde el
+tablero, no la partida.
 
 ## Jugadas a la vez
 

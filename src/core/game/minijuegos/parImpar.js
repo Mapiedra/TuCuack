@@ -9,7 +9,7 @@
 //   2. Sacar número, de 0 a 5, a la vez y en secreto. Tres rondas, al mejor de
 //      dos. Lo de "a la vez" lo resuelve rondaSimultanea.js.
 
-import { crearRondaSimultanea } from './rondaSimultanea.js';
+import { crearRondaSimultanea, repartirPrevias } from './rondaSimultanea.js';
 import { sembrar } from './azar.js';
 
 const NUMEROS = [0, 1, 2, 3, 4, 5];
@@ -37,6 +37,21 @@ export function crearPartida(ctx) {
   let elegido = null;
   let enPausa = false;         // enseñando el resultado antes de la siguiente
   const azar = sembrar(ctx.semilla);
+
+  // Si esta partida venía de otra pestaña: primero quién cantó qué —sin eso no
+  // hay partida— y luego el marcador de lo que ya se reveló.
+  const { hechas, suyas } = repartirPrevias(ctx.previas);
+  let porRecuperar = suyas;   // sólo valen para la primera ronda de esta sesión
+  const suCanto = (ctx.previas || []).find((p) => p.jugada && p.jugada.t === 'canto');
+  if (suCanto) {
+    const cantado = suCanto.jugada.apuesta === 'par' ? 'par' : 'impar';
+    miApuesta = suCanto.mia ? cantado : (cantado === 'par' ? 'impar' : 'par');
+  }
+  for (const r of hechas) {
+    if ((r.mio + r.suyo) % 2 === 0 ? miApuesta === 'par' : miApuesta === 'impar') misRondas++;
+    else susRondas++;
+  }
+  numeroDeRonda = hechas.length + 1;
 
   const el = document.createElement('div');
   el.className = 'jpi';
@@ -93,9 +108,17 @@ export function crearPartida(ctx) {
   revelado.append(cuenta, veredictoEl);
   el.appendChild(revelado);
 
-  // Si canta el rival, hay que esperar a que lo diga.
-  if (!cantoYo) escucharSuCanto();
+  // Si canta el rival, hay que esperar a que lo diga. Salvo que ya lo dijera
+  // antes de la mudanza, que entonces la partida sigue donde se quedó.
+  if (miApuesta) empezarRonda();
+  else if (!cantoYo) escucharSuCanto();
   pintar();
+  if (misRondas >= RONDAS_PARA_GANAR || susRondas >= RONDAS_PARA_GANAR) {
+    const parar = ctx.cadaCierto(() => {
+      parar();
+      acabar(misRondas >= RONDAS_PARA_GANAR ? 'victoria' : 'derrota');
+    }, 0);
+  }
 
   return {
     el,
@@ -135,8 +158,10 @@ export function crearPartida(ctx) {
     if (ronda) ronda.destroy();
     ronda = crearRondaSimultanea(ctx, {
       eligeLaMascota: () => NUMEROS[Math.floor(azar() * NUMEROS.length)],
-      alResolver: resolverRonda
+      alResolver: resolverRonda,
+      previas: porRecuperar
     });
+    porRecuperar = [];
     pintar();
   }
 

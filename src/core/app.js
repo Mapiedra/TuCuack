@@ -138,6 +138,10 @@ function computeOverHot(px, py) {
  * @param {import('./platform.js').Plataforma} plataforma
  */
 export async function arrancarPato(plataforma) {
+  // El pato anterior pudo apagarse por una mudanza, y en la extensión el panel
+  // vuelve a montarlo en el MISMO documento. Sin esto, el pato nuevo heredaría
+  // el "me estoy mudando" del viejo y no avisaría al rival al dejar la partida.
+  mudandose = false;
   api = normalizarPlataforma(plataforma);
   configurarAssets(api.urlAsset);
   if (api.cargarSheet) configurarCargadorSheet(api.cargarSheet);
@@ -378,11 +382,22 @@ export async function arrancarPato(plataforma) {
   return { apagar };
 }
 
+/** Apagando para reaparecer en otro sitio, no para irse. */
+let mudandose = false;
+
 /**
  * Para el pato y lo deja todo como estaba: sin bucles, sin listeners y sin
  * paneles abiertos. Guarda antes, que es lo último que hace un pato educado.
+ *
+ * @param {'mudanza'|string} [motivo]
+ *   'mudanza' significa que el pato se está cambiando de sitio —de pestaña, o a
+ *   un panel— y va a volver enseguida. Importa para las partidas: irse de una
+ *   partida es abandonarla, pero mudarse no lo es, y en la extensión el pato se
+ *   muda cada vez que el usuario cambia de pestaña. Avisar al rival ahí sería
+ *   rendirse cada dos por tres sin querer.
  */
-function apagar() {
+function apagar(motivo) {
+  mudandose = motivo === 'mudanza';
   // Antes de guardar: si una partida de escenario devolviera el pato DESPUÉS,
   // se habría persistido la posición de mitad de partida en vez de la suya.
   if (escena) {
@@ -404,8 +419,11 @@ function apagar() {
   // El animador de sprites corre en su propio bucle, aparte del del pato.
   if (duck) duck.detener();
   // Antes de soltar el puente, no después: el aviso de que abandonamos la
-  // partida tiene que salir por él.
-  if (salas) { try { salas.cerrar(); } catch (err) { console.warn('[pato] fallo al cerrar la sala', err); } }
+  // partida tiene que salir por él. Salvo en una mudanza, donde no hay nada que
+  // avisar: la partida sigue viva y se reanuda al otro lado.
+  if (salas && !mudandose) {
+    try { salas.cerrar(); } catch (err) { console.warn('[pato] fallo al cerrar la sala', err); }
+  }
   // Y el chat puede tener un puente abierto con quien mantenga la conexión.
   if (api.chat && api.chat.cerrar) api.chat.cerrar();
 
@@ -845,7 +863,10 @@ function openPartida(juego, modo, opciones, x, y) {
   }
   // El coste en stats, pero sin pasar por `doAction`: eso encadenaría
   // `level.cuidado` y jugar acabaría dando experiencia de cuidados.
-  tam.play();
+  //
+  // Al reanudar no se cobra: es la misma partida de antes, y cambiar de pestaña
+  // tres veces no puede dejar al pato agotado.
+  if (!opciones.previas) tam.play();
 
   if (juego.superficie === 'escenario') { abrirEscena(juego, modo, opciones); return; }
 
@@ -875,10 +896,16 @@ function openPartida(juego, modo, opciones, x, y) {
       // se avisa, el rival se queda esperando a alguien que ya no está hasta
       // que salte su plazo de ausencia, que es minuto y medio mirando a nada.
       //
-      // Salvo que estemos cambiando de partida: en una revancha este panel se
-      // cierra para dejar sitio al siguiente, y avisar ahí sería abandonar la
-      // partida que acabamos de aceptar.
-      if (!cambiandoDePartida) salas.abandonar();
+      // Con dos excepciones. Una revancha cierra este panel para dejar sitio al
+      // siguiente, y avisar ahí sería abandonar la partida que acabamos de
+      // aceptar. Y mudarse de pestaña tampoco es irse: la partida sigue viva y
+      // se reanuda al otro lado.
+      if (!cambiandoDePartida && !mudandose) {
+        salas.abandonar();
+        // Y que no la guarde nadie para la próxima pestaña: esta partida se ha
+        // acabado, y reanudarla mañana sería resucitar un muerto.
+        chat.olvidarPartida();
+      }
     }, { once: true });
   }
   mountPanel(el, x, y);
@@ -980,6 +1007,10 @@ function datosDePartida(juego, modo, opciones) {
     pato: { animar: (estado, dur) => behavior.playOnce(estado, dur || 1.4) },
     decir: (t) => toast(t),
     sala: opciones.sala || null,
+    // Lo jugado antes de mudarse de pestaña, en orden. Vacío en una partida
+    // nueva. Un juego que no lo mire simplemente empieza de cero: se pierde el
+    // tablero, no la partida.
+    previas: opciones.previas || [],
     escenario: null
   };
 }
@@ -1160,12 +1191,12 @@ function setupChat() {
   });
   chat.onJuego((m) => { if (salas) salas.recibir(m); });
   // Sólo en la extensión: había una partida en marcha cuando el pato se mudó de
-  // pestaña. Rehacer su estado es cosa pendiente, así que de momento se dice lo
-  // que ha pasado y se suelta, en vez de dejar una partida a medias que no
-  // responde. El rival se entera por su propio plazo de ausencia.
-  chat.onPartidaGuardada(() => {
+  // pestaña. Se rehace en la pestaña nueva a partir de los mensajes que guardó
+  // el worker; si no se puede —terminó, o falta el inicio— se suelta y se dice,
+  // que es mejor que dejar una partida a medias que no responde.
+  chat.onPartidaGuardada((partida) => {
+    if (salas && salas.reanudar(partida)) return;
     chat.olvidarPartida();
-    toast('La partida se quedó atrás al cambiar de pestaña.');
   });
   // El canal ya puede estar conectado antes de llegar aquí.
   chat.sync();
@@ -1196,6 +1227,7 @@ function setupSalas() {
   salas.alCambiar((s) => {
     if (s.tipo === 'reto') return llegaUnReto(s.reto);
     if (s.tipo === 'empieza') return empiezaLaPartida(s.sala);
+    if (s.tipo === 'reanudada') return empiezaLaPartida(s.sala, s.jugadas);
     if (s.tipo === 'rechazado') {
       toast(s.motivo === 'ocupado'
         ? `${s.nombre} está jugando ahora mismo.`
@@ -1300,7 +1332,7 @@ function abrirPanelDeReto(reto) {
  * montada. En una revancha hay que cerrar antes el panel de la anterior, que
  * sigue enseñando el resultado.
  */
-function empiezaLaPartida(sala) {
+function empiezaLaPartida(sala, previas) {
   const juego = minijuegoPorId(sala.juego);
   if (!juego) { salas.abandonar(); return; }
   if (partidaAbierta) {
@@ -1313,7 +1345,8 @@ function empiezaLaPartida(sala) {
     sala: salas.paraElJuego(),
     jugadores: sala.jugadores,
     anfitrion: sala.anfitrion,
-    semilla: sala.semilla
+    semilla: sala.semilla,
+    previas
   }, p.x, p.y);
 }
 

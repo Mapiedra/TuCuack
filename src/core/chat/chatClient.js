@@ -109,6 +109,9 @@ export class ChatClient {
       // Donde el canal viva fuera del pato, el histórico de la sesión también
       // está ahí (ver ChatClient.onHistorial).
       if (Array.isArray(st.historial)) this._onHistorial(st.historial);
+      // Y la partida que se quedó a medias, por el mismo motivo: el evento pudo
+      // emitirse antes de que el pato terminara de cargar.
+      if (st.partida) this._onPartidaGuardada(st.partida);
     } catch { /* el chat puede no estar disponible */ }
   }
 

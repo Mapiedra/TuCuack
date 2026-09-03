@@ -42,9 +42,12 @@ export const PLAZO_REVELACION_MS = 25000;
  * @param {Object} opciones
  * @param {() => *} opciones.eligeLaMascota  qué juega la mascota en modo solo
  * @param {(r: Resultado) => void} opciones.alResolver
+ * @param {object[]} [opciones.previas]
+ *   Lo que el rival ya había mandado de ESTA ronda antes de que nos mudáramos de
+ *   pestaña. Ver `repartirPrevias`.
  * @returns {{elegir:(valor:*)=>void, esperando:()=>boolean, destroy:Function}}
  */
-export function crearRondaSimultanea(ctx, { eligeLaMascota, alResolver }) {
+export function crearRondaSimultanea(ctx, { eligeLaMascota, alResolver, previas }) {
   const enRed = ctx.modo === 'turnos' && !!ctx.sala;
   const primero = !!ctx.anfitrion;   // quién abre cada fase
 
@@ -64,18 +67,18 @@ export function crearRondaSimultanea(ctx, { eligeLaMascota, alResolver }) {
 
   let bajaDelOyente = null;
   if (enRed) {
-    bajaDelOyente = ctx.sala.alRecibir((jugada) => {
-      if (!vivo || resuelta || !jugada) return;
-      if (jugada.t === 'compromiso') {
-        suCompromiso = String(jugada.hash || '');
-        avanzar();
-      } else if (jugada.t === 'revelacion') {
-        suValor = jugada.valor;
-        suSal = String(jugada.sal || '');
-        avanzar();
-      }
-    });
+    bajaDelOyente = ctx.sala.alRecibir(apuntarSuya);
     ctx.alDestruir(() => { if (bajaDelOyente) bajaDelOyente(); });
+
+    // Lo que el rival mandó de esta ronda antes de la mudanza entra por la misma
+    // puerta: para la ronda es como si acabara de llegar, y así él no tiene que
+    // repetir nada ni enterarse de que nos hemos movido.
+    //
+    // Lo NUESTRO no se puede recuperar —la sal del compromiso sólo vivía en
+    // memoria—, así que esta ronda se vuelve a elegir. Si ya nos habíamos
+    // comprometido, el compromiso nuevo pisa al viejo en el otro lado y la ronda
+    // sale igual de limpia; lo único que se pierde es la elección.
+    for (const j of (previas || [])) apuntarSuya(j);
   }
 
   ctx.alDestruir(() => { vivo = false; });
@@ -91,6 +94,19 @@ export function crearRondaSimultanea(ctx, { eligeLaMascota, alResolver }) {
       if (bajaDelOyente) { bajaDelOyente(); bajaDelOyente = null; }
     }
   };
+
+  /** Algo del rival, venga del canal o de una partida que se reanuda. */
+  function apuntarSuya(jugada) {
+    if (!vivo || resuelta || !jugada) return;
+    if (jugada.t === 'compromiso') {
+      suCompromiso = String(jugada.hash || '');
+      avanzar();
+    } else if (jugada.t === 'revelacion') {
+      suValor = jugada.valor;
+      suSal = String(jugada.sal || '');
+      avanzar();
+    }
+  }
 
   /** El usuario ha elegido. A partir de aquí ya no puede cambiar. */
   function elegir(valor) {
@@ -168,4 +184,45 @@ export function crearRondaSimultanea(ctx, { eligeLaMascota, alResolver }) {
     if (pararPlazo) { pararPlazo(); pararPlazo = null; }
     alResolver(r);
   }
+}
+
+/**
+ * Reparte lo jugado antes de una mudanza de pestaña.
+ *
+ * De una partida reanudada se recupera el MARCADOR, que es lo que duele perder,
+ * y no la ronda en vuelo: el compromiso se guardó con una sal que sólo vivía en
+ * memoria y con el documento anterior se fue. Así que las rondas que llegaron a
+ * revelarse por los dos lados se dan por jugadas, y de la que estaba a medias se
+ * devuelve sólo lo del rival, para que la ronda nueva lo tenga ya puesto.
+ *
+ * @param {{mia:boolean, jugada:object}[]} previas  en orden, de `salas.reanudar`
+ * @returns {{hechas:{mio:*, suyo:*}[], suyas:object[]}}
+ */
+export function repartirPrevias(previas) {
+  const hechas = [];
+  /** Lo del rival de la ronda que todavía no se ha cerrado. */
+  let suyas = [];
+  let mio = null;
+  let suyo = null;
+
+  for (const p of (previas || [])) {
+    const j = p && p.jugada;
+    if (!j || (j.t !== 'compromiso' && j.t !== 'revelacion')) continue;
+    if (!p.mia) suyas.push(j);
+    if (j.t !== 'revelacion') continue;
+
+    if (p.mia) mio = { valor: j.valor };
+    else suyo = { valor: j.valor };
+
+    // Una ronda está cerrada cuando los dos han enseñado su jugada. Hasta
+    // entonces no cuenta: media ronda no da puntos a nadie.
+    if (mio && suyo) {
+      hechas.push({ mio: mio.valor, suyo: suyo.valor });
+      mio = null;
+      suyo = null;
+      suyas = [];
+    }
+  }
+
+  return { hechas, suyas };
 }
