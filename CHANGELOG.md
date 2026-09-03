@@ -9,6 +9,11 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ### Cambiado
 
+- **Puntería pasa a llamarse «Pato Hook»** —o «Cuacky Hook», o como se llame la
+  tuya—, que es Robin Hood pasado por el pato. Y **Toques con la paleta** pasa a
+  ser **Malabares**, que es lo que se hace ahí y cabe en la tarjeta. El nombre
+  «Pong» se deja libre a propósito: va a haber uno de verdad.
+
 - **Los juegos se reparten hasta el nivel 40.** Hay gente que lleva meses con el
   pato y ya no tenía nada que desbloquear, así que la cuesta se estira: tres en
   raya pasa al 6, la paleta al 9, la puntería al 12 y el agujero al 16, y los que

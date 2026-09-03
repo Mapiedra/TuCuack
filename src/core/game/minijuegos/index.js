@@ -115,7 +115,9 @@ export const MINIJUEGOS = [
   },
   {
     id: 'paleta',
-    nombre: 'Toques con la paleta',
+    // Que es lo que se hace: mantenerla en el aire a base de toques. «Pong» se
+    // deja libre a propósito, que va a haber uno de verdad.
+    nombre: 'Malabares',
     icono: '🏓',
     descripcion: 'Que no toque el suelo. Se juega en la pantalla entera.',
     nivel: 9,
@@ -127,9 +129,11 @@ export const MINIJUEGOS = [
   },
   {
     id: 'punteria',
-    nombre: 'Puntería',
+    // Robin Hood con la mascota de casa: «Pato Hook», «Cuacky Hook». El id se
+    // queda como estaba, que los ids no se renombran nunca.
+    nombre: '{mascota} Hook',
     icono: '🎯',
-    descripcion: 'Lanza a tu mascota contra las dianas. Seis disparos.',
+    descripcion: 'Seis disparos, cinco dianas. Apunta y suelta.',
     nivel: 12,
     modos: ['solo'],
     jugadores: { min: 1, max: 1 },

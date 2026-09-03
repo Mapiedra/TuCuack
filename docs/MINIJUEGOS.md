@@ -10,8 +10,8 @@ abren desde `🎮 Juegos` en el menú del pato.
 | 🃏 Memoria | 4 | solo · red (2) | panel |
 | 🎲 Par o impar | 3 | solo · red (2) | panel |
 | ⭕ Tres en raya | 6 | solo · red (2) | panel |
-| 🏓 Toques con la paleta | 9 | solo | escenario |
-| 🎯 Puntería | 12 | solo | escenario |
+| 🏓 Malabares | 9 | solo | escenario |
+| 🎯 «Pato Hook» | 12 | solo | escenario |
 | 🕳️ El agujero | 16 | solo | escenario |
 
 La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
@@ -157,10 +157,9 @@ panel se coloca debajo del pato y entra en scroll.
 ## Juegos de escenario
 
 Un juego de superficie `'escenario'` no vive en un panel: toma prestado el pato,
-el suelo y la pantalla entera. Hay tres —[la
-paleta](../src/core/game/minijuegos/paleta.js), [la
-puntería](../src/core/game/minijuegos/punteria.js) y [el
-agujero](../src/core/game/minijuegos/agujero.js)— y la paleta sirve de ejemplo de
+el suelo y la pantalla entera. Hay tres —[Malabares](../src/core/game/minijuegos/paleta.js),
+[«Pato Hook»](../src/core/game/minijuegos/punteria.js) y [El
+agujero](../src/core/game/minijuegos/agujero.js)— y Malabares sirve de ejemplo de
 todo lo que sigue.
 
 Recibe una `pista` en `ctx.escenario`:
@@ -410,6 +409,7 @@ para todos: ninguno pide ampliarlo.
 | ⚠️ No tocar | — | — | escenario | no es un juego: ver §*La broma* |
 | 🌵 Obstáculos | 8 | solo | escenario | correr y saltar con la barra espaciadora |
 | 🪶 Aleteo | 14 | solo | escenario | volar a base de aletazos, entre huecos |
+| 🏓 Pong | 18 | solo | escenario | la mascota ES la pala, y enfrente hay otra |
 | 🔤 Ahorcado | 20 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
 | 🚢 Hundir la flota | 26 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
 
@@ -439,6 +439,30 @@ espaciadora **desplaza la página**. Hoy `escucharTeclas` sólo se traga `Escape
 estos dos necesitan que también se trague el espacio mientras haya partida. Va
 ahí y no en cada juego, igual que Escape.
 
+### 🏓 Pong
+
+El de siempre, con una diferencia que lo hace de esta casa: **la pala eres tú**.
+No hay rectángulo — la mascota se mueve arriba y abajo por su lado de la pantalla
+y devuelve la pelota con el cuerpo, que es el mismo círculo de `pato.cuerpo()` con
+el que ya se juega a [Malabares](../src/core/game/minijuegos/paleta.js).
+
+Y enfrente hay **otra mascota**: uno de los diseños que tengas desbloqueados,
+llevado por el juego. Se lleva bien con [Memoria](../src/core/game/minijuegos/memoria.js),
+que ya usa la colección de material, y da un rival que cambia con el nivel.
+
+Casi todo está escrito. La pelota es un `vuelo` con `fisica.paso` y gravedad cero;
+el rebote contra un cuerpo redondo es el mismo cálculo del golpe de Malabares,
+con el ángulo saliendo de por dónde se le pegue; y quien pierde un punto es quien
+deja pasar la pelota por su lado, que es mirar una coordenada.
+
+- **Modos:** solo. Un Pong por red pide tiempo real, y el canal va por turnos
+  (ver §[Partidas por red](#partidas-por-red)). Si algún día se quiere de dos, lo
+  barato es un duelo de marcas, no sincronizar una pelota.
+- **La torpeza de la rival baja con el nivel**, como en tres en raya: a nivel 18
+  llega tarde a las bolas colocadas, y de nivel 30 en adelante no se le escapa
+  casi nada. Si no, o es imposible o es un muro.
+- **Marca:** `{ etiqueta: 'puntos', mejor: 'mas' }`. Al mejor de cinco.
+
 ---
 
 ## En el tintero
@@ -449,7 +473,7 @@ mitad de la decisión.
 ### 🏹 Derribos (tipo Angry Birds) — nivel 33
 
 Lanzas a la mascota contra **estructuras que se vienen abajo**. Ojo, porque el
-lanzamiento ya lo tenemos: **eso es Puntería**. Lo único que aportaría de nuevo
+lanzamiento ya lo tenemos: **eso es «Pato Hook»**. Lo único que aportaría de nuevo
 es justo la cara del juego, que lo golpeado se derrumbe.
 
 Y ahí está el problema. El derrumbe de verdad —cajas que giran, se apoyan unas en
@@ -465,9 +489,9 @@ lado: caen a plomo.
 
 - **Coste:** medio-alto. La física de tiro está hecha; lo nuevo son los bloques,
   la propagación del derrumbe y unos cuantos niveles dibujados a mano.
-- **Riesgo:** que se parezca demasiado a Puntería. Si los derrumbes no se
-  disfrutan, es Puntería con decorado.
-- **Recomendación:** después del de artillería, y sólo si al jugar a Puntería se
+- **Riesgo:** que se parezca demasiado a «Pato Hook». Si los derrumbes no se
+  disfrutan, es «Pato Hook» con decorado.
+- **Recomendación:** después del de artillería, y sólo si al jugar a «Pato Hook» se
   echa de menos que las cosas se rompan.
 
 ### 💥 Artillería (tipo Worms) — nivel 40

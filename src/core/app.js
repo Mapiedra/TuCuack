@@ -922,7 +922,10 @@ function abrirEscena(juego, modo, opciones) {
   let contada = false;
 
   const prestamo = prestarEscenario({
-    pato: duck, behavior, vuelo, alApagar, toast, nombre: juego.nombre,
+    // Ya resuelto: el nombre puede llevar dentro el de la mascota, y en el
+    // marcador de la partida no puede salir un `{mascota}` a medio hacer.
+    pato: duck, behavior, vuelo, alApagar, toast,
+    nombre: nombreDeJuego(juego, duckName()),
     registrarOverlay: registerOverlay,
     soltarOverlay: unregisterOverlay,
     // Pase lo que pase —fin normal, Esc, error del juego o apagado— esto se
