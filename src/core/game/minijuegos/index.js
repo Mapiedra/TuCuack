@@ -124,6 +124,18 @@ export const MINIJUEGOS = [
     superficie: 'escenario',
     marca: { etiqueta: 'toques', mejor: 'mas' },
     cargar: () => import('./paleta.js')
+  },
+  {
+    id: 'punteria',
+    nombre: 'Puntería',
+    icono: '🎯',
+    descripcion: 'Lanza a tu mascota contra las dianas. Seis disparos.',
+    nivel: 8,
+    modos: ['solo'],
+    jugadores: { min: 1, max: 1 },
+    superficie: 'escenario',
+    marca: { etiqueta: 'puntos', mejor: 'mas' },
+    cargar: () => import('./punteria.js')
   }
 ];
 

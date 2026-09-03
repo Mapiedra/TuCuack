@@ -7,6 +7,18 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Añadido
+
+- **Puntería.** Nivel 8, en la pantalla entera. Apuntas con el ratón, sueltas, y
+  tu mascota sale volando contra cinco dianas. Seis disparos: diez puntos por
+  diana, veinticinco si le das al centro, y cinco más por cada disparo que te
+  sobre si las limpias todas.
+- Se dispara con **el mismo lanzamiento con el que le tiras estando quieta**, así
+  que quien ya sabe lanzar a su mascota por la pantalla ya sabe jugar. Al apuntar
+  se ve la salida del tiro —sólo el principio: con la parábola entera dibujada
+  dejaría de ser un juego de puntería—, y las paredes devuelven bastante a
+  propósito, porque el tiro de banda es la jugada bonita que tiene.
+
 ## [0.11.0] - 2026-09-03
 
 ### Añadido

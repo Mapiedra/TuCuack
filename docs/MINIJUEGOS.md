@@ -11,6 +11,7 @@ abren desde `🎮 Juegos` en el menú del pato.
 | 🎲 Par o impar | 3 | solo · red (2) | panel |
 | ⭕ Tres en raya | 5 | solo · red (2) | panel |
 | 🏓 Toques con la paleta | 7 | solo | escenario |
+| 🎯 Puntería | 8 | solo | escenario |
 
 La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
 segundo, después los de pensar, y al final los que piden pulso. Queda hueco por
@@ -367,7 +368,6 @@ para todos: ninguno pide ampliarlo.
 |---|---|---|---|---|
 | 🕳️ El agujero | 9 | solo | escenario | varios cuerpos con la física a la vez; progresión dentro de la partida |
 | ⚠️ No tocar | — | — | escenario | no es un juego: ver §*La broma* |
-| 🎯 Puntería | 8 | solo | escenario | apuntar y soltar, sin nada que se mueva solo |
 | 🔤 Ahorcado | 6 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
 | 🚢 Hundir la flota | 11 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
 | 📈 Marcador de récords | — | — | — | no es un juego: ver §*Marcador global*, abajo |

@@ -44,6 +44,7 @@ jobs:
                    core/game/minijuegos/memoria.js \
                    core/game/minijuegos/rondaSimultanea.js \
                    core/game/minijuegos/paleta.js \
+                   core/game/minijuegos/punteria.js \
                    core/game/minijuegos/escenario.js \
                    core/game/salas.js core/game/protocolo.js \
                    vendor/supabase.js assets/sprites/index.json INSTALAR.txt; do
