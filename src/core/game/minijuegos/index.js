@@ -136,6 +136,18 @@ export const MINIJUEGOS = [
     superficie: 'escenario',
     marca: { etiqueta: 'puntos', mejor: 'mas' },
     cargar: () => import('./punteria.js')
+  },
+  {
+    id: 'agujero',
+    nombre: 'El agujero',
+    icono: '🕳️',
+    descripcion: 'Recoge las que caen. Las que no, se quedan en el suelo.',
+    nivel: 9,
+    modos: ['solo'],
+    jugadores: { min: 1, max: 1 },
+    superficie: 'escenario',
+    marca: { etiqueta: 'calibre', mejor: 'mas' },
+    cargar: () => import('./agujero.js')
   }
 ];
 

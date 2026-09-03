@@ -12,6 +12,7 @@ abren desde `🎮 Juegos` en el menú del pato.
 | ⭕ Tres en raya | 5 | solo · red (2) | panel |
 | 🏓 Toques con la paleta | 7 | solo | escenario |
 | 🎯 Puntería | 8 | solo | escenario |
+| 🕳️ El agujero | 9 | solo | escenario |
 
 La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
 segundo, después los de pensar, y al final los que piden pulso. Queda hueco por
@@ -366,58 +367,10 @@ para todos: ninguno pide ampliarlo.
 
 | Juego | Nivel | Modos | Superficie | Lo que estrena |
 |---|---|---|---|---|
-| 🕳️ El agujero | 9 | solo | escenario | varios cuerpos con la física a la vez; progresión dentro de la partida |
 | ⚠️ No tocar | — | — | escenario | no es un juego: ver §*La broma* |
 | 🔤 Ahorcado | 6 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
 | 🚢 Hundir la flota | 11 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
 | 📈 Marcador de récords | — | — | — | no es un juego: ver §*Marcador global*, abajo |
-
-### 🕳️ El agujero
-
-Caen mascotas desde arriba y el ratón lleva un agujero por el suelo. La que cae
-dentro, cae dentro. La que no, se queda en el suelo y **ahí se queda**.
-
-Es el hermano de la paleta —escenario, ratón, física— con el signo cambiado: allí
-se trata de que la mascota no toque el suelo rebotando; aquí, de que no lo toque
-porque se la ha tragado el agujero. Y donde la paleta cuenta toques sueltos, éste
-tiene una partida con forma:
-
-- Una **barra** se llena con cada mascota recogida.
-- Al llenarse, sube el **calibre**: en vez de caer de una en una, caen de dos en
-  dos. Y de tres en tres. La barra se vacía y ahora pide más para volver a
-  llenarse.
-- Lo que no se recoge **se acumula en el suelo**. No desaparece, no se limpia
-  entre calibres, y va tapando el sitio por donde se mueve el agujero.
-- La partida **acaba cuando el suelo está lleno**. Eso hace que el incremental
-  tenga freno: cada calibre nuevo es un regalo y una condena a la vez.
-- La **marca** es el calibre más alto alcanzado, que es lo que de verdad se
-  presume. `marca: { etiqueta: 'calibre', mejor: 'mas' }`.
-
-Tres decisiones que conviene dejar dichas antes de escribirlo:
-
-1. **Las que caen no son el pato.** Pato hay uno, y está ocupado: el pato lleva
-   el agujero, caminando por el suelo detrás del ratón (con la inercia de
-   [`pet/inercia.js`](../src/core/pet/inercia.js), para que arrastre y no
-   teletransporte). Las que caen se dibujan en el lienzo con las hojas de
-   [`skins.js`](../src/core/game/skins.js) — arte que ya existe, y además premia
-   tener diseños desbloqueados con una partida más variada.
-2. **Las acumuladas no se repintan.** Con calibre 8 y el suelo medio lleno hay
-   cincuenta y pico sprites por fotograma en un lienzo a pantalla completa. Las
-   que ya han aterrizado se pintan **una vez** a un lienzo de fondo y no se
-   vuelven a tocar; sólo se animan las que están en el aire. Es la mitad de
-   §*Amontonarse*, que es la decisión técnica que hay que tomar bien desde el
-   principio.
-3. **La barra va en el lienzo**, no en el marcador. `Pista.marcador` recibe
-   texto, y una barra no es texto; pintarla con canvas evita tocar el contrato
-   por un juego.
-
-Va **solo**, porque un juego de reflejos no cabe en un canal por turnos. Si más
-adelante se quiere de dos, la forma barata es un **duelo de marcas**: cada uno
-juega su partida y al final se manda el resultado por la sala, que son dos
-mensajes. Eso sí cabe.
-
-Nivel 9: por encima de la paleta, que es el otro de escenario y bastante más
-simple.
 
 ### Marcador global
 
@@ -434,8 +387,10 @@ decisión, no colarse en la tarea de otro juego.
 ## Amontonarse
 
 Las que no se recogen se quedan en el suelo, y cuando el suelo se acaba se ponen
-unas encima de otras. La pregunta es si eso se hace con física de verdad —cuerpo
-contra cuerpo, con sus rebotes— o no.
+unas encima de otras. Está en
+[`agujero.js`](../src/core/game/minijuegos/agujero.js), y la pregunta que
+contesta es si eso se hace con física de verdad —cuerpo contra cuerpo, con sus
+rebotes— o no.
 
 **Con física de verdad, no.** No por falta de ganas, sino porque el montón es
 justo el caso que la física ingenua hace mal:

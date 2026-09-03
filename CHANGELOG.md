@@ -7,6 +7,21 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Añadido
+
+- **El agujero.** Nivel 9, en la pantalla entera. Caen mascotas desde arriba y la
+  tuya lleva un agujero por el suelo: las que caen dentro, dentro. Las que no,
+  **se quedan en el suelo** —no desaparecen, no se limpian, y van tapando el
+  sitio por donde te mueves, porque un montón que le llega por encima no lo
+  atraviesa—. Se acaba cuando ya no cabe ninguna más.
+- Es **incremental**: una barra se llena con cada mascota recogida y al llenarse
+  sube el calibre —de una en una, de dos en dos, de tres en tres— mientras la
+  barra pide cada vez más. Cada calibre nuevo es un regalo y una condena a la
+  vez, y es lo que le pone freno a un incremental que si no, no acabaría. La
+  marca es el calibre más alto al que llegaste.
+- Las que caen son mascotas de verdad, con los diseños que tengas desbloqueados,
+  y caen con la misma física con la que vuela la tuya.
+
 ## [0.12.0] - 2026-09-03
 
 ### Añadido
