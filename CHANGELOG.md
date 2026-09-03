@@ -7,8 +7,24 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.13.0] - 2026-09-04
+
 ### Añadido
 
+- **🕳️ The Hole.** Nivel 16, en la pantalla entera. Caen mascotas desde arriba y
+  tú llevas un agujero por el suelo: las que caen dentro, dentro. Las que no,
+  **se quedan en el suelo** —no desaparecen, no se limpian, y van tapando el
+  sitio por donde te mueves, porque un montón que te llega por encima no lo
+  atraviesas—. Se acaba cuando ya no cabe ninguna más.
+- Es **incremental**: una barra se llena con cada mascota recogida y al llenarse
+  sube el calibre —de una en una, de dos en dos, de tres en tres— mientras la
+  barra pide cada vez más. Cada calibre nuevo es un regalo y una condena a la
+  vez, y es lo que le pone freno a un incremental que si no, no acabaría. La
+  marca es el calibre más alto al que llegaste.
+- Las que caen son mascotas de verdad, con los diseños que tengas desbloqueados,
+  y caen con la misma física con la que vuela la tuya. Pasar el agujero por
+  debajo de un montón lo va limpiando, aunque eso no puntúa: para subir de
+  calibre hay que cazarlas al vuelo.
 - **⚠️ No tocar.** Al final de Ajustes, en rojo y con su separador. Se pulsa, y
   sale un cartel que dice que no debiste hacerlo mientras empiezan a caer patos.
   Si haces clic en uno, se parte en dos más pequeños. Y otra vez. No se gana ni
@@ -20,8 +36,9 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   reprimenda. Se empieza en `8 + 9` y se acaba en `16³ + √1600 − 808`, con
   raíces y potencias por el medio. Al resolver la décima, sales. Está hecho para
   poder pasarlo: salen todas enteras, fallar repite la misma cuenta —ni reinicia
-  ni castiga—, no hay reloj, y hay un botón para cerrarlo y seguir. Y pase lo
-  que pase, la broma se acaba sola a los diez minutos.
+  ni castiga—, no hay reloj, y hay un botón para cerrarlo y seguir. Y pase lo que
+  pase, la broma se acaba sola a los diez minutos, o se cierra el pato desde el
+  icono de la bandeja.
 - **El puntero cambia según lo que haya debajo**: una mira en la pantalla y una
   explosión encima de un pato, para que se vea cuál se puede reventar.
 
@@ -34,54 +51,25 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   transparente. Ahora esa franja nunca captura, así que **siempre se puede cerrar
   el pato desde el icono de junto al reloj**. Arrastrando sí sigue capturando:
   soltar al pato sobre la barra tiene que poder hacerse.
-- **Los rangos llegan hasta el nivel 50.** Se acababan en «Leyenda» al 20, que
-  era el techo de cuando lo único que se desbloqueaba eran diseños. Ahora siguen
-  cada cinco niveles: Capo, Padrino, Intocable, Jefe de jefes, Mito y Cuack
-  supremo. El rango es lo único que se ve en la cabecera de cuidados y en el
-  aviso de subir de nivel, así que sin esto la segunda mitad del camino no daba
-  señal ninguna.
-
-- **El agujero pasa a llamarse «The Hole».**
-- **Puntería pasa a llamarse «Pato Hook»** —o «Cuacky Hook», o como se llame la
-  tuya—, que es Robin Hood pasado por el pato. Y **Toques con la paleta** pasa a
-  ser **Malabares**, que es lo que se hace ahí y cabe en la tarjeta. El nombre
-  «Pong» se deja libre a propósito: va a haber uno de verdad.
-
-- **Los juegos se reparten hasta el nivel 40.** Hay gente que lleva meses con el
+- **Los juegos se reparten hasta el nivel 50.** Hay gente que lleva meses con el
   pato y ya no tenía nada que desbloquear, así que la cuesta se estira: tres en
-  raya pasa al 6, la paleta al 9, la puntería al 12 y el agujero al 16, y los que
-  faltan por hacer se colocan entre el 8 y el 40. Con un día activo normal, el
-  nivel 16 son unos seis días y el 40 son veintitrés. **Lo que ya hayas jugado no
+  raya pasa al 6, Malabares al 9, «Pato Hook» al 12 y The Hole al 16, y los que
+  faltan por hacer se colocan entre el 8 y el 50. Con un día activo normal, el
+  nivel 16 son unos seis días y el 50, treinta y dos. **Lo que ya hayas jugado no
   se pierde** aunque un juego se te vuelva a bloquear: las marcas se guardan
   aparte del catálogo.
-
+- **Los rangos llegan hasta el nivel 50**, para acompañarlos. Se acababan en
+  «Leyenda» al 20, que era el techo de cuando lo único que se desbloqueaba eran
+  diseños. Ahora siguen cada cinco niveles: Capo, Padrino, Intocable, Jefe de
+  jefes, Mito y Cuack supremo.
+- **Puntería pasa a llamarse «Pato Hook»** —o «Cuacky Hook», o como se llame la
+  tuya—, que es Robin Hood pasado por el pato. **Toques con la paleta** pasa a
+  ser **Malabares**, que es lo que se hace ahí y cabe en la tarjeta. Y **El
+  agujero**, a **The Hole**. El nombre «Pong» se deja libre a propósito: va a
+  haber uno de verdad.
 - **El selector de juegos cabe otra vez.** Con ocho juegos la rejilla medía 305
   píxeles y el panel entero 405, así que acababa colocándose debajo del pato.
   Ahora enseña dos filas y se desplaza.
-- **En El agujero ya no se ve la mascota.** Ahí no es un personaje, es el mando,
-  y verla plantada en medio del agujero que maneja estorbaba. Vuelve sola al
-  terminar la partida, salga como salga.
-- **El agujero se traga lo que ya está en el suelo.** Antes sólo valía para lo
-  que caía encima: lo que se posaba se quedaba para siempre y, como además tapa
-  el paso, un descuido temprano dejaba media pantalla muerta sin nada que hacer.
-  Ahora pasar por debajo lo va limpiando de una en una. No puntúa —si contara,
-  lo rentable sería aparcarse sobre un montón—: limpiar quita el estorbo, y para
-  subir de calibre hay que cazarlas al vuelo.
-
-### Añadido
-
-- **El agujero.** Nivel 9, en la pantalla entera. Caen mascotas desde arriba y la
-  tuya lleva un agujero por el suelo: las que caen dentro, dentro. Las que no,
-  **se quedan en el suelo** —no desaparecen, no se limpian, y van tapando el
-  sitio por donde te mueves, porque un montón que le llega por encima no lo
-  atraviesa—. Se acaba cuando ya no cabe ninguna más.
-- Es **incremental**: una barra se llena con cada mascota recogida y al llenarse
-  sube el calibre —de una en una, de dos en dos, de tres en tres— mientras la
-  barra pide cada vez más. Cada calibre nuevo es un regalo y una condena a la
-  vez, y es lo que le pone freno a un incremental que si no, no acabaría. La
-  marca es el calibre más alto al que llegaste.
-- Las que caen son mascotas de verdad, con los diseños que tengas desbloqueados,
-  y caen con la misma física con la que vuela la tuya.
 
 ## [0.12.0] - 2026-09-03
 
