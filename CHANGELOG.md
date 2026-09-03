@@ -14,8 +14,15 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   Si haces clic en uno, se parte en dos más pequeños. Y otra vez. No se gana ni
   se puntúa: no es un juego, es una broma —no da experiencia, no cuenta partidas
   y no cansa a tu mascota, que se pone triste y te dice que te lo había avisado—.
-  Se sale con **Esc**, que lo pone el propio cartel, o con el botón de salir.
   Sobre una página web ajena el botón ni aparece.
+- **Y salir tiene peaje.** Pulsar Esc o el botón de salir no te saca: te pone
+  **diez cuentas**, cada una más gorda que la anterior y cada una con su
+  reprimenda. Al resolver la décima, sales. Está hecho para poder pasarlo: todas
+  se resuelven de cabeza o con calculadora, fallar repite la misma cuenta —ni
+  reinicia ni castiga—, no hay reloj, y hay un botón para cerrarlo y seguir. Y
+  pase lo que pase, la broma se acaba sola a los diez minutos.
+- **El puntero cambia según lo que haya debajo**: una mira en la pantalla y una
+  explosión encima de un pato, para que se vea cuál se puede reventar.
 
 ### Cambiado
 

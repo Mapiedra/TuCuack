@@ -49,6 +49,7 @@ jobs:
                    core/game/minijuegos/escenario.js \
                    core/game/salas.js core/game/protocolo.js \
                    core/game/broma.js \
+                   core/game/peaje.js \
                    vendor/supabase.js assets/sprites/index.json INSTALAR.txt; do
             if [ ! -f "dist/extension/$f" ]; then
               echo "::error::Falta $f en la extensión ensamblada."

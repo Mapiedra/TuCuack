@@ -183,7 +183,20 @@ export function crearPartida(ctx) {
 La `pista` trae `pato`, `fisica`, `vuelo`, `ajustes`, `limites()`, `medidas`,
 `pintor` (canvas a pantalla completa, detrás del pato), `aPantalla(y)`,
 `entrada` (ratón con inercia y teclas), `marcador(texto)`,
-`esconderMascota(si)` y `salir()`.
+`esconderMascota(si)`, `cursor(css)`, `panel(el)`, `alPedirSalir(fn)` y
+`salir()`.
+
+- **`cursor(css)`** — el puntero mientras dure la partida. Se va con el lienzo,
+  así que no hay que acordarse de deshacerlo.
+- **`panel(el)`** — monta un trozo de interfaz **por encima** del lienzo, para lo
+  que no se puede pintar en un canvas: un campo de texto, un botón. Con `null` lo
+  quita, y se desmonta solo al devolver el escenario. Sólo cabe uno.
+- **`alPedirSalir(fn)`** — se queda con el Esc y con el botón de salir. Sin esto
+  los dos terminan la partida, que es lo que quiere cualquier juego. **Es la
+  única forma de que un juego se quede sin salida voluntaria**, así que lo único
+  que lo usa es la broma. Lo que NO se puede tocar por ahí son las salidas
+  involuntarias: el tope de diez minutos, el apagado y el fallo del propio juego
+  siguen terminando la partida pase lo que pase.
 
 `esconderMascota` la quita de la vista sin quitarla del sitio —`cuerpo()` y las
 medidas siguen valiendo—, para los juegos donde la mascota no es un personaje
@@ -708,14 +721,25 @@ especificación.
 Tres cosas que hay que hacer bien para que sea una broma y no un parte de
 incidencias:
 
-1. **Se tiene que poder salir, siempre.** En el escritorio esto es un overlay a
-   pantalla completa capturando el ratón: es el [riesgo número
-   uno](#juegos-de-escenario) del proyecto con un cartel encima. `Esc` desde el
-   primer momento **y escrito dentro del cartel**, el botón de salir del
-   marcador —que es DOM por encima del lienzo, así que ningún pato puede
-   taparlo—, el tope de diez minutos de `escenario.js` y el `alApagar` de
-   siempre. Y el marcador va subiendo el tono: pasados 45 patos deja de informar
-   y empieza a gritar `ESC PARA QUE PARE`. La gracia es agobiar, no secuestrar.
+1. **La partida siempre termina** — ojo al matiz, que es donde vive el chiste.
+   La salida **voluntaria** tiene un peaje: pulsar `Esc` o el botón de salir no
+   te saca, te abre [`peaje.js`](../src/core/game/peaje.js) y te pone **diez
+   cuentas**, cada una más gorda que la anterior y cada una con su reprimenda
+   («Te dije que no tocaras», «Había un cartel», «¿Por qué tocas?»…). Al
+   resolver la décima, sales.
+
+   Lo que **no** se negocia son las salidas involuntarias, y son las que
+   convierten esto en una broma y no en un secuestro: el **tope de diez minutos**
+   de `escenario.js`, el **apagado del pato** y el **fallo del propio juego**
+   terminan la partida pase lo que pase. Y el peaje está hecho para poder
+   pasarlo: todas las cuentas se resuelven de cabeza o con una calculadora,
+   fallar repite LA MISMA cuenta —ni reinicia ni castiga—, no hay reloj, y hay un
+   botón de «Vale, sigo» para cerrarlo y seguir jugando.
+
+   En el escritorio esto es un overlay a pantalla completa capturando el ratón,
+   que es el [riesgo número uno](#juegos-de-escenario) del proyecto, así que
+   conviene decirlo entero: **el peaje se puede intentar tantas veces como haga
+   falta, y aun sin resolverlo la broma se acaba sola a los diez minutos.**
 2. **«Sin fin» tiene que tener techo**, y son dos. Por **tamaño**: cada partición
    encoge un 32 %, y por debajo del mínimo ya no se parte, revienta en una
    nubecilla y desaparece —cuatro clics matan a un pato, pero por el camino ha
@@ -726,6 +750,13 @@ incidencias:
    (`juegosDeEscenario`), y aquí con más motivo: llenar de patos la web que
    alguien está leyendo mientras se le captura el ratón no es una broma. En esa
    carcasa el botón ni aparece.
+
+**El puntero dice lo que va a pasar.** Una mira en toda la pantalla y una
+explosión encima de un pato, para que se vea que eso se puede reventar. Van como
+SVG en la propia URL —sin arte que empaquetar, y el `img-src 'self' data:` del
+escritorio los admite— y con el cursor de siempre detrás de la coma, por si
+alguna carcasa los bloqueara. Se mira **cada fotograma** y no al mover el ratón:
+aquí los patos se mueven solos y el de debajo cambia sin que tú hagas nada.
 
 **Los choques son N² y no hace falta más.** Con el tope de 150 son unas 11.000
 comprobaciones por fotograma, y medido sale a **0,38 ms** —de los 16,7 que hay—,

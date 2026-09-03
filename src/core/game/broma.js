@@ -17,10 +17,12 @@
 // Y tres cosas que hay que hacer bien para que sea una broma y no un parte de
 // incidencias, que están en docs/MINIJUEGOS.md §La broma:
 //
-//   1. Se tiene que poder salir SIEMPRE. Esc desde el primer momento y dicho en
-//      el cartel, y el botón del marcador, que es DOM por encima del lienzo y
-//      por tanto ningún pato puede taparlo. Más el tope de diez minutos del
-//      escenario y el `alApagar` de siempre.
+//   1. La partida SIEMPRE termina. Ojo al matiz: la salida VOLUNTARIA tiene un
+//      peaje —diez cuentas, ver peaje.js—, que es el chiste; pero las salidas
+//      que no se negocian siguen ahí y no las toca nadie: el tope de diez
+//      minutos del escenario, el apagado del pato y el fallo del propio juego.
+//      Y el peaje se puede intentar tantas veces como haga falta: fallar no
+//      castiga, no hay reloj y no vuelve a empezar.
 //   2. "Sin fin" necesita techo. Partir en dos sin límite son veinte clics
 //      buenos hasta el millón de patos, y ahí la pestaña se muere de verdad.
 //   3. Sobre una página ajena, ni asomarse. De eso se encarga quien abre esto.
@@ -28,6 +30,24 @@
 import * as fisica from '../pet/fisica.js';
 import { SKINS, estaDesbloqueada, SKIN_POR_DEFECTO } from './skins.js';
 import { cargarSheet } from '../assets.js';
+import { crearPeaje } from './peaje.js';
+
+/**
+ * El puntero mientras dura la broma.
+ *
+ * Una mira —«aquí se apunta»— y, encima de un pato, una explosión —«esto se
+ * revienta»—. Van como SVG en la propia URL: no hay que empaquetar nada, y el
+ * `img-src 'self' data:` del escritorio los admite. Si alguna carcasa los
+ * bloqueara, la coma del final deja el cursor de siempre y no se rompe nada.
+ */
+const RAYOS = 'M14 3v6M14 19v6M3 14h6M19 14h6M7 7l4 4M17 17l4 4M21 7l-4 4M11 17l-4 4';
+const CURSOR_REVENTAR = `url("data:image/svg+xml;utf8,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">`
+  + `<g fill="none" stroke="#fffdf7" stroke-width="5.5" stroke-linecap="round"><path d="${RAYOS}"/></g>`
+  + `<g fill="none" stroke="#c1121f" stroke-width="2.6" stroke-linecap="round"><path d="${RAYOS}"/></g>`
+  + `<circle cx="14" cy="14" r="3.4" fill="#c1121f" stroke="#fffdf7" stroke-width="1.6"/></svg>`
+)}") 14 14, pointer`;
+const CURSOR_MIRA = 'crosshair';
 
 const POSES = ['flap', 'idle', 'happy', 'play', 'sad', 'cool'];
 
@@ -102,19 +122,29 @@ export function crearBroma(ctx) {
   let cartel = CARTEL_MS;
   let pulsadoAntes = false;
   let terminada = false;
+  /** El peaje, mientras esté abierto. Ver peaje.js. */
+  let peaje = null;
+  let cursorPuesto = '';
 
   soltarUno(m0);
   // Directamente al sprite y no por `pato.animar`: mientras el escenario está
   // prestado, `behavior` está bloqueado y `playOnce` no hace nada a propósito.
   // Un juego de escenario manda sobre el sprite, y esto lo es.
   pista.pato.setState('sad');
+  ponerCursor(CURSOR_MIRA);
+  // Esc y el botón de salir dejan de terminar esto y pasan por la puerta de
+  // pago. Ver peaje.js, y el aviso de `alPedirSalir` en escenario.js.
+  pista.alPedirSalir(abrirElPeaje);
   ctx.decir('Te dije que no.');
   ctx.sonido.cuack({ agudo: 0.7 });
   marcar();
 
   return { actualizar, destroy };
 
-  function destroy() { terminada = true; }
+  function destroy() {
+    terminada = true;
+    if (peaje) { peaje.cerrar(); peaje = null; }
+  }
 
   // ---- Un fotograma ------------------------------------------------------
 
@@ -131,6 +161,7 @@ export function crearBroma(ctx) {
     }
 
     mirarElClic();
+    mirarElCursor();
     mover(dt, p, medidas);
     chocarEntreEllos();
     pintar(p, medidas);
@@ -165,6 +196,69 @@ export function crearBroma(ctx) {
   }
 
   /**
+   * El puntero dice lo que va a pasar si pulsas.
+   *
+   * Encima de un pato, la explosión; en el resto de la pantalla, la mira. Se
+   * mira cada fotograma porque los patos se mueven solos: aquí no basta con
+   * enterarse al mover el ratón.
+   */
+  function mirarElCursor() {
+    ponerCursor(quienEstaDebajo() >= 0 ? CURSOR_REVENTAR : CURSOR_MIRA);
+  }
+
+  function ponerCursor(css) {
+    if (css === cursorPuesto) return;
+    cursorPuesto = css;
+    pista.cursor(css);
+  }
+
+  /** El índice del pato bajo el puntero, o -1. El de encima gana. */
+  function quienEstaDebajo() {
+    if (sobreElPeaje()) return -1;
+    for (let i = patos.length - 1; i >= 0; i--) {
+      const q = patos[i];
+      if (Math.hypot(entrada.x - centroX(q), entrada.y - centroY(q)) <= q.radio) return i;
+    }
+    return -1;
+  }
+
+  /** ¿El puntero está sobre el panel del peaje? Ahí los clics no son para aquí. */
+  function sobreElPeaje() {
+    if (!peaje) return false;
+    const r = peaje.el.getBoundingClientRect();
+    return entrada.x >= r.left && entrada.x <= r.right
+      && entrada.y >= r.top && entrada.y <= r.bottom;
+  }
+
+  // ---- La puerta de pago -------------------------------------------------
+
+  /**
+   * Alguien quiere irse. Pues no: primero, diez cuentas.
+   *
+   * Si ya está abierto no se abre otro —pulsar Esc diez veces no debería
+   * apilar diez peajes— y se le devuelve el foco, que es lo que se busca al
+   * volver a pulsar.
+   */
+  function abrirElPeaje() {
+    if (terminada) return;
+    if (peaje) { peaje.enfocar(); return; }
+    peaje = crearPeaje(
+      () => { if (peaje) { peaje.cerrar(); peaje = null; } pista.panel(null); pista.salir('usuario'); },
+      () => cerrarElPeaje()
+    );
+    pista.panel(peaje.el);
+    peaje.enfocar();
+    ctx.sonido.nota(320, 0.12);
+  }
+
+  function cerrarElPeaje() {
+    if (!peaje) return;
+    peaje.cerrar();
+    peaje = null;
+    pista.panel(null);
+  }
+
+  /**
    * Un clic parte en dos al que esté debajo.
    *
    * Se mira al PULSAR y no al soltar, al revés que en «Pato Hook»: aquí no hay
@@ -177,14 +271,10 @@ export function crearBroma(ctx) {
     pulsadoAntes = ahora;
     if (!nuevo) return;
 
-    // El de encima gana: se recorre del último al primero, que es el orden en
-    // que se pintan.
-    for (let i = patos.length - 1; i >= 0; i--) {
-      const q = patos[i];
-      if (Math.hypot(entrada.x - centroX(q), entrada.y - centroY(q)) > q.radio) continue;
-      partir(i);
-      return;
-    }
+    // Un clic dentro del peaje es para el peaje: app.js reenvía TODOS los
+    // `mousedown` mientras hay escena, también los que caen sobre un panel.
+    const i = quienEstaDebajo();
+    if (i >= 0) partir(i);
   }
 
   function partir(i) {

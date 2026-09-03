@@ -52,6 +52,24 @@ const TOPE_PARTIDA_MS = 10 * 60 * 1000;
  * @property {(y:number) => number} aPantalla
  * @property {Object} entrada   ratón y teclado (ver entrada.js)
  * @property {(texto:string) => void} marcador
+ * @property {(css:string) => void} cursor
+ *   El puntero mientras dure la partida: `'crosshair'`, o una imagen. Se va con
+ *   el lienzo, así que no hay que acordarse de deshacerlo.
+ * @property {(el:HTMLElement|null) => void} panel
+ *   Monta un trozo de interfaz POR ENCIMA del lienzo —con `null` lo quita—, para
+ *   lo que no se puede pintar en un canvas: un campo de texto, un botón. Se
+ *   desmonta solo al devolver el escenario.
+ * @property {(fn:(() => void)|null) => void} alPedirSalir
+ *   Se queda con el Esc y con el botón de salir. Sin esto los dos terminan la
+ *   partida, que es lo que quiere cualquier juego; con esto el juego decide qué
+ *   hacer cuando se los pulsan, y sale llamando a `salir()` él mismo.
+ *
+ *   **Ojo con esto.** Es la única forma de que un juego se quede sin salida
+ *   voluntaria, y en el escritorio eso es una ventana transparente a pantalla
+ *   completa capturando el ratón. Lo usa la broma del «No tocar», que a
+ *   propósito pone un peaje delante de la puerta. Lo que NO se puede tocar por
+ *   aquí son las salidas involuntarias: el tope de diez minutos, el apagado y
+ *   el fallo del propio juego siguen terminando la partida pase lo que pase.
  * @property {(si:boolean) => void} esconderMascota
  *   La quita de la vista sin quitarla del sitio. Para los juegos donde la
  *   mascota no es un personaje sino un mando —el agujero—, y verla plantada en
@@ -74,6 +92,10 @@ export function prestarEscenario(entorno) {
   } = entorno;
 
   let devuelto = false;
+  /** El trozo de interfaz que haya montado el juego, si ha montado alguno. */
+  let panelDelJuego = null;
+  /** Si el juego se ha quedado con el Esc y el botón de salir. */
+  let pedirSalir = null;
   /** @type {{actualizar?:Function, destroy?:Function}|null} */
   let juego = null;
   let idJuego = nombre || 'escenario';
@@ -98,7 +120,7 @@ export function prestarEscenario(entorno) {
   // dejar pasar los clics. No hace falta ningún mecanismo nuevo.
   registrarOverlay(lienzo);
 
-  const marcador = crearMarcador(nombre || 'Partida', () => terminar('usuario'));
+  const marcador = crearMarcador(nombre || 'Partida', () => salidaPedida());
   montar(marcador.el);
   registrarOverlay(marcador.el);
 
@@ -123,9 +145,30 @@ export function prestarEscenario(entorno) {
     aPantalla: (y) => window.innerHeight - y,
     entrada,
     marcador: (t) => marcador.poner(t),
+    cursor: (css) => { lienzo.style.cursor = css || ''; },
+    panel: montarPanel,
+    alPedirSalir: (fn) => { pedirSalir = typeof fn === 'function' ? fn : null; },
     esconderMascota,
     salir: terminar
   };
+
+  /**
+   * Un trozo de interfaz por encima del lienzo.
+   *
+   * Va por `registrarOverlay` como todo lo demás: con eso el escritorio sabe que
+   * ahí hay algo que se puede pulsar. Sólo cabe uno; montar otro quita el
+   * anterior, que es lo que hace falta y no obliga a llevar la cuenta.
+   */
+  function montarPanel(el) {
+    if (panelDelJuego) {
+      soltarOverlay(panelDelJuego);
+      panelDelJuego = null;
+    }
+    if (!el) return;
+    panelDelJuego = el;
+    montar(el);
+    registrarOverlay(el);
+  }
 
   /**
    * `visibility` y no `display`: el pato sigue midiendo y ocupando su sitio, así
@@ -181,8 +224,26 @@ export function prestarEscenario(entorno) {
       quitarResize();
       soltarOverlay(lienzo);      // lo saca del DOM y recalcula la captura
       soltarOverlay(marcador.el);
+      if (panelDelJuego) { soltarOverlay(panelDelJuego); panelDelJuego = null; }
       alDevolver(motivo);         // app.js suelta el pato y guarda
       if (motivo === 'error') toast('El juego se ha estropeado. Aquí tienes tu mascota.');
+    }
+  }
+
+  /**
+   * Alguien quiere irse: Esc o el botón.
+   *
+   * Normalmente eso termina la partida. Si el juego se ha quedado con la salida
+   * —`alPedirSalir`—, le toca a él decidir; y si al llamarle revienta, se sale
+   * igualmente, que es lo único que no se puede negociar.
+   */
+  function salidaPedida() {
+    if (!pedirSalir) { terminar('usuario'); return; }
+    try {
+      pedirSalir();
+    } catch (err) {
+      console.error(`[juego:${idJuego}] fallo al pedir salir`, err);
+      terminar('error');
     }
   }
 
@@ -193,7 +254,7 @@ export function prestarEscenario(entorno) {
     // tiene foco propio. Es la excepción que confirma la regla del contrato, y
     // por eso vive aquí, una sola vez, y no en cada juego.
     const alPulsar = (e) => {
-      if (e.key === 'Escape') { e.preventDefault(); terminar('usuario'); return; }
+      if (e.key === 'Escape') { e.preventDefault(); salidaPedida(); return; }
       entrada.tecla(e, true);
     };
     const alSoltar = (e) => entrada.tecla(e, false);
