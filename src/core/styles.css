@@ -951,3 +951,47 @@ html, body {
 /* Apagados mientras canta la mascota: se ven, pero no se pueden tocar. Sin el
    `opacity` de los otros juegos, que aquí taparía el color encendido. */
 .jmd-boton:disabled { cursor: default; }
+
+/* Memoria: doce cartas en cuatro columnas. El dorso es un ::before que se
+   desvanece, así que dar la vuelta es una sola transición y no hay que duplicar
+   el nodo de la carta. */
+.jmm-mesa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.jmm-carta {
+  position: relative;
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  background: var(--paper);
+  cursor: pointer;
+}
+.jmm-carta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 183, 3, 0.55) 0 6px, rgba(251, 133, 0, 0.55) 6px 12px);
+  transition: opacity 0.14s ease;
+}
+.jmm-carta.vuelta::before { opacity: 0; }
+
+.jmm-cara, .jmm-emoji {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.14s ease;
+}
+/* El emoji es el suplente del dibujo: se ve mientras la hoja de sprites no ha
+   llegado, y se queda si no llega nunca. */
+.jmm-emoji { display: grid; place-items: center; font-size: 24px; }
+.jmm-carta.vuelta .jmm-cara,
+.jmm-carta.vuelta .jmm-emoji:not([hidden]) { opacity: 1; }
+
+.jmm-carta:hover:not(:disabled) { border-color: var(--accent); }
+.jmm-carta:disabled { cursor: default; }
+/* Emparejada: se queda puesta y marcada, para que se vea lo que ya está hecho
+   sin tener que mirar el marcador. */
+.jmm-carta.hecha { border-color: var(--accent-2); background: rgba(255, 183, 3, 0.18); }

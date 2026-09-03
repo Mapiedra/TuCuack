@@ -1003,6 +1003,8 @@ function datosDePartida(juego, modo, opciones) {
     // barajar igual, y eso no se puede sortear por separado.
     semilla: opciones.semilla != null ? opciones.semilla : (Math.random() * 2 ** 31) | 0,
     marcas: juegos.de(juego.id),
+    // Las medidas de las hojas de sprites, para el que dibuje mascotas.
+    sprites: config.sprites || {},
     sonido,
     pato: { animar: (estado, dur) => behavior.playOnce(estado, dur || 1.4) },
     decir: (t) => toast(t),

@@ -41,6 +41,7 @@ jobs:
                    core/app.js core/game/minijuegos/index.js \
                    core/game/minijuegos/tresEnRaya.js \
                    core/game/minijuegos/laMascotaDice.js \
+                   core/game/minijuegos/memoria.js \
                    core/game/minijuegos/rondaSimultanea.js \
                    core/game/minijuegos/paleta.js \
                    core/game/minijuegos/escenario.js \

@@ -90,6 +90,18 @@ export const MINIJUEGOS = [
     cargar: () => import('./parImpar.js')
   },
   {
+    id: 'memoria',
+    nombre: 'Memoria',
+    icono: '🃏',
+    descripcion: 'Parejas con tu mascota. Doce cartas, seis poses.',
+    nivel: 4,
+    modos: ['solo', 'turnos'],
+    jugadores: { min: 2, max: 2 },
+    superficie: 'panel',
+    marca: null,
+    cargar: () => import('./memoria.js')
+  },
+  {
     id: 'tresenraya',
     nombre: 'Tres en raya',
     icono: '⭕',
@@ -172,6 +184,13 @@ export const MINIJUEGOS = [
  *   barajan igual sin mandarse la baraja entera.
  * @property {Object} marcas           progreso guardado de ESTE juego, de sólo
  *   lectura: se anota al terminar, no durante.
+ * @property {Object} sprites          medidas y filas de cada hoja de diseño,
+ *   `{ <skinId>: {frameW, frameH, animations: {<nombre>: {row, frames}}} }`.
+ *   Para los juegos que dibujen mascotas —la memoria, el agujero—. Va aquí y no
+ *   se lee de un fichero porque cómo se llega a los recursos lo decide la
+ *   carcasa (ver core/assets.js). La IMAGEN se pide con `cargarSheet`, que sabe
+ *   traerla también sobre una página con CSP estricto; ponerla de fondo con CSS
+ *   la sometería al `img-src` de esa página y saldría en blanco.
  *
  * @property {Sala|null} sala          null en 'solo'
  * @property {Object|null} escenario   null salvo superficie 'escenario'

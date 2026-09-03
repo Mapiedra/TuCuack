@@ -7,6 +7,21 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Añadido
+
+- **Memoria.** Nivel 4. Doce cartas boca abajo, seis parejas:
+  destapas dos, si son iguales se quedan y repites, y si no se tapan y le toca
+  al otro. Se juega contra tu mascota o contra otra por red.
+- **Las cartas son tu mascota haciendo cosas** —durmiendo, comiendo, con un
+  regalo— recortadas de las mismas hojas de sprites con las que se dibuja el
+  pato. Cada pareja es una pose distinta y nunca se repite ninguna: si dos caras
+  se parecieran, dejaría de ser un juego de memoria. Los diseños que tengas
+  desbloqueados se reparten entre las seis poses, así que la baraja gana
+  variedad a la vez que la colección.
+- Contra la mascota, **se acuerda mejor según el nivel**: empieza despistada y
+  acaba siendo implacable. En este juego acordarse *es* jugar bien, así que con
+  memoria perfecta desde el principio no habría partida.
+
 ## [0.10.0] - 2026-09-03
 
 ### Añadido

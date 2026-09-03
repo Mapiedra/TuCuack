@@ -7,6 +7,7 @@ abren desde `🎮 Juegos` en el menú del pato.
 |---|---|---|---|
 | ✌️ Piedra, papel o tijera | 1 | solo · red (2) | panel |
 | 🔊 «Pato dice» | 2 | solo | panel |
+| 🃏 Memoria | 4 | solo · red (2) | panel |
 | 🎲 Par o impar | 3 | solo · red (2) | panel |
 | ⭕ Tres en raya | 5 | solo · red (2) | panel |
 | 🏓 Toques con la paleta | 7 | solo | escenario |
@@ -94,6 +95,7 @@ siguiente.
 | `anfitrion` | quién decide lo que se decide una sola vez |
 | `semilla` | aleatoriedad compartida: los dos lados barajan igual |
 | `marcas` | progreso guardado de este juego (sólo lectura) |
+| `sprites` | medidas y filas de cada hoja de diseño (ver abajo) |
 | `sala` | `null` en `'solo'`; en red, `{enviar, alRecibir, alIrseUnJugador}` |
 | `escenario` | `null` salvo superficie `'escenario'` |
 | `sonido` | `nota`, `victoria`, `derrota`, `turno`, `cuack`… |
@@ -112,6 +114,20 @@ ctx.alTerminar({ resultado: 'victoria', puntos: 14, detalle: '4 seguidas' });
 cerrar el panel no es un resultado. Si lo fuera, abrir y cerrar sería una fuente
 de partidas y, en la extensión, mudarse de pestaña anotaría una derrota fantasma
 cada vez.
+
+### Dibujar mascotas
+
+`ctx.sprites` es `{ <skinId>: {frameW, frameH, animations: {<nombre>: {row, frames}}} }`
+—lo mismo que usa el pato para animarse—, y con `rutaSheet`/`cargarSheet` de
+[`skins.js`](../src/core/game/skins.js) y [`assets.js`](../src/core/assets.js) se
+recorta cualquier pose de cualquier diseño.
+
+**La imagen se pide con `cargarSheet`, no se pone de fondo con CSS.** Sobre una
+página con CSP estricto un `background-image` se lo come el `img-src` de esa
+página y el dibujo sale en blanco; `cargarSheet` pasa por el cargador que instale
+la carcasa, que en la extensión lo baja con `fetch` bajo el CSP de la extensión.
+Y como es asíncrono, conviene tener debajo algo que valga mientras llega —en la
+memoria, un emoji por pose— para que el juego no dependa de que llegue.
 
 ---
 
@@ -354,7 +370,6 @@ para todos: ninguno pide ampliarlo.
 | 🎯 Puntería | 8 | solo | escenario | apuntar y soltar, sin nada que se mueva solo |
 | 🔤 Ahorcado | 6 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
 | 🚢 Hundir la flota | 11 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
-| 🃏 Memoria con skins | 4 | solo · red (2) | panel | las hojas de sprites como material de juego |
 | 📈 Marcador de récords | — | — | — | no es un juego: ver §*Marcador global*, abajo |
 
 ### 🕳️ El agujero
