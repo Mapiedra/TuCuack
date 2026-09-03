@@ -16,6 +16,7 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   aviso de subir de nivel, así que sin esto la segunda mitad del camino no daba
   señal ninguna.
 
+- **El agujero pasa a llamarse «The Hole».**
 - **Puntería pasa a llamarse «Pato Hook»** —o «Cuacky Hook», o como se llame la
   tuya—, que es Robin Hood pasado por el pato. Y **Toques con la paleta** pasa a
   ser **Malabares**, que es lo que se hace ahí y cabe en la tarjeta. El nombre

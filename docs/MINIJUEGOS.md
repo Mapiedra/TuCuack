@@ -12,7 +12,7 @@ abren desde `🎮 Juegos` en el menú del pato.
 | ⭕ Tres en raya | 6 | solo · red (2) | panel |
 | 🏓 Malabares | 9 | solo | escenario |
 | 🎯 «Pato Hook» | 12 | solo | escenario |
-| 🕳️ El agujero | 16 | solo | escenario |
+| 🕳️ The Hole | 16 | solo | escenario |
 
 La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
 segundo, después los de pensar, y al final los que piden pulso. Los huecos están
@@ -158,8 +158,8 @@ panel se coloca debajo del pato y entra en scroll.
 
 Un juego de superficie `'escenario'` no vive en un panel: toma prestado el pato,
 el suelo y la pantalla entera. Hay tres —[Malabares](../src/core/game/minijuegos/paleta.js),
-[«Pato Hook»](../src/core/game/minijuegos/punteria.js) y [El
-agujero](../src/core/game/minijuegos/agujero.js)— y Malabares sirve de ejemplo de
+[«Pato Hook»](../src/core/game/minijuegos/punteria.js) y [The
+Hole](../src/core/game/minijuegos/agujero.js)— y Malabares sirve de ejemplo de
 todo lo que sigue.
 
 Recibe una `pista` en `ctx.escenario`:
@@ -187,7 +187,7 @@ La `pista` trae `pato`, `fisica`, `vuelo`, `ajustes`, `limites()`, `medidas`,
 
 `esconderMascota` la quita de la vista sin quitarla del sitio —`cuerpo()` y las
 medidas siguen valiendo—, para los juegos donde la mascota no es un personaje
-sino un mando: en el agujero, verla plantada en medio de lo que maneja estorba.
+sino un mando: en The Hole, verla plantada en medio de lo que maneja estorba.
 No hay que acordarse de deshacerlo: el escenario la devuelve a la vista al
 terminar, pase lo que pase.
 
@@ -399,7 +399,7 @@ La escalera entera, con lo hecho y lo que falta:
 | 9 | 🏓 Malabares | hecho |
 | 12 | 🎯 «Pato Hook» | hecho |
 | 14 | 🪶 Aleteo | falta |
-| 16 | 🕳️ El agujero | hecho |
+| 16 | 🕳️ The Hole | hecho |
 | 18 | 🏓 Pong | falta |
 | 21 | 🧱 Ladrillos | falta |
 | 24 | 🔤 Ahorcado | falta |
@@ -416,7 +416,7 @@ camino no daba señal ninguna.
 
 > **Al repartir, un juego no debería subir más de lo imprescindible.** Subirlo se
 > lo quita a quien ya lo tenía. En este reparto sólo se movieron cuatro —tres en
-> raya 5→6, paleta 7→9, puntería 8→12 y el agujero 9→16, que es el más largo de
+> raya 5→6, paleta 7→9, puntería 8→12 y The Hole 9→16, que es el más largo de
 > todos y estaba demasiado abajo—. El progreso guardado NO se pierde aunque el
 > juego se vuelva a bloquear: `ProgresoJuegos.toJSON` no filtra por catálogo, y
 > es a propósito.
@@ -619,10 +619,9 @@ necesita ya están escritas.
 |---|---|
 | Un turno = una jugada | `salas.js`, que es exactamente eso |
 | Que los dos vean el mismo tiro | `ctx.semilla` + física determinista |
-| Terreno destructible | el mapa de alturas de [El agujero](../src/core/game/minijuegos/agujero.js) |
+| Terreno destructible | el mapa de alturas de [The Hole](../src/core/game/minijuegos/agujero.js) |
 
-El terreno es un mapa de alturas por columna —lo mismo que el montón del
-agujero— y un cráter es restarle una campana centrada en el impacto. El disparo
+El terreno es un mapa de alturas por columna —lo mismo que el montón de The Hole— y un cráter es restarle una campana centrada en el impacto. El disparo
 viaja por la sala como `{t:'disparo', angulo, fuerza}`: dos números, y los dos
 extremos simulan lo mismo.
 
@@ -676,7 +675,7 @@ El paso de uno a otro es lo único que hay que escribir, y son unas quince líne
 al tocar el suelo o a una posada, mira si a su izquierda o a su derecha hay hueco
 más abajo; si lo hay, **rueda hacia allí** y sigue cayendo. Si no, se queda.
 
-Y un montón se puede deshacer: pasar el agujero por debajo se va tragando lo
+Y un montón se puede deshacer: pasar el agujero de The Hole por debajo se va tragando lo
 posado de una en una. **Eso no puntúa**, y es media regla del juego: si contara,
 lo rentable sería aparcarse sobre un montón a esperar. Limpiar quita el estorbo,
 que ya es premio de sobra; para subir de calibre hay que cazarlas cayendo.

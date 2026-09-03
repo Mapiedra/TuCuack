@@ -1,4 +1,4 @@
-// El agujero: recoger mascotas antes de que el suelo se llene.
+// The Hole: recoger mascotas antes de que el suelo se llene.
 //
 // Caen mascotas desde arriba. Tu mascota lleva un agujero por el suelo y las que
 // caen dentro, dentro. Las que no, se quedan en el suelo, y **ahí se quedan**:

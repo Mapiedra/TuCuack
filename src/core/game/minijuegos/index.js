@@ -143,7 +143,9 @@ export const MINIJUEGOS = [
   },
   {
     id: 'agujero',
-    nombre: 'El agujero',
+    // El id se queda: los ids no se renombran nunca, que dan nombre al fichero y
+    // al progreso guardado.
+    nombre: 'The Hole',
     icono: '🕳️',
     descripcion: 'Recoge las que caen. Las que no, se quedan en el suelo.',
     nivel: 16,
