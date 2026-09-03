@@ -8,6 +8,7 @@
 
 import { cargarMinijuego } from '../game/minijuegos/index.js';
 import { panelHeader } from './panelHeader.js';
+import { nombreDeJuego } from '../game/minijuegos/index.js';
 import * as sonido from '../audio/sounds.js';
 
 const VEREDICTO = {
@@ -39,7 +40,7 @@ export function buildPartidaPanel(juego, modo, handlers) {
 
   const el = document.createElement('div');
   el.className = 'panel panel-partida hot';
-  el.appendChild(panelHeader(juego.nombre, handlers));
+  el.appendChild(panelHeader(nombreDeJuego(juego, handlers.ctx.yo), handlers));
 
   const cuerpo = document.createElement('div');
   cuerpo.className = 'juego-cuerpo';

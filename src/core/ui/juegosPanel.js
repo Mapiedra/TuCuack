@@ -6,7 +6,7 @@
 // Un selector "solo/red" en cada tarjeta habría llenado la rejilla de controles
 // para una decisión que se toma una vez por partida.
 
-import { MINIJUEGOS, estaDesbloqueado, admiteModo } from '../game/minijuegos/index.js';
+import { MINIJUEGOS, estaDesbloqueado, admiteModo, nombreDeJuego } from '../game/minijuegos/index.js';
 import { XP } from '../game/Level.js';
 import { panelHeader } from './panelHeader.js';
 
@@ -48,7 +48,7 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
 
   function pintar() {
     if (cabecera) cabecera.remove();
-    cabecera = panelHeader(elegido ? elegido.nombre : 'Juegos', {
+    cabecera = panelHeader(elegido ? nombreDeJuego(elegido, estado.yo) : 'Juegos', {
       onBack: elegido ? () => { elegido = null; pintar(); } : handlers.onBack,
       onClose: handlers.onClose
     });
@@ -87,7 +87,7 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
 
       const nom = document.createElement('span');
       nom.className = 'skin-nombre';
-      nom.textContent = juego.nombre;
+      nom.textContent = nombreDeJuego(juego, estado.yo);
 
       const modos = document.createElement('span');
       modos.className = 'juego-modo';

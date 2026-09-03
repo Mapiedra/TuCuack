@@ -6,6 +6,7 @@ abren desde `🎮 Juegos` en el menú del pato.
 | Juego | Nivel | Modos | Superficie |
 |---|---|---|---|
 | ✌️ Piedra, papel o tijera | 1 | solo · red (2) | panel |
+| 🔊 «Pato dice» | 2 | solo | panel |
 | 🎲 Par o impar | 3 | solo · red (2) | panel |
 | ⭕ Tres en raya | 5 | solo · red (2) | panel |
 | 🏓 Toques con la paleta | 7 | solo | escenario |
@@ -46,6 +47,18 @@ Tres pasos, y ninguno toca `app.js`:
 
 El módulo se trae con `import()` **cuando alguien va a jugar**, no al arrancar el
 pato.
+
+### El nombre puede llevar dentro el de la mascota
+
+Si en `nombre` pones `{mascota}`, se cambia por el nombre que haya en Ajustes:
+`'{mascota} dice'` sale como **«Pato dice»** o **«Cuacky dice»**. Lo hace
+`nombreDeJuego(juego, mascota)`, y por ahí pasan los tres sitios donde se ve un
+título —la tarjeta, la cabecera del panel y el aviso de subir de nivel—, así que
+un juego no tiene que hacer nada.
+
+Se recorta a 14 caracteres: en Ajustes caben 24, y «Cuackenstein el Grande dice»
+no entra en una tarjeta. Y en el aviso de nivel se escapa, porque ahí el nombre
+va por `innerHTML` y lo escribe el usuario.
 
 ---
 
@@ -342,7 +355,6 @@ para todos: ninguno pide ampliarlo.
 | 🔤 Ahorcado | 6 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
 | 🚢 Hundir la flota | 11 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
 | 🃏 Memoria con skins | 4 | solo · red (2) | panel | las hojas de sprites como material de juego |
-| 🔊 La mascota dice | 2 | solo | panel | `sonido.nota()` y un compás |
 | 📈 Marcador de récords | — | — | — | no es un juego: ver §*Marcador global*, abajo |
 
 ### 🕳️ El agujero

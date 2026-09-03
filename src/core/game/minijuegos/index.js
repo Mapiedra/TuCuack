@@ -49,6 +49,21 @@
  */
 export const MINIJUEGOS = [
   {
+    id: 'mascotadice',
+    // `{mascota}` lo rellena `nombreDeJuego` con el nombre que tenga puesto en
+    // Ajustes: «Pato dice», «Cuacky dice». El juego es de toda la vida y se
+    // llama por el nombre de quien canta, así que aquí canta la tuya.
+    nombre: '{mascota} dice',
+    icono: '🔊',
+    descripcion: 'Repite la serie sin equivocarte. Cada ronda, una más.',
+    nivel: 2,
+    modos: ['solo'],
+    jugadores: { min: 1, max: 1 },
+    superficie: 'panel',
+    marca: { etiqueta: 'ronda', mejor: 'mas' },
+    cargar: () => import('./laMascotaDice.js')
+  },
+  {
     id: 'piedrapapeltijera',
     nombre: 'Piedra, papel o tijera',
     icono: '✌️',
@@ -198,6 +213,32 @@ export const MINIJUEGOS = [
  */
 
 // ---- Consultas -----------------------------------------------------------
+
+/**
+ * Cuánto del nombre de la mascota cabe en un título de juego.
+ *
+ * En Ajustes caben 24 caracteres, y «Cuackenstein el Grande dice» no entra en
+ * una tarjeta ni en la cabecera de un panel. Se recorta aquí y no con CSS para
+ * que se corte igual en los tres sitios donde sale.
+ */
+const TOPE_MASCOTA = 14;
+
+/**
+ * El nombre de un juego, ya con la mascota puesta.
+ *
+ * Casi todos tienen un nombre fijo y esto no les hace nada. El que lleve
+ * `{mascota}` en el suyo se lo cambia por el nombre de la de casa.
+ *
+ * @param {Minijuego} juego
+ * @param {string} [mascota]  lo que hay en Ajustes; `ctx.yo`, `presencia.yo`
+ */
+export function nombreDeJuego(juego, mascota) {
+  if (!juego) return '';
+  if (!juego.nombre.includes('{mascota}')) return juego.nombre;
+  const suyo = String(mascota || '').trim() || 'Tu mascota';
+  const corto = suyo.length > TOPE_MASCOTA ? `${suyo.slice(0, TOPE_MASCOTA - 1)}…` : suyo;
+  return juego.nombre.replace('{mascota}', corto);
+}
 
 /** @param {string} id @returns {Minijuego|null} */
 export function minijuegoPorId(id) {

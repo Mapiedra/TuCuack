@@ -913,3 +913,41 @@ html, body {
   border-color: var(--ink);
   background: rgba(255, 183, 3, 0.3);
 }
+
+/* «{mascota} dice»: cuatro botones grandes, que se pulsan deprisa y a ciegas.
+   Los colores son propios y no tokens del tema: aquí el color ES la
+   información, y tienen que distinguirse igual en claro que en oscuro. */
+/* El ancho está topado, no estirado al panel: con los botones cuadrados —que es
+   como se lee un Simón— el cuerpo se pasaba de los 300 px de presupuesto y
+   `colocarPanel` acaba tirando el panel debajo del pato. */
+.jmd-botones {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  max-width: 232px;
+  margin: 0 auto;
+}
+.jmd-boton {
+  aspect-ratio: 1;
+  border: 2px solid rgba(0, 0, 0, 0.18);
+  border-radius: 14px;
+  cursor: pointer;
+  /* Sin transición al encender —tiene que ser instantáneo para que se lea el
+     ritmo— pero sí al apagar, que si no parpadea. */
+  transition: filter 0.18s ease, transform 0.18s ease;
+  filter: saturate(0.5) brightness(0.82);
+}
+.jmd-boton.verde { background: #35a34a; }
+.jmd-boton.rojo { background: #d4453c; }
+.jmd-boton.amarillo { background: #e8b21d; }
+.jmd-boton.azul { background: #2f7dd1; }
+
+.jmd-boton.sonando {
+  filter: saturate(1.35) brightness(1.28);
+  transform: scale(1.04);
+  transition: none;
+}
+.jmd-boton:hover:not(:disabled) { filter: saturate(0.85) brightness(0.95); }
+/* Apagados mientras canta la mascota: se ven, pero no se pueden tocar. Sin el
+   `opacity` de los otros juegos, que aquí taparía el color encendido. */
+.jmd-boton:disabled { cursor: default; }

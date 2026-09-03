@@ -20,7 +20,7 @@ import { buildSkinsPanel } from './ui/skinsPanel.js';
 import { buildOnlinePanel } from './ui/onlinePanel.js';
 import { Level } from './game/Level.js';
 import { SKINS, skinPorId, estaDesbloqueada, SKIN_POR_DEFECTO } from './game/skins.js';
-import { MINIJUEGOS, minijuegoPorId } from './game/minijuegos/index.js';
+import { MINIJUEGOS, minijuegoPorId, nombreDeJuego } from './game/minijuegos/index.js';
 import { ProgresoJuegos } from './game/minijuegos/progreso.js';
 import { buildJuegosPanel } from './ui/juegosPanel.js';
 import { buildPartidaPanel } from './ui/partidaPanel.js';
@@ -1064,14 +1064,28 @@ const DESBLOQUEABLES = [
   { lista: MINIJUEGOS, singular: 'Nuevo juego', plural: 'Nuevos juegos' }
 ];
 
-/** Qué se estrena al llegar a un nivel, ya como HTML propio (sin datos ajenos). */
+/**
+ * Qué se estrena al llegar a un nivel, como HTML.
+ *
+ * Los nombres se escapan. Casi todos son literales del catálogo, pero uno lleva
+ * dentro el nombre de la mascota —lo que el usuario haya escrito en Ajustes— y
+ * eso ya no es texto propio: un `<` suyo aquí rompería el cartel.
+ */
 function novedadesDeNivel(nivel) {
   return DESBLOQUEABLES.map(({ lista, singular, plural }) => {
     const nuevos = lista.filter((x) => x.nivel === nivel);
     if (!nuevos.length) return '';
     const etiqueta = nuevos.length > 1 ? plural : singular;
-    return `<br>${etiqueta}: <b>${nuevos.map((x) => x.nombre).join(', ')}</b>`;
+    const nombres = nuevos.map((x) => escaparHtml(nombreDeJuego(x, duckName()))).join(', ');
+    return `<br>${etiqueta}: <b>${nombres}</b>`;
   }).join('');
+}
+
+/** Para lo poco que sigue yendo por `innerHTML`. */
+function escaparHtml(texto) {
+  const d = document.createElement('div');
+  d.textContent = String(texto);
+  return d.innerHTML;
 }
 
 function avisoNivel(html) {

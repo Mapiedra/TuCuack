@@ -7,6 +7,20 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Añadido
+
+- **«Pato dice», el Simón de toda la vida.** Nivel 2. Tu mascota canta una serie
+  de colores y tú la repites; si aciertas, la serie crece en uno. No se gana: se
+  aguanta, y lo que se guarda es hasta qué ronda llegaste. Cada botón lleva
+  siempre la misma nota —sol, do, mi, sol, un acorde de do mayor— así que
+  cualquier serie suena a algo y se acaba recordando la melodía antes que los
+  colores. Hay cinco segundos por pulsación: sin reloj, un Simón se resuelve
+  apuntando la serie en un papel.
+- **Un juego puede llamarse por el nombre de tu mascota.** Si en el catálogo
+  pone `{mascota}`, se cambia por el que tengas en Ajustes. De ahí que el juego
+  nuevo se llame «Pato dice», «Cuacky dice» o lo que corresponda, en la tarjeta,
+  en la cabecera del panel y en el aviso de subir de nivel.
+
 ## [0.9.2] - 2026-09-03
 
 ### Añadido
