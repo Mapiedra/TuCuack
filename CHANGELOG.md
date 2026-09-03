@@ -7,6 +7,8 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.12.0] - 2026-09-03
+
 ### Añadido
 
 - **Puntería.** Nivel 8, en la pantalla entera. Apuntas con el ratón, sueltas, y
