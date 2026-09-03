@@ -225,6 +225,30 @@ export function buildSettingsPanel(settings, version, handlers) {
     el.addEventListener('panel:cerrado', baja, { once: true });
   }
 
+  // ---- No tocar -----------------------------------------------------------
+  //
+  // Al final del todo y con su separador, que es donde va un botón que pide que
+  // no lo pulses. Sólo donde el pato tiene la pantalla para él: quien decide eso
+  // es app.js mirando las capacidades de la carcasa.
+  if (handlers.puedeLaBroma) {
+    const sep = document.createElement('hr');
+    sep.className = 'sep';
+    el.appendChild(sep);
+
+    const broma = document.createElement('button');
+    broma.className = 'btn peligro';
+    broma.type = 'button';
+    broma.textContent = '⚠️ No tocar';
+    broma.title = 'No.';
+    broma.addEventListener('click', () => handlers.onLaBroma());
+    el.appendChild(broma);
+
+    const avisoBroma = document.createElement('div');
+    avisoBroma.className = 'muted';
+    avisoBroma.textContent = 'En serio.';
+    el.appendChild(avisoBroma);
+  }
+
   const setError = (msg) => {
     hint.textContent = msg || '';
     hint.classList.toggle('error', !!msg);

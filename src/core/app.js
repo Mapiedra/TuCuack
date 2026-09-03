@@ -729,6 +729,14 @@ function openSettings(x, y) {
     isNameTaken: (n) => chat.isNameTaken(n),
     chatReady: chat.connected,
     puedeAutoArrancar: api.capacidades.autoArranque,
+    // Sólo donde el pato tiene la pantalla para él. Sobre una página ajena, ni
+    // el botón aparece: llenarla de patos capturándole el ratón a quien está
+    // leyendo no es una broma.
+    puedeLaBroma: api.capacidades.juegosDeEscenario,
+    // El panel se cierra antes: la broma toma la pantalla entera y dejarlo
+    // abierto encima sería enseñarle al usuario el botón que acaba de pulsar
+    // mientras le llueven patos.
+    onLaBroma: () => { unregisterOverlay(el); abrirLaBroma(); },
     actualizaciones: api.capacidades.actualizaciones,
     estadoActualizacion: () => ultimaActualizacion,
     alCambiarActualizacion: (cb) => {
@@ -909,6 +917,52 @@ function openPartida(juego, modo, opciones, x, y) {
     }, { once: true });
   }
   mountPanel(el, x, y);
+}
+
+/**
+ * La broma del «No tocar». Ver core/game/broma.js.
+ *
+ * Va por su cuenta y no por `openPartida` porque NO es un minijuego: no está en
+ * el catálogo, no da experiencia, no cuenta partidas y no cansa a la mascota. Lo
+ * único que comparte con ellos es el préstamo del escenario, que es la pieza que
+ * sabe pedir la pantalla y —sobre todo— devolverla.
+ */
+function abrirLaBroma() {
+  if (escena) return;
+  if (!api.capacidades.juegosDeEscenario) return;
+
+  const limpieza = [];
+  const prestamo = prestarEscenario({
+    pato: duck, behavior, vuelo, alApagar, toast, nombre: 'No tocar',
+    registrarOverlay: registerOverlay,
+    soltarOverlay: unregisterOverlay,
+    alDevolver: () => {
+      escena = null;
+      for (const fn of limpieza.splice(0)) {
+        try { fn(); } catch (err) { console.warn('[pato] fallo al recoger la broma', err); }
+      }
+      fisica.detenerVuelo(vuelo);
+      duck.setTilt(0);
+      duck.toGround();
+      behavior.unlock();
+      updateMouseCapture();
+    }
+  });
+
+  import('./game/broma.js').then((modulo) => {
+    const enMarcha = prestamo.ejecutar(modulo.crearBroma({
+      escenario: prestamo.pista,
+      sprites: config.sprites || {},
+      nivel: level.nivel,
+      sonido,
+      decir: (t) => toast(t)
+    }));
+    if (!enMarcha) return;
+    escena = enMarcha;
+  }).catch((err) => {
+    console.error('[broma] no se pudo abrir', err);
+    prestamo.terminar('error');
+  });
 }
 
 /**

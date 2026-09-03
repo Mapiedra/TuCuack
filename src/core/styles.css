@@ -1004,3 +1004,20 @@ html, body {
 /* Emparejada: se queda puesta y marcada, para que se vea lo que ya está hecho
    sin tener que mirar el marcador. */
 .jmm-carta.hecha { border-color: var(--accent-2); background: rgba(255, 183, 3, 0.18); }
+
+/* Separador dentro de un panel, para lo que va aparte del resto. */
+.panel .sep {
+  height: 1px;
+  border: 0;
+  background: rgba(0, 0, 0, 0.12);
+  margin: 12px 0 8px;
+}
+
+/* El botón que pide que no lo pulses. Rojo, porque avisa; y ancho, porque
+   tampoco vamos a esconderlo. */
+.btn.peligro {
+  width: 100%;
+  background: #c1121f;
+  color: var(--paper);
+}
+.btn.peligro:hover { background: #8f0d17; }

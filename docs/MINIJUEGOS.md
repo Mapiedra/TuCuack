@@ -431,7 +431,6 @@ para todos: ninguno pide ampliarlo.
 
 | Juego | Nivel | Modos | Superficie | Lo que estrena |
 |---|---|---|---|---|
-| ⚠️ No tocar | — | — | escenario | no es un juego: ver §*La broma* |
 | 🏅 Tus récords | — | — | panel | tampoco es un juego: ver §*Récords y ranking* |
 | 🌵 Obstáculos | 8 | solo | escenario | correr y saltar con la barra espaciadora |
 | 🪶 Aleteo | 14 | solo | escenario | volar a base de aletazos, entre huecos |
@@ -688,19 +687,23 @@ cae mira su columna y ya, sin comprobar contra nadie.
 
 ## La broma
 
-`⚠️ No tocar`, al final de Ajustes y en su propia sección. Se pulsa, sale un
-cartel que dice **«No debiste hacer eso»** y empiezan a caer patos. Si haces
-clic en uno, se parte en dos más pequeños. Y otra vez. Y otra vez.
+`⚠️ No tocar`, al final de Ajustes y en su propia sección, con su separador y en
+rojo. Se pulsa, se cierra Ajustes, sale un cartel que dice **«No debiste hacer
+eso»** y empiezan a caer patos. Si haces clic en uno, se parte en dos más
+pequeños. Y otra vez. Y otra vez.
 
-No es un juego: no da experiencia, no cuenta partidas, no guarda marca y no pasa
-por `tam.play()`. Usa el escenario y poco más.
+Está en [`core/game/broma.js`](../src/core/game/broma.js), **fuera del
+catálogo**: no es un minijuego, no da experiencia, no cuenta partidas, no guarda
+marca y no cansa a la mascota. Lo único que comparte con ellos es el préstamo del
+escenario, que es la pieza que sabe pedir la pantalla y —sobre todo—
+devolverla.
 
-Aquí **sí** hay choques entre cuerpos, y al revés que en el agujero: es que la
-gracia es el desorden. Un solucionador ingenuo de círculo contra círculo, sin
-reposo ni solucionador iterativo, con una rejilla espacial para no morir de N².
-Que tiemble, que se cuele uno por una pared, que el montón se sacuda: ahí eso no
-son fallos, son el chiste. Es la única parte del proyecto donde la física mal
-hecha es la especificación.
+Aquí **sí** hay choques entre cuerpos, y al revés que en [The
+Hole](../src/core/game/minijuegos/agujero.js): la gracia es el desorden. Círculo
+contra círculo, sin contactos en reposo ni solucionador iterativo. Que tiemble,
+que se cuele uno por una pared, que el montón se sacuda: ahí eso no son fallos,
+son el chiste. Es la única parte del proyecto donde la física mal hecha es la
+especificación.
 
 Tres cosas que hay que hacer bien para que sea una broma y no un parte de
 incidencias:
@@ -708,20 +711,30 @@ incidencias:
 1. **Se tiene que poder salir, siempre.** En el escritorio esto es un overlay a
    pantalla completa capturando el ratón: es el [riesgo número
    uno](#juegos-de-escenario) del proyecto con un cartel encima. `Esc` desde el
-   primer momento y dicho en el cartel, un botón **Basta** que ningún pato pueda
-   tapar, el tope de diez minutos de `escenario.js` de red, y `alApagar` como
-   siempre. Cuantos más patos hay, más grande se pone el Basta: la gracia es
-   agobiar, no secuestrar.
-2. **«Sin fin» tiene que tener techo.** Partir en dos sin límite son veinte clics
-   buenos hasta el millón de patos, y ahí la pestaña se muere de verdad. El techo
-   va por **tamaño mínimo**: por debajo de cierto tamaño ya no se parte, revienta
-   en una nubecilla y desaparece. Se siente infinito —nunca ganas, se multiplican
-   más rápido de lo que los revientas— pero el número de bichos vivos está
-   acotado. Y de paso da mecánica: *puedes* limpiarlo, pero no a ese ritmo.
+   primer momento **y escrito dentro del cartel**, el botón de salir del
+   marcador —que es DOM por encima del lienzo, así que ningún pato puede
+   taparlo—, el tope de diez minutos de `escenario.js` y el `alApagar` de
+   siempre. Y el marcador va subiendo el tono: pasados 45 patos deja de informar
+   y empieza a gritar `ESC PARA QUE PARE`. La gracia es agobiar, no secuestrar.
+2. **«Sin fin» tiene que tener techo**, y son dos. Por **tamaño**: cada partición
+   encoge un 32 %, y por debajo del mínimo ya no se parte, revienta en una
+   nubecilla y desaparece —cuatro clics matan a un pato, pero por el camino ha
+   dejado ocho—. Y por **número**: 150 vivos como mucho. Se siente infinito
+   —nunca ganas, se multiplican más rápido de lo que los revientas— pero la
+   pestaña no se muere.
 3. **Sobre una página ajena, no.** Como todos los de escenario
    (`juegosDeEscenario`), y aquí con más motivo: llenar de patos la web que
    alguien está leyendo mientras se le captura el ratón no es una broma. En esa
    carcasa el botón ni aparece.
 
-Y el pato de verdad se entera: `playOnce('sad')` y un bocadillo. *Te dije que
-no.* Sin eso es un salvapantallas; con eso es suyo.
+**Los choques son N² y no hace falta más.** Con el tope de 150 son unas 11.000
+comprobaciones por fotograma, y medido sale a **0,38 ms** —de los 16,7 que hay—,
+así que no hay rejilla espacial ni la necesita. Lo que sí importa es no crear
+objetos dentro del bucle: los centros se calculan una vez por fotograma en dos
+arrays, porque once mil objetos por fotograma sí se notan.
+
+Y el pato de verdad se entera: se pone `sad` y suelta un *«Te dije que no»*. Ojo
+con esto, que tiene truco: mientras el escenario está prestado, `behavior` está
+**bloqueado** y `playOnce` no hace nada a propósito. Se le habla al sprite
+directamente con `pista.pato.setState`, que es lo que puede hacer un juego de
+escenario y no puede hacer uno de panel.

@@ -7,6 +7,16 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Añadido
+
+- **⚠️ No tocar.** Al final de Ajustes, en rojo y con su separador. Se pulsa, y
+  sale un cartel que dice que no debiste hacerlo mientras empiezan a caer patos.
+  Si haces clic en uno, se parte en dos más pequeños. Y otra vez. No se gana ni
+  se puntúa: no es un juego, es una broma —no da experiencia, no cuenta partidas
+  y no cansa a tu mascota, que se pone triste y te dice que te lo había avisado—.
+  Se sale con **Esc**, que lo pone el propio cartel, o con el botón de salir.
+  Sobre una página web ajena el botón ni aparece.
+
 ### Cambiado
 
 - **Los rangos llegan hasta el nivel 50.** Se acababan en «Leyenda» al 20, que
