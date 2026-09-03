@@ -85,12 +85,40 @@ function escuchar(objetivo, evento, fn, opciones) {
   alApagar(() => objetivo.removeEventListener(evento, fn, opciones));
 }
 
+/** Dónde está el cursor. Hace falta fuera del `mousemove` (ver la barra). */
+const raton = { x: -1, y: -1 };
+
+/**
+ * ¿El cursor está sobre la barra de tareas?
+ *
+ * La ventana del pato cubre el monitor ENTERO, barra incluida, para que pueda
+ * caminar por encima de ella. Eso, con el ratón capturado, deja el icono de la
+ * bandeja debajo de una ventana transparente: no se puede pulsar. Y capturado se
+ * está siempre que hay un panel abierto o una partida de escenario en marcha,
+ * que puede durar diez minutos.
+ *
+ * Así que la franja de la barra se deja libre SIEMPRE. Ahí no hay nada del pato
+ * que pulsar —el suelo está justo encima— y sí está lo que hace falta para poder
+ * cerrarlo: el icono de la bandeja, junto al reloj.
+ *
+ * Donde no hay barra (`ground` es 0) esto no hace nada, que es lo correcto en la
+ * extensión y en un escritorio con la barra escondida.
+ */
+function enLaBarraDeTareas() {
+  if (!duck || duck.ground <= 0 || raton.y < 0) return false;
+  return raton.y >= window.innerHeight - duck.ground;
+}
+
 function updateMouseCapture() {
   // Hace falta el ratón si: arrastramos, hay un panel abierto, o el cursor está
   // sobre el pato o una zona interactiva. En el overlay de escritorio eso decide
   // si los clics atraviesan la ventana; donde el pato tiene documento propio, la
   // plataforma lo ignora y sólo queda el cursor.
-  const capture = dragging || openOverlays.size > 0 || overHot;
+  //
+  // Con una excepción por encima de todo lo demás: la barra de tareas. Arrastrar
+  // sí la mantiene —si no, soltar al pato sobre la barra sería soltarlo en el
+  // vacío—, pero un panel o una partida, no.
+  const capture = dragging || (!enLaBarraDeTareas() && (openOverlays.size > 0 || overHot));
   api.capturarRaton(capture);
   updateCursor();
 }
@@ -314,6 +342,20 @@ export async function arrancarPato(plataforma) {
       },
       escena: () => (escena ? escena.id : null),
       /**
+       * Si el overlay está capturando el ratón ahora mismo, y por qué.
+       *
+       * Lo interesante es `barra`: la franja de la barra de tareas tiene que
+       * quedar libre pase lo que pase, porque ahí está el icono de la bandeja y
+       * es por donde se cierra el pato. Desde una sonda no se puede espiar el
+       * puente —`contextBridge` congela lo que expone— así que se mira aquí.
+       */
+      captura: () => ({
+        captura: dragging || (!enLaBarraDeTareas() && (openOverlays.size > 0 || overHot)),
+        barra: enLaBarraDeTareas(),
+        raton: { ...raton },
+        suelo: duck ? duck.ground : 0
+      }),
+      /**
        * Presta el escenario a un juego de mentira, para comprobar lo único que
        * de verdad no puede fallar: que el pato SIEMPRE vuelve. Con
        * `{revienta:true}` el juego lanza en el primer fotograma; con
@@ -499,7 +541,15 @@ function setupInteraction() {
   // reponer los listeners porque `escuchar` lleva la cuenta para el apagado, y
   // añadirlos a mano a mitad rompería esa contabilidad.
   escuchar(document, 'mousemove', (e) => {
-    if (escena) { escena.entrada.mover(e); return; }
+    raton.x = e.clientX;
+    raton.y = e.clientY;
+    if (escena) {
+      escena.entrada.mover(e);
+      // Durante una partida el ratón está capturado de principio a fin, así que
+      // es aquí donde hay que soltar la barra de tareas al pasar por encima.
+      updateMouseCapture();
+      return;
+    }
     if (dragging) {
       // Si el botón se soltó fuera de la ventana (p. ej. justo al cruzar de
       // monitor), el mouseup no llega y el pato se quedaría pegado al cursor.

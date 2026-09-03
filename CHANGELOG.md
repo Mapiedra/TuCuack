@@ -17,15 +17,23 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   Sobre una página web ajena el botón ni aparece.
 - **Y salir tiene peaje.** Pulsar Esc o el botón de salir no te saca: te pone
   **diez cuentas**, cada una más gorda que la anterior y cada una con su
-  reprimenda. Al resolver la décima, sales. Está hecho para poder pasarlo: todas
-  se resuelven de cabeza o con calculadora, fallar repite la misma cuenta —ni
-  reinicia ni castiga—, no hay reloj, y hay un botón para cerrarlo y seguir. Y
-  pase lo que pase, la broma se acaba sola a los diez minutos.
+  reprimenda. Se empieza en `8 + 9` y se acaba en `16³ + √1600 − 808`, con
+  raíces y potencias por el medio. Al resolver la décima, sales. Está hecho para
+  poder pasarlo: salen todas enteras, fallar repite la misma cuenta —ni reinicia
+  ni castiga—, no hay reloj, y hay un botón para cerrarlo y seguir. Y pase lo
+  que pase, la broma se acaba sola a los diez minutos.
 - **El puntero cambia según lo que haya debajo**: una mira en la pantalla y una
   explosión encima de un pato, para que se vea cuál se puede reventar.
 
 ### Cambiado
 
+- **La barra de tareas ya no se queda debajo del pato.** La ventana cubre el
+  monitor entero para que el pato pueda caminar por la barra, pero con un panel
+  abierto o una partida en marcha el ratón está capturado, y eso dejaba el icono
+  de la bandeja —que es por donde se cierra el pato— tapado por una ventana
+  transparente. Ahora esa franja nunca captura, así que **siempre se puede cerrar
+  el pato desde el icono de junto al reloj**. Arrastrando sí sigue capturando:
+  soltar al pato sobre la barra tiene que poder hacerse.
 - **Los rangos llegan hasta el nivel 50.** Se acababan en «Leyenda» al 20, que
   era el techo de cuando lo único que se desbloqueaba eran diseños. Ahora siguen
   cada cinco niveles: Capo, Padrino, Intocable, Jefe de jefes, Mito y Cuack

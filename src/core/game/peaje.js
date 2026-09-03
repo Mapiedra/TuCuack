@@ -6,8 +6,12 @@
 //
 // Dos reglas que lo mantienen del lado de la broma y no del secuestro:
 //
-//   1. **Todas se pueden resolver.** Nada de acertijos ni de números de ocho
-//      cifras: aritmética de cabeza o de calculadora, subiendo despacio.
+//   1. **Todas se pueden resolver, y de una sola manera.** Aritmética, no
+//      acertijos: nada de series, ni de trucos, ni de dos lecturas posibles. El
+//      resultado es siempre un entero exacto —las raíces son de cuadrados
+//      perfectos y las divisiones no dejan resto— así que la calculadora del
+//      sistema basta y sobra. Las tres primeras se hacen de cabeza; las tres
+//      últimas, no, y eso también es el chiste.
 //   2. **Fallar no castiga.** Se repite LA MISMA cuenta, no vuelve a empezar y
 //      no hay reloj. Equivocarse cuesta otro intento, no la partida.
 //
@@ -44,29 +48,39 @@ const entero = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 /**
  * Las diez cuentas, de menos a más.
  *
- * Cada una devuelve `{texto, resultado}`. El orden de dificultad importa más que
- * los números concretos: se empieza con algo que se hace sin pensar y se acaba
- * con algo que hay que apuntar, pero nunca con algo imposible.
+ * Cada una devuelve `{texto, resultado}` y los números salen al azar dentro de
+ * su nivel, así que no hay nada que memorizar. Lo que importa es la CUESTA: se
+ * empieza con `3 + 4` y se acaba con un cubo, una raíz y una resta en la misma
+ * línea. Que la última sea desproporcionada no es un descuido, es el remate.
+ *
+ * Todo sale entero: los cuadrados de las raíces son perfectos y las divisiones
+ * son exactas. Un peaje que además admita decimales sería otra broma distinta y
+ * bastante peor.
  */
 const CUENTAS_POR_NIVEL = [
+  // 1-3: se hacen sin pensar. Es la parte en la que crees que va a ser rápido.
   () => { const a = entero(2, 9), b = entero(2, 9); return { texto: `${a} + ${b}`, resultado: a + b }; },
-  () => { const a = entero(11, 29), b = entero(4, 19); return { texto: `${a} + ${b}`, resultado: a + b }; },
-  () => { const a = entero(12, 40), b = entero(3, 11); return { texto: `${a} − ${b}`, resultado: a - b }; },
-  () => { const a = entero(3, 9), b = entero(3, 9); return { texto: `${a} × ${b}`, resultado: a * b }; },
-  () => { const b = entero(3, 9), r = entero(3, 12); return { texto: `${b * r} ÷ ${b}`, resultado: r }; },
-  () => { const a = entero(11, 19), b = entero(3, 9); return { texto: `${a} × ${b}`, resultado: a * b }; },
+  () => { const a = entero(21, 79), b = entero(14, 68); return { texto: `${a} + ${b}`, resultado: a + b }; },
+  () => { const a = entero(120, 480), b = entero(37, 99); return { texto: `${a} − ${b}`, resultado: a - b }; },
+
+  // 4-6: ya hay que pararse.
+  () => { const a = entero(12, 29), b = entero(4, 9); return { texto: `${a} × ${b}`, resultado: a * b }; },
+  () => { const b = entero(7, 17), r = entero(13, 34); return { texto: `${b * r} ÷ ${b}`, resultado: r }; },
+  () => { const a = entero(23, 79), b = entero(14, 38); return { texto: `${a} × ${b}`, resultado: a * b }; },
+
+  // 7-10: potencias y raíces. Aquí ya es abuso, que es de lo que se trata.
+  () => { const n = entero(12, 39); return { texto: `√${n * n}`, resultado: n }; },
   () => {
-    const a = entero(6, 14), b = entero(4, 9), c = entero(5, 30);
-    return { texto: `${a} × ${b} + ${c}`, resultado: a * b + c };
+    const n = entero(17, 46), c = entero(84, 399);
+    return { texto: `${n}² − ${c}`, resultado: n * n - c };
   },
-  () => { const a = entero(12, 29), b = entero(11, 19); return { texto: `${a} × ${b}`, resultado: a * b }; },
   () => {
-    const b = entero(4, 12), r = entero(6, 15), k = entero(2, 4);
-    return { texto: `${b * r} ÷ ${b} × ${k}`, resultado: r * k };
+    const n = entero(21, 48), m = entero(7, 19), c = entero(56, 480);
+    return { texto: `√${n * n} × ${m} + ${c}`, resultado: n * m + c };
   },
   () => {
-    const a = entero(14, 24), b = entero(12, 18), c = entero(20, 99);
-    return { texto: `(${a} × ${b}) − ${c}`, resultado: a * b - c };
+    const n = entero(11, 24), m = entero(23, 61), c = entero(137, 999);
+    return { texto: `${n}³ + √${m * m} − ${c}`, resultado: n * n * n + m - c };
   }
 ];
 

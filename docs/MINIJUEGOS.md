@@ -215,6 +215,15 @@ Estos juegos sólo se ofrecen donde el pato tiene la pantalla para él
 (`capacidades.juegosDeEscenario`): escritorio, panel lateral y banco de pruebas.
 Sobre una página ajena, no.
 
+**La franja de la barra de tareas queda libre.** En el escritorio la ventana
+cubre el monitor entero —barra incluida, que es por donde el pato camina— y
+durante una partida el ratón está capturado de principio a fin. Eso dejaría el
+icono de la bandeja debajo de una ventana transparente durante hasta diez
+minutos, y por ahí es por donde se cierra el pato. Así que `updateMouseCapture`
+suelta el ratón siempre que el cursor está sobre esa franja, con partida o sin
+ella. Arrastrando sí se mantiene: soltar al pato sobre la barra tiene que poder
+hacerse. Donde no hay barra (`ground` es 0) esto no hace nada.
+
 ---
 
 ## Partidas por red
@@ -728,18 +737,24 @@ incidencias:
    («Te dije que no tocaras», «Había un cartel», «¿Por qué tocas?»…). Al
    resolver la décima, sales.
 
-   Lo que **no** se negocia son las salidas involuntarias, y son las que
-   convierten esto en una broma y no en un secuestro: el **tope de diez minutos**
-   de `escenario.js`, el **apagado del pato** y el **fallo del propio juego**
-   terminan la partida pase lo que pase. Y el peaje está hecho para poder
-   pasarlo: todas las cuentas se resuelven de cabeza o con una calculadora,
-   fallar repite LA MISMA cuenta —ni reinicia ni castiga—, no hay reloj, y hay un
-   botón de «Vale, sigo» para cerrarlo y seguir jugando.
+   Las cuentas suben hasta lo absurdo: se empieza en `8 + 9` y se acaba en
+   `16³ + √1600 − 808`, pasando por raíces y cuadrados. Salen todas enteras —los
+   radicandos son cuadrados perfectos y las divisiones exactas— así que con la
+   calculadora del sistema se resuelven; las tres primeras, de cabeza.
 
-   En el escritorio esto es un overlay a pantalla completa capturando el ratón,
-   que es el [riesgo número uno](#juegos-de-escenario) del proyecto, así que
-   conviene decirlo entero: **el peaje se puede intentar tantas veces como haga
-   falta, y aun sin resolverlo la broma se acaba sola a los diez minutos.**
+   Lo que **no** se negocia son las salidas involuntarias, y son las que
+   convierten esto en una broma y no en un secuestro:
+
+   - El **tope de diez minutos** de `escenario.js`: se acaba sola, se resuelva o
+     no.
+   - El **icono de la bandeja**, junto al reloj. La franja de la barra de tareas
+     [nunca captura el ratón](#juegos-de-escenario), tampoco durante la broma, así
+     que se puede cerrar el pato desde ahí en cualquier momento.
+   - El **apagado del pato** y el **fallo del propio juego**.
+
+   Y el peaje está hecho para poder pasarlo: fallar repite LA MISMA cuenta —ni
+   reinicia ni castiga—, no hay reloj, y hay un botón de «Vale, sigo» para
+   cerrarlo y seguir jugando.
 2. **«Sin fin» tiene que tener techo**, y son dos. Por **tamaño**: cada partición
    encoge un 32 %, y por debajo del mínimo ya no se parte, revienta en una
    nubecilla y desaparece —cuatro clics matan a un pato, pero por el camino ha
