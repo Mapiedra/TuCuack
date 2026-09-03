@@ -7,6 +7,8 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.9.2] - 2026-09-03
+
 ### Añadido
 
 - **Las partidas por red sobreviven al cambio de pestaña.** En la extensión el
