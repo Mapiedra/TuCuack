@@ -7,6 +7,8 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.10.0] - 2026-09-03
+
 ### Añadido
 
 - **«Pato dice», el Simón de toda la vida.** Nivel 2. Tu mascota canta una serie
