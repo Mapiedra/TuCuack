@@ -11,8 +11,8 @@ abren desde `🎮 Juegos` en el menú del pato.
 | 🏓 Toques con la paleta | 7 | solo | escenario |
 
 La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
-segundo, después los de pensar. Queda hueco por delante para los que faltan —la
-paleta, el ahorcado, hundir la flota—, que son bastante más largos.
+segundo, después los de pensar, y al final los que piden pulso. Queda hueco por
+delante para [los que faltan](#los-que-faltan).
 
 Se puede jugar **solo**, contra el pato, o **por turnos contra otro pato
 conectado**, retándole desde el propio panel.
@@ -326,3 +326,76 @@ npx electron . --dev --probe "(__pato.verJuegos(), document.querySelectorAll('.j
 Y en la extensión, la prueba que sólo se puede hacer ahí: abrir una partida sobre
 una página cualquiera y **cambiar de pestaña a mitad**. El pato se muda; no debe
 quedar ni un bucle ni un error en la consola.
+
+---
+
+## Los que faltan
+
+Aprobados y por hacer, cada uno su propia tarea. El contrato está dimensionado
+para todos: ninguno pide ampliarlo.
+
+| Juego | Nivel | Modos | Superficie | Lo que estrena |
+|---|---|---|---|---|
+| 🕳️ El agujero | 9 | solo | escenario | varios cuerpos con la física a la vez; progresión dentro de la partida |
+| 🎯 Puntería | 8 | solo | escenario | apuntar y soltar, sin nada que se mueva solo |
+| 🔤 Ahorcado | 6 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
+| 🚢 Hundir la flota | 11 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
+| 🃏 Memoria con skins | 4 | solo · red (2) | panel | las hojas de sprites como material de juego |
+| 🔊 La mascota dice | 2 | solo | panel | `sonido.nota()` y un compás |
+| 📈 Marcador de récords | — | — | — | no es un juego: ver §*Marcador global*, abajo |
+
+### 🕳️ El agujero
+
+Caen mascotas desde arriba y el ratón lleva un agujero por el suelo. La que cae
+dentro, cae dentro. La que no, se queda en el suelo y **ahí se queda**.
+
+Es el hermano de la paleta —escenario, ratón, física— con el signo cambiado: allí
+se trata de que la mascota no toque el suelo rebotando; aquí, de que no lo toque
+porque se la ha tragado el agujero. Y donde la paleta cuenta toques sueltos, éste
+tiene una partida con forma:
+
+- Una **barra** se llena con cada mascota recogida.
+- Al llenarse, sube el **calibre**: en vez de caer de una en una, caen de dos en
+  dos. Y de tres en tres. La barra se vacía y ahora pide más para volver a
+  llenarse.
+- Lo que no se recoge **se acumula en el suelo**. No desaparece, no se limpia
+  entre calibres, y va tapando el sitio por donde se mueve el agujero.
+- La partida **acaba cuando el suelo está lleno**. Eso hace que el incremental
+  tenga freno: cada calibre nuevo es un regalo y una condena a la vez.
+- La **marca** es el calibre más alto alcanzado, que es lo que de verdad se
+  presume. `marca: { etiqueta: 'calibre', mejor: 'mas' }`.
+
+Tres decisiones que conviene dejar dichas antes de escribirlo:
+
+1. **Las que caen no son el pato.** Pato hay uno, y está ocupado: el pato lleva
+   el agujero, caminando por el suelo detrás del ratón (con la inercia de
+   [`pet/inercia.js`](../src/core/pet/inercia.js), para que arrastre y no
+   teletransporte). Las que caen se dibujan en el lienzo con las hojas de
+   [`skins.js`](../src/core/game/skins.js) — arte que ya existe, y además premia
+   tener diseños desbloqueados con una partida más variada.
+2. **Las acumuladas no se repintan.** Con calibre 8 y el suelo medio lleno hay
+   cincuenta y pico sprites por fotograma en un lienzo a pantalla completa. Las
+   que ya han aterrizado se pintan **una vez** a un lienzo de fondo y no se
+   vuelven a tocar; sólo se animan las que están en el aire. Es la única decisión
+   técnica que hay que tomar bien desde el principio.
+3. **La barra va en el lienzo**, no en el marcador. `Pista.marcador` recibe
+   texto, y una barra no es texto; pintarla con canvas evita tocar el contrato
+   por un juego.
+
+Va **solo**, porque un juego de reflejos no cabe en un canal por turnos. Si más
+adelante se quiere de dos, la forma barata es un **duelo de marcas**: cada uno
+juega su partida y al final se manda el resultado por la sala, que son dos
+mensajes. Eso sí cabe.
+
+Nivel 9: por encima de la paleta, que es el otro de escenario y bastante más
+simple.
+
+### Marcador global
+
+Sin servidor propio, un "marcador global" por *broadcast* es en realidad **un
+marcador de la sesión**: cada pato ve lo que se anunció mientras él estaba
+conectado, y nada es verificable. Se puede entregar así, etiquetado con
+honestidad y con el nombre de quien declara la marca al lado. Uno de verdad
+necesita una tabla en Supabase con RLS, y eso sí es un cambio de arquitectura
+—hoy ni `chat.js` ni `sw.js` usan nada que no sea Realtime—. Merece su propia
+decisión, no colarse en la tarea de otro juego.
