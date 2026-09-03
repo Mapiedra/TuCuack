@@ -11,8 +11,8 @@ abren desde `🎮 Juegos` en el menú del pato.
 | 🏓 Toques con la paleta | 7 | solo | escenario |
 
 La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
-segundo, después los de pensar. Queda hueco por delante para los que faltan —la
-paleta, el ahorcado, hundir la flota—, que son bastante más largos.
+segundo, después los de pensar, y al final los que piden pulso. Queda hueco por
+delante para [los que faltan](#los-que-faltan).
 
 Se puede jugar **solo**, contra el pato, o **por turnos contra otro pato
 conectado**, retándole desde el propio panel.
@@ -205,11 +205,40 @@ Lo que **no** está probado por ahí es la resincronización por huecos de
 secuencia: con turnos estrictamente alternos nunca se produce un hueco. El
 camino existe (`pedir-sincro`), pero no se ejercita.
 
-**Límite conocido:** en la extensión, el pato se muda de pestaña continuamente.
-El service worker ya guarda los mensajes de la partida y se los devuelve al pato
-cuando reaparece, pero **rehacer el estado (`salas.reanudar`) está pendiente**:
-de momento el pato avisa de que la partida se quedó atrás y la suelta limpiamente.
-En el escritorio esto no pasa, porque el pato no se muda a ninguna parte.
+## Mudarse de pestaña no es abandonar
+
+En la extensión el pato se muda cada vez que el usuario cambia de pestaña, y en
+cada página estrena documento con la memoria en blanco. Si eso terminara la
+partida, el multijugador sería inservible en Chrome. En el escritorio no pasa:
+el pato no se muda a ninguna parte.
+
+Tres piezas, y ninguna sabe de las otras:
+
+1. **`apagar(motivo)`** ([core/app.js](../src/core/app.js)). El motivo `'mudanza'`
+   —lo mandan `extension/boot.js` y `extension/content.js`— hace que NO se avise
+   al rival ni al cerrar la sala ni al cerrar el panel. Sin esto el pato se
+   rendiría cada vez que su dueño mira otra pestaña.
+2. **El worker se acuerda.** `sw.js` apunta los mensajes de la sala —los que
+   llegan **y los que salen**— en `chrome.storage.session`, y se los devuelve al
+   pato en cuanto reaparece. No guarda el estado del juego: el worker no sabe
+   jugar a nada y no debe saberlo.
+3. **`salas.reanudar(guardado)`** rehace la sala con eso: quién juega, por dónde
+   iba la numeración y a quién hay que hablarle. Da por vistos los mensajes del
+   rival que ya se atendieron —si no, su último reenvío se aplicaría dos veces— y
+   le confirma lo último, que es lo que le hace dejar de reenviar. Lo jugado se
+   lo pasa al juego en `ctx.previas`, que es el único que sabe qué hacer con ello.
+
+**Qué se recupera y qué no.** El tablero de tres en raya, entero: una casilla
+puesta es una casilla puesta. El marcador de piedra-papel-tijera y par o impar,
+también. Lo que **no** se recupera es la ronda en vuelo de esos dos: el
+compromiso se firmó con una sal que sólo vivía en memoria y se fue con el
+documento anterior, así que esa ronda se vuelve a elegir. Lo que el rival hubiera
+mandado de ella se le devuelve a la ronda nueva por la misma puerta que el canal
+(`repartirPrevias`), de modo que él no tiene que repetir nada ni enterarse de que
+nos hemos movido.
+
+Un juego que no mire `ctx.previas` no se rompe: empieza de cero. Se pierde el
+tablero, no la partida.
 
 ## Jugadas a la vez
 
@@ -297,3 +326,76 @@ npx electron . --dev --probe "(__pato.verJuegos(), document.querySelectorAll('.j
 Y en la extensión, la prueba que sólo se puede hacer ahí: abrir una partida sobre
 una página cualquiera y **cambiar de pestaña a mitad**. El pato se muda; no debe
 quedar ni un bucle ni un error en la consola.
+
+---
+
+## Los que faltan
+
+Aprobados y por hacer, cada uno su propia tarea. El contrato está dimensionado
+para todos: ninguno pide ampliarlo.
+
+| Juego | Nivel | Modos | Superficie | Lo que estrena |
+|---|---|---|---|---|
+| 🕳️ El agujero | 9 | solo | escenario | varios cuerpos con la física a la vez; progresión dentro de la partida |
+| 🎯 Puntería | 8 | solo | escenario | apuntar y soltar, sin nada que se mueva solo |
+| 🔤 Ahorcado | 6 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
+| 🚢 Hundir la flota | 11 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
+| 🃏 Memoria con skins | 4 | solo · red (2) | panel | las hojas de sprites como material de juego |
+| 🔊 La mascota dice | 2 | solo | panel | `sonido.nota()` y un compás |
+| 📈 Marcador de récords | — | — | — | no es un juego: ver §*Marcador global*, abajo |
+
+### 🕳️ El agujero
+
+Caen mascotas desde arriba y el ratón lleva un agujero por el suelo. La que cae
+dentro, cae dentro. La que no, se queda en el suelo y **ahí se queda**.
+
+Es el hermano de la paleta —escenario, ratón, física— con el signo cambiado: allí
+se trata de que la mascota no toque el suelo rebotando; aquí, de que no lo toque
+porque se la ha tragado el agujero. Y donde la paleta cuenta toques sueltos, éste
+tiene una partida con forma:
+
+- Una **barra** se llena con cada mascota recogida.
+- Al llenarse, sube el **calibre**: en vez de caer de una en una, caen de dos en
+  dos. Y de tres en tres. La barra se vacía y ahora pide más para volver a
+  llenarse.
+- Lo que no se recoge **se acumula en el suelo**. No desaparece, no se limpia
+  entre calibres, y va tapando el sitio por donde se mueve el agujero.
+- La partida **acaba cuando el suelo está lleno**. Eso hace que el incremental
+  tenga freno: cada calibre nuevo es un regalo y una condena a la vez.
+- La **marca** es el calibre más alto alcanzado, que es lo que de verdad se
+  presume. `marca: { etiqueta: 'calibre', mejor: 'mas' }`.
+
+Tres decisiones que conviene dejar dichas antes de escribirlo:
+
+1. **Las que caen no son el pato.** Pato hay uno, y está ocupado: el pato lleva
+   el agujero, caminando por el suelo detrás del ratón (con la inercia de
+   [`pet/inercia.js`](../src/core/pet/inercia.js), para que arrastre y no
+   teletransporte). Las que caen se dibujan en el lienzo con las hojas de
+   [`skins.js`](../src/core/game/skins.js) — arte que ya existe, y además premia
+   tener diseños desbloqueados con una partida más variada.
+2. **Las acumuladas no se repintan.** Con calibre 8 y el suelo medio lleno hay
+   cincuenta y pico sprites por fotograma en un lienzo a pantalla completa. Las
+   que ya han aterrizado se pintan **una vez** a un lienzo de fondo y no se
+   vuelven a tocar; sólo se animan las que están en el aire. Es la única decisión
+   técnica que hay que tomar bien desde el principio.
+3. **La barra va en el lienzo**, no en el marcador. `Pista.marcador` recibe
+   texto, y una barra no es texto; pintarla con canvas evita tocar el contrato
+   por un juego.
+
+Va **solo**, porque un juego de reflejos no cabe en un canal por turnos. Si más
+adelante se quiere de dos, la forma barata es un **duelo de marcas**: cada uno
+juega su partida y al final se manda el resultado por la sala, que son dos
+mensajes. Eso sí cabe.
+
+Nivel 9: por encima de la paleta, que es el otro de escenario y bastante más
+simple.
+
+### Marcador global
+
+Sin servidor propio, un "marcador global" por *broadcast* es en realidad **un
+marcador de la sesión**: cada pato ve lo que se anunció mientras él estaba
+conectado, y nada es verificable. Se puede entregar así, etiquetado con
+honestidad y con el nombre de quien declara la marca al lado. Uno de verdad
+necesita una tabla en Supabase con RLS, y eso sí es un cambio de arquitectura
+—hoy ni `chat.js` ni `sw.js` usan nada que no sea Realtime—. Merece su propia
+decisión, no colarse en la tarea de otro juego.

@@ -4,7 +4,7 @@
 // se consigue eso por un canal que sólo sabe alternar está en rondaSimultanea.js;
 // aquí sólo se pide una ronda y se pinta el resultado.
 
-import { crearRondaSimultanea } from './rondaSimultanea.js';
+import { crearRondaSimultanea, repartirPrevias } from './rondaSimultanea.js';
 import { sembrar, unoDe } from './azar.js';
 
 const OPCIONES = [
@@ -35,6 +35,17 @@ export function crearPartida(ctx) {
   let elegida = null;          // la de esta ronda, para resaltarla al esperar
   let enPausa = false;         // enseñando el resultado antes de la siguiente
   const azar = sembrar(ctx.semilla);
+
+  // Si esta partida venía de otra pestaña, el marcador se rehace de lo ya
+  // revelado y lo que quedó a medias se le pasa a la primera ronda.
+  const { hechas, suyas } = repartirPrevias(ctx.previas);
+  for (const r of hechas) {
+    const v = compara(r.mio, r.suyo);
+    if (v > 0) misRondas++;
+    else if (v < 0) susRondas++;
+  }
+  numeroDeRonda = hechas.length + 1;
+  let porRecuperar = suyas;   // sólo valen para la primera ronda de esta sesión
 
   const el = document.createElement('div');
   el.className = 'jppt';
@@ -85,6 +96,15 @@ export function crearPartida(ctx) {
   el.appendChild(revelado);
 
   empezarRonda();
+  // La partida pudo terminar justo al mudarse de pestaña. Se cierra en el tic
+  // siguiente y no aquí: `acabar` avisa al marco, y el marco todavía no tiene
+  // dónde enseñarlo.
+  if (misRondas >= RONDAS_PARA_GANAR || susRondas >= RONDAS_PARA_GANAR) {
+    const parar = ctx.cadaCierto(() => {
+      parar();
+      acabar(misRondas >= RONDAS_PARA_GANAR ? 'victoria' : 'derrota');
+    }, 0);
+  }
 
   return {
     el,
@@ -101,8 +121,10 @@ export function crearPartida(ctx) {
     if (ronda) ronda.destroy();
     ronda = crearRondaSimultanea(ctx, {
       eligeLaMascota: () => unoDe(OPCIONES, azar).id,
-      alResolver: resolverRonda
+      alResolver: resolverRonda,
+      previas: porRecuperar
     });
+    porRecuperar = [];
     pintar();
   }
 

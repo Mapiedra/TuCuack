@@ -7,6 +7,24 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Añadido
+
+- **Las partidas por red sobreviven al cambio de pestaña.** En la extensión el
+  pato se muda cada vez que el usuario cambia de pestaña, y hasta ahora eso se
+  llevaba por delante la partida: el pato avisaba de que se había quedado atrás
+  y la soltaba. Ahora el worker le devuelve los mensajes que guardó, la sala se
+  rehace y la partida sigue donde estaba, sin que el rival tenga que repetir
+  nada ni enterarse de nada. Se recupera el tablero del tres en raya entero y el
+  marcador de piedra-papel-tijera y par o impar; la ronda que estuviera a medias
+  de esos dos se vuelve a elegir, porque el compromiso se firmó con una sal que
+  sólo vivía en la pestaña anterior.
+
+### Corregido
+
+- **Mudarse de pestaña ya no es rendirse.** Al cambiar de pestaña, el pato
+  mandaba al rival el mismo aviso de abandono que al salir de la partida a
+  propósito —dos veces, además: una al cerrar la sala y otra al cerrar el panel—.
+
 ## [0.9.1] - 2026-09-02
 
 ### Añadido

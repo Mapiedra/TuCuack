@@ -98,6 +98,7 @@ export function crearPartida(ctx) {
     }));
   }
 
+  if (ctx.previas && ctx.previas.length) rehacer(ctx.previas);
   pintar();
   if (contraElPato) pensarElPato();
 
@@ -125,6 +126,14 @@ export function crearPartida(ctx) {
 
   /** Cierra la jugada: mira si hay final y, si no, pasa el turno. */
   function avanzar() {
+    if (revisarFinal()) return;
+    turno = 1 - turno;
+    pintar();
+    if (turno === miIndice) ctx.sonido.turno();
+  }
+
+  /** ¿Se acabó con lo que hay en el tablero? @returns {boolean} */
+  function revisarFinal() {
     const linea = lineaGanadora(tablero);
     if (linea) {
       resaltar(linea);
@@ -136,17 +145,38 @@ export function crearPartida(ctx) {
         acabar(ganador === miIndice ? 'victoria' : 'derrota',
           `Ganó ${jugadores[ganador]}.`);
       }
-      return;
+      return true;
     }
     if (tablero.every((c) => c !== -1)) {
       pintar();
       acabar('empate');
-      return;
+      return true;
     }
+    return false;
+  }
 
-    turno = 1 - turno;
-    pintar();
-    if (turno === miIndice) ctx.sonido.turno();
+  /**
+   * Rehace el tablero de una partida que se quedó en otra pestaña.
+   *
+   * Aquí sí se recupera todo: una casilla puesta es una casilla puesta, no hay
+   * nada secreto de por medio. Se reaplica en orden y comprobando el turno, que
+   * lo guardado viene de otro ordenador y podría venir descolocado.
+   */
+  function rehacer(previas) {
+    let alguna = false;
+    for (const p of previas) {
+      const j = p && p.jugada;
+      if (!j || j.t !== 'mover') continue;
+      const quien = p.mia ? miIndice : 1 - miIndice;
+      if (turno !== quien || !poner(j.i, quien)) continue;
+      turno = 1 - turno;
+      alguna = true;
+    }
+    // Se pudo acabar justo al mudarse de pestaña. Se mira DESPUÉS de montar el
+    // tablero, que `acabar` avisa al marco y el marco todavía no tiene panel.
+    if (alguna && lineaGanadora(tablero)) {
+      const parar = ctx.cadaCierto(() => { parar(); revisarFinal(); }, 0);
+    }
   }
 
   function acabar(resultado, detalle) {

@@ -151,7 +151,7 @@
     // todo y se deja la pestaña libre para el próximo.
     if (!estado) {
       clearInterval(vigilante);
-      pato.apagar();
+      pato.apagar('mudanza');
       anfitrion.remove();
       return;
     }
@@ -161,7 +161,9 @@
     // estado a la vez.
     estado.quitar = () => {
       clearInterval(vigilante);
-      pato.apagar();
+      // Al árbitro sólo le quita el pato de una pestaña para ponerlo en otra:
+      // es una mudanza, no una despedida.
+      pato.apagar('mudanza');
       anfitrion.remove();
     };
     estado.fase = 'montado';
