@@ -371,20 +371,48 @@ quedar ni un bucle ni un error en la consola.
 
 ## La escalera
 
-Los juegos se reparten **hasta el nivel 40**, no hasta el 10. El motivo es de
+Los juegos se reparten **hasta el nivel 50**, no hasta el 10. El motivo es de
 uso: hay gente que lleva meses con el pato y ya no tiene nada que desbloquear,
 así que la cuesta se estira y las piezas grandes se ponen arriba del todo.
 
 Lo que cuesta llegar, con un día activo normal (unas 736 XP entre convivencia,
 cuidados, racha, chat y el tope diario de partidas):
 
-| Nivel | 4 | 8 | 12 | 16 | 20 | 26 | 33 | 40 |
-|---|---|---|---|---|---|---|---|---|
-| Días | 0,6 | 2 | 4 | 6 | 8 | 12 | 17 | 23 |
+| Nivel | 4 | 8 | 12 | 16 | 21 | 28 | 32 | 40 | 50 |
+|---|---|---|---|---|---|---|---|---|---|
+| Días | 0,6 | 2 | 4 | 6 | 9 | 14 | 17 | 23 | 32 |
 
 Los niveles se eligen para que **caiga algo cada dos o tres niveles al principio
-y cada cuatro o cinco al final**, alternando con los diseños de
+y cada cinco o seis al final**, alternando con los diseños de
 [`skins.js`](../src/core/game/skins.js), que están en 1, 3, 6, 10 y 15.
+
+La escalera entera, con lo hecho y lo que falta:
+
+| Nivel | | Estado |
+|---|---|---|
+| 1 | ✌️ Piedra, papel o tijera | hecho |
+| 2 | 🔊 «Pato dice» | hecho |
+| 3 | 🎲 Par o impar | hecho |
+| 4 | 🃏 Memoria | hecho |
+| 6 | ⭕ Tres en raya | hecho |
+| 8 | 🌵 Obstáculos | falta |
+| 9 | 🏓 Malabares | hecho |
+| 12 | 🎯 «Pato Hook» | hecho |
+| 14 | 🪶 Aleteo | falta |
+| 16 | 🕳️ El agujero | hecho |
+| 18 | 🏓 Pong | falta |
+| 21 | 🧱 Ladrillos | falta |
+| 24 | 🔤 Ahorcado | falta |
+| 28 | 👾 Invasores | falta |
+| 32 | 🚢 Hundir la flota | falta |
+| 40 | 🏹 Derribos | por confirmar |
+| 50 | 💥 Artillería | por confirmar |
+
+**Los rangos acompañan.** Se acababan en «Leyenda» al 20, que era el techo de
+cuando lo único que se desbloqueaba eran diseños; ahora siguen cada cinco
+niveles hasta «Cuack supremo» al 50. Es lo único que se ve en la cabecera del
+panel de cuidados y en el aviso de subir de nivel, así que sin eso la mitad del
+camino no daba señal ninguna.
 
 > **Al repartir, un juego no debería subir más de lo imprescindible.** Subirlo se
 > lo quita a quien ya lo tenía. En este reparto sólo se movieron cuatro —tres en
@@ -393,9 +421,6 @@ y cada cuatro o cinco al final**, alternando con los diseños de
 > juego se vuelva a bloquear: `ProgresoJuegos.toJSON` no filtra por catálogo, y
 > es a propósito.
 
-> **Pendiente que se ve desde aquí:** los rangos de `Level.js` se acaban en
-> «Leyenda» al nivel 20. Con la escalera llegando a 40, la segunda mitad del
-> camino no cambia de rango ni una vez.
 
 ---
 
@@ -407,14 +432,17 @@ para todos: ninguno pide ampliarlo.
 | Juego | Nivel | Modos | Superficie | Lo que estrena |
 |---|---|---|---|---|
 | ⚠️ No tocar | — | — | escenario | no es un juego: ver §*La broma* |
+| 🏅 Tus récords | — | — | panel | tampoco es un juego: ver §*Récords y ranking* |
 | 🌵 Obstáculos | 8 | solo | escenario | correr y saltar con la barra espaciadora |
 | 🪶 Aleteo | 14 | solo | escenario | volar a base de aletazos, entre huecos |
 | 🏓 Pong | 18 | solo | escenario | la mascota ES la pala, y enfrente hay otra |
-| 🔤 Ahorcado | 20 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
-| 🚢 Hundir la flota | 26 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
+| 🧱 Ladrillos | 21 | solo | escenario | un muro que se rompe, sobre el Pong |
+| 🔤 Ahorcado | 24 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
+| 👾 Invasores | 28 | solo | escenario | disparar hacia arriba, y algo que baja |
+| 🚢 Hundir la flota | 32 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
 
-Y tres [por confirmar](#en-el-tintero): derribar estructuras (nivel 33),
-artillería por turnos (nivel 40) y el marcador de récords, que no es un juego
+Y tres [por confirmar](#en-el-tintero): derribar estructuras (nivel 40),
+artillería por turnos (nivel 50) y el ranking entre patos, que no es un juego
 sino una decisión de arquitectura.
 
 ### 🌵 Obstáculos y 🪶 Aleteo
@@ -463,6 +491,89 @@ deja pasar la pelota por su lado, que es mirar una coordenada.
   casi nada. Si no, o es imposible o es un muro.
 - **Marca:** `{ etiqueta: 'puntos', mejor: 'mas' }`. Al mejor de cinco.
 
+### 🧱 Ladrillos
+
+Arkanoid: la mascota abajo de pala, un muro de ladrillos arriba, y la pelota
+rompiendo. **Es el Pong con el rival cambiado por un muro**, así que hacerlo
+justo después sale casi por el precio del cambio: misma pelota, mismo rebote
+contra `pato.cuerpo()`, mismo bucle. Lo nuevo es una rejilla de ladrillos y una
+colisión de círculo contra rectángulo.
+
+Se gana limpiando el muro y se pierde al dejar caer la pelota tres veces. Los
+muros van por niveles: cuando limpias uno, entra el siguiente más apretado, y la
+marca es hasta qué muro llegaste.
+
+> **Aviso de repetirse.** Malabares, Pong y Ladrillos son los tres «mantén la
+> pelota en el aire con la mascota». Tres es el límite: si al jugar seguido se
+> notan iguales, el que sobra es éste, que es el que menos aporta. Conviene
+> escribirlo **después** del Pong y decidir entonces.
+
+### 👾 Invasores
+
+Space Invaders. La mascota se mueve por abajo y lanza huevos hacia arriba;
+enfrente, filas de gaviotas que bajan un escalón cada vez que llegan a un borde,
+y aceleran según quedan menos. Te alcanzan y se acabó.
+
+Es el único de los de escenario que **dispara**, así que trae algo que no hay:
+proyectiles propios, en las dos direcciones. Sigue sin necesitar arte —las
+gaviotas se pintan con un emoji en el lienzo, como el resto del catálogo— y el
+huevo es un círculo.
+
+- **Marca:** `{ etiqueta: 'oleada', mejor: 'mas' }`. No se gana: se aguanta.
+- La barra espaciadora dispara, o sea que necesita el mismo arreglo de
+  `escenario.js` que Obstáculos y Aleteo. Uno solo para los cuatro.
+
+---
+
+## Récords y ranking
+
+Dos cosas distintas que suenan igual, y conviene no mezclarlas: **lo tuyo** y
+**lo de todos**.
+
+### 🏅 Tus récords — barato, y se puede hacer ya
+
+Un panel con lo que ya está guardado: por cada juego, tu mejor marca, cuántas
+partidas y cuántas ganaste; y arriba, los totales. **No hay nada que inventar**,
+`ProgresoJuegos` ya lo tiene todo —`de(id)` para cada juego y `totales()` para la
+suma— y `toJSON` no filtra por catálogo, así que también se ven las marcas de
+juegos que hoy están bloqueados por nivel.
+
+Lo único que hay que decidir es dónde se entra: lo natural es un botón en la
+cabecera del panel de juegos, al lado del de volver.
+
+- **Coste:** bajo. Es un panel de lectura sobre datos que ya existen.
+- **Sin nivel:** se ve desde el primer día, aunque esté casi vacío. Un marcador
+  vacío es una invitación.
+
+### 🌐 Ranking entre patos — necesita una decisión antes
+
+Aquí es donde hay que elegir, y la elección es de arquitectura, no de interfaz.
+
+**Hoy no hay servidor propio.** Ni `chat.js` ni `sw.js` usan de Supabase nada más
+que Realtime, que es un tubo por el que pasan mensajes y no guarda nada. Con eso,
+un «ranking» es en realidad **un ranking de la sesión**: cada pato anuncia sus
+marcas al conectarse, y cada uno ve lo que se anunció mientras él estaba
+delante. Nadie ve a quien no coincidió con él, nada sobrevive a cerrar el pato, y
+**nada es verificable**: quien quiera decir que ha hecho un millón, lo dice.
+
+- **Opción A — el de la sesión.** Se puede entregar tal cual, con el nombre de
+  quien declara cada marca al lado y dicho en voz alta que es de la sesión. Coste
+  bajo: reutiliza el evento dirigido del canal, como las visitas y las jugadas.
+  Sirve para picarse entre dos que están conectados a la vez, que es el 90 % del
+  uso real.
+- **Opción B — el de verdad.** Una tabla en Supabase con RLS: cada pato escribe
+  sus marcas y lee el top. Persiste, es global y aguanta cerrar la app. Coste
+  alto y **cambia la arquitectura**: hoy el proyecto no tiene ni una tabla, y con
+  la primera entran las migraciones, las políticas de acceso y un modo de
+  identificar al pato que hoy no existe más allá del `patoId` local. Tampoco
+  arregla lo de las trampas: sin servidor que valide la partida, quien manda la
+  marca es el cliente.
+
+**Recomendación:** hacer primero *Tus récords*, que es gratis y resuelve la
+pregunta que más se hace («¿cuál era mi mejor?»). Y si después se quiere el
+ranking, ir por la **opción A** etiquetada con honestidad; la B sólo si el
+marcador se convierte en el motivo por el que se abre el pato.
+
 ---
 
 ## En el tintero
@@ -470,7 +581,7 @@ deja pasar la pelota por su lado, que es mirar una coordenada.
 Ideas con forma pero sin aprobar. Se apuntan con lo que costarían, que es la
 mitad de la decisión.
 
-### 🏹 Derribos (tipo Angry Birds) — nivel 33
+### 🏹 Derribos (tipo Angry Birds) — nivel 40
 
 Lanzas a la mascota contra **estructuras que se vienen abajo**. Ojo, porque el
 lanzamiento ya lo tenemos: **eso es «Pato Hook»**. Lo único que aportaría de nuevo
@@ -494,7 +605,7 @@ lado: caen a plomo.
 - **Recomendación:** después del de artillería, y sólo si al jugar a «Pato Hook» se
   echa de menos que las cosas se rompan.
 
-### 💥 Artillería (tipo Worms) — nivel 40
+### 💥 Artillería (tipo Worms) — nivel 50
 
 Dos mascotas, una en cada punta, y terreno destructible en medio. Por turnos:
 eliges ángulo y fuerza, sale un huevo describiendo una parábola, y donde cae abre
@@ -522,22 +633,12 @@ extremos simulan lo mismo.
   parte sin que nadie se entere. Se ataja mandando también el resultado —dónde
   cayó y cuánto daño— y dejando de árbitro al anfitrión, como ya hace con la
   sincronía.
-- **Recomendación:** es el mejor candidato a juego de nivel 40. Un arma sola —el
+- **Recomendación:** es el mejor candidato a juego de nivel 50. Un arma sola —el
   huevo—, viento, y tres o cuatro turnos por partida. Nada de inventario.
 
 **Si hubiera que elegir uno: el de artillería.** Trae un modo que no existe
 todavía —por turnos con física compartida— mientras que el de derribos es una
 variante de algo que ya se puede jugar.
-
-### 📈 Marcador de récords
-
-Sin servidor propio, un "marcador global" por *broadcast* es en realidad **un
-marcador de la sesión**: cada pato ve lo que se anunció mientras él estaba
-conectado, y nada es verificable. Se puede entregar así, etiquetado con
-honestidad y con el nombre de quien declara la marca al lado. Uno de verdad
-necesita una tabla en Supabase con RLS, y eso sí es un cambio de arquitectura
-—hoy ni `chat.js` ni `sw.js` usan nada que no sea Realtime—. Merece su propia
-decisión, no colarse en la tarea de otro juego.
 
 ---
 

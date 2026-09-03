@@ -9,6 +9,13 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ### Cambiado
 
+- **Los rangos llegan hasta el nivel 50.** Se acababan en «Leyenda» al 20, que
+  era el techo de cuando lo único que se desbloqueaba eran diseños. Ahora siguen
+  cada cinco niveles: Capo, Padrino, Intocable, Jefe de jefes, Mito y Cuack
+  supremo. El rango es lo único que se ve en la cabecera de cuidados y en el
+  aviso de subir de nivel, así que sin esto la segunda mitad del camino no daba
+  señal ninguna.
+
 - **Puntería pasa a llamarse «Pato Hook»** —o «Cuacky Hook», o como se llame la
   tuya—, que es Robin Hood pasado por el pato. Y **Toques con la paleta** pasa a
   ser **Malabares**, que es lo que se hace ahí y cabe en la tarjeta. El nombre

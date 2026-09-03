@@ -24,13 +24,25 @@ const CHAT_TOPE_DIARIO = 10;   // mensajes que puntúan por día
 const JUEGOS_TOPE_DIARIO = 8;
 const UMBRAL_CUIDADO = 50;     // por debajo de esto, atender da XP
 
-// Rangos: cada uno abarca 5 niveles.
+// Rangos: cada uno abarca 5 niveles, hasta el 50.
+//
+// Llegaban al 20 y ahí se acababan, que era el techo de cuando lo único que se
+// desbloqueaba eran diseños. Con los juegos repartidos hasta el nivel 50 —unos
+// treinta y pico días de uso normal— la mitad del camino no cambiaba de rango ni
+// una vez, y el rango es lo único que se ve en la cabecera del panel de cuidados
+// y en el aviso de subir de nivel.
 export const RANGOS = [
   { desde: 1, nombre: 'Patito' },
   { desde: 5, nombre: 'Pato' },
   { desde: 10, nombre: 'Pato duro' },
   { desde: 15, nombre: 'Matón' },
-  { desde: 20, nombre: 'Leyenda' }
+  { desde: 20, nombre: 'Leyenda' },
+  { desde: 25, nombre: 'Capo' },
+  { desde: 30, nombre: 'Padrino' },
+  { desde: 35, nombre: 'Intocable' },
+  { desde: 40, nombre: 'Jefe de jefes' },
+  { desde: 45, nombre: 'Mito' },
+  { desde: 50, nombre: 'Cuack supremo' }
 ];
 
 export function xpParaNivel(n) {
