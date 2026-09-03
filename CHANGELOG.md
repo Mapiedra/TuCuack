@@ -7,6 +7,8 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.9.1] - 2026-09-02
+
 ### Añadido
 
 - **Buscar actualizaciones a mano, y aplicarlas sin esperar.** En Ajustes, bajo
@@ -603,7 +605,8 @@ Primera versión.
   funciona con normalidad pero sin chat.
 - El instalador no está firmado, así que Windows SmartScreen mostrará un aviso.
 
-[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.9.0...HEAD
+[No publicado]: https://github.com/Mapiedra/TuCuack/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.9.1
 [0.9.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.9.0
 [0.8.1]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.8.1
 [0.8.0]: https://github.com/Mapiedra/TuCuack/releases/tag/v0.8.0
