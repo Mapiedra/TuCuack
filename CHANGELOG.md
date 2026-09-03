@@ -7,6 +7,8 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.11.0] - 2026-09-03
+
 ### Añadido
 
 - **Memoria.** Nivel 4. Doce cartas boca abajo, seis parejas:
