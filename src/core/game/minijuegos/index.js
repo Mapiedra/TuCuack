@@ -49,6 +49,20 @@
  */
 export const MINIJUEGOS = [
   {
+    id: 'piedrapapeltijera',
+    nombre: 'Piedra, papel o tijera',
+    icono: '✌️',
+    descripcion: 'Al mejor de tres. Los dos eligen a la vez.',
+    nivel: 1,
+    modos: ['solo', 'turnos'],
+    jugadores: { min: 2, max: 2 },
+    superficie: 'panel',
+    marca: null,
+    // La ruta va escrita literal y no `import('./' + id + '.js')`: así la
+    // dependencia se ve, y no depende de que nadie empaquete nada.
+    cargar: () => import('./piedraPapelTijera.js')
+  },
+  {
     id: 'mascotadice',
     // `{mascota}` lo rellena `nombreDeJuego` con el nombre que tenga puesto en
     // Ajustes: «Pato dice», «Cuacky dice». El juego es de toda la vida y se
@@ -62,20 +76,6 @@ export const MINIJUEGOS = [
     superficie: 'panel',
     marca: { etiqueta: 'ronda', mejor: 'mas' },
     cargar: () => import('./laMascotaDice.js')
-  },
-  {
-    id: 'piedrapapeltijera',
-    nombre: 'Piedra, papel o tijera',
-    icono: '✌️',
-    descripcion: 'Al mejor de tres. Los dos eligen a la vez.',
-    nivel: 1,
-    modos: ['solo', 'turnos'],
-    jugadores: { min: 2, max: 2 },
-    superficie: 'panel',
-    marca: null,
-    // La ruta va escrita literal y no `import('./' + id + '.js')`: así la
-    // dependencia se ve, y no depende de que nadie empaquete nada.
-    cargar: () => import('./piedraPapelTijera.js')
   },
   {
     id: 'parimpar',
@@ -106,7 +106,7 @@ export const MINIJUEGOS = [
     nombre: 'Tres en raya',
     icono: '⭕',
     descripcion: 'El de siempre. Contra tu mascota o contra otra.',
-    nivel: 5,
+    nivel: 6,
     modos: ['solo', 'turnos'],
     jugadores: { min: 2, max: 2 },
     superficie: 'panel',
@@ -118,7 +118,7 @@ export const MINIJUEGOS = [
     nombre: 'Toques con la paleta',
     icono: '🏓',
     descripcion: 'Que no toque el suelo. Se juega en la pantalla entera.',
-    nivel: 7,
+    nivel: 9,
     modos: ['solo'],
     jugadores: { min: 1, max: 1 },
     superficie: 'escenario',
@@ -130,7 +130,7 @@ export const MINIJUEGOS = [
     nombre: 'Puntería',
     icono: '🎯',
     descripcion: 'Lanza a tu mascota contra las dianas. Seis disparos.',
-    nivel: 8,
+    nivel: 12,
     modos: ['solo'],
     jugadores: { min: 1, max: 1 },
     superficie: 'escenario',
@@ -142,7 +142,7 @@ export const MINIJUEGOS = [
     nombre: 'El agujero',
     icono: '🕳️',
     descripcion: 'Recoge las que caen. Las que no, se quedan en el suelo.',
-    nivel: 9,
+    nivel: 16,
     modos: ['solo'],
     jugadores: { min: 1, max: 1 },
     superficie: 'escenario',

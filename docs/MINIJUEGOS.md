@@ -9,14 +9,15 @@ abren desde `🎮 Juegos` en el menú del pato.
 | 🔊 «Pato dice» | 2 | solo | panel |
 | 🃏 Memoria | 4 | solo · red (2) | panel |
 | 🎲 Par o impar | 3 | solo · red (2) | panel |
-| ⭕ Tres en raya | 5 | solo · red (2) | panel |
-| 🏓 Toques con la paleta | 7 | solo | escenario |
-| 🎯 Puntería | 8 | solo | escenario |
-| 🕳️ El agujero | 9 | solo | escenario |
+| ⭕ Tres en raya | 6 | solo · red (2) | panel |
+| 🏓 Toques con la paleta | 9 | solo | escenario |
+| 🎯 Puntería | 12 | solo | escenario |
+| 🕳️ El agujero | 16 | solo | escenario |
 
 La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
-segundo, después los de pensar, y al final los que piden pulso. Queda hueco por
-delante para [los que faltan](#los-que-faltan).
+segundo, después los de pensar, y al final los que piden pulso. Los huecos están
+reservados para [los que faltan](#los-que-faltan) — ver [la
+escalera](#la-escalera).
 
 Se puede jugar **solo**, contra el pato, o **por turnos contra otro pato
 conectado**, retándole desde el propio panel.
@@ -369,6 +370,36 @@ quedar ni un bucle ni un error en la consola.
 
 ---
 
+## La escalera
+
+Los juegos se reparten **hasta el nivel 40**, no hasta el 10. El motivo es de
+uso: hay gente que lleva meses con el pato y ya no tiene nada que desbloquear,
+así que la cuesta se estira y las piezas grandes se ponen arriba del todo.
+
+Lo que cuesta llegar, con un día activo normal (unas 736 XP entre convivencia,
+cuidados, racha, chat y el tope diario de partidas):
+
+| Nivel | 4 | 8 | 12 | 16 | 20 | 26 | 33 | 40 |
+|---|---|---|---|---|---|---|---|---|
+| Días | 0,6 | 2 | 4 | 6 | 8 | 12 | 17 | 23 |
+
+Los niveles se eligen para que **caiga algo cada dos o tres niveles al principio
+y cada cuatro o cinco al final**, alternando con los diseños de
+[`skins.js`](../src/core/game/skins.js), que están en 1, 3, 6, 10 y 15.
+
+> **Al repartir, un juego no debería subir más de lo imprescindible.** Subirlo se
+> lo quita a quien ya lo tenía. En este reparto sólo se movieron cuatro —tres en
+> raya 5→6, paleta 7→9, puntería 8→12 y el agujero 9→16, que es el más largo de
+> todos y estaba demasiado abajo—. El progreso guardado NO se pierde aunque el
+> juego se vuelva a bloquear: `ProgresoJuegos.toJSON` no filtra por catálogo, y
+> es a propósito.
+
+> **Pendiente que se ve desde aquí:** los rangos de `Level.js` se acaban en
+> «Leyenda» al nivel 20. Con la escalera llegando a 40, la segunda mitad del
+> camino no cambia de rango ni una vez.
+
+---
+
 ## Los que faltan
 
 Aprobados y por hacer, cada uno su propia tarea. El contrato está dimensionado
@@ -377,11 +408,104 @@ para todos: ninguno pide ampliarlo.
 | Juego | Nivel | Modos | Superficie | Lo que estrena |
 |---|---|---|---|---|
 | ⚠️ No tocar | — | — | escenario | no es un juego: ver §*La broma* |
-| 🔤 Ahorcado | 6 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
-| 🚢 Hundir la flota | 11 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
-| 📈 Marcador de récords | — | — | — | no es un juego: ver §*Marcador global*, abajo |
+| 🌵 Obstáculos | 8 | solo | escenario | correr y saltar con la barra espaciadora |
+| 🪶 Aleteo | 14 | solo | escenario | volar a base de aletazos, entre huecos |
+| 🔤 Ahorcado | 20 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
+| 🚢 Hundir la flota | 26 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
 
-### Marcador global
+Y tres [por confirmar](#en-el-tintero): derribar estructuras (nivel 33),
+artillería por turnos (nivel 40) y el marcador de récords, que no es un juego
+sino una decisión de arquitectura.
+
+### 🌵 Obstáculos y 🪶 Aleteo
+
+Van juntos porque son **el mismo juego con la gravedad cambiada de bando**, y por
+eso salen casi por el precio de uno:
+
+- **Obstáculos** — el dinosaurio de Chrome. La mascota corre, el suelo pasa, y
+  con la barra espaciadora salta cactus. Un botón, una decisión: cuándo.
+- **Aleteo** — el pájaro ese. La mascota cae sola y cada espaciazo le da un
+  aletazo hacia arriba; hay que colarse por los huecos. El mismo botón, la
+  decisión contraria: cuándo NO dejarla caer.
+
+Los dos son de escenario, los dos usan `fisica.paso` con otros números, los dos
+cuentan lo que aguantas (`marca: {etiqueta:'metros'|'huecos', mejor:'mas'}`) y
+los dos se acaban de un solo golpe. Lo que hay que escribir es el **desfile**:
+una lista de obstáculos que entra por la derecha a velocidad creciente, y una
+colisión de rectángulo contra `pato.cuerpo()`.
+
+**Una cosa que arreglar en `escenario.js` antes, y una sola vez:** la barra
+espaciadora **desplaza la página**. Hoy `escucharTeclas` sólo se traga `Escape`;
+estos dos necesitan que también se trague el espacio mientras haya partida. Va
+ahí y no en cada juego, igual que Escape.
+
+---
+
+## En el tintero
+
+Ideas con forma pero sin aprobar. Se apuntan con lo que costarían, que es la
+mitad de la decisión.
+
+### 🏹 Derribos (tipo Angry Birds) — nivel 33
+
+Lanzas a la mascota contra **estructuras que se vienen abajo**. Ojo, porque el
+lanzamiento ya lo tenemos: **eso es Puntería**. Lo único que aportaría de nuevo
+es justo la cara del juego, que lo golpeado se derrumbe.
+
+Y ahí está el problema. El derrumbe de verdad —cajas que giran, se apoyan unas en
+otras y se vencen de lado— es un motor de cuerpos rígidos: contactos en reposo,
+rotación, fricción y un solucionador iterativo. Es exactamente lo que se decidió
+NO escribir en [§Amontonarse](#amontonarse), y por los mismos motivos.
+
+**La versión que sí se puede hacer** es un derrumbe *por bloques*: la estructura
+es una rejilla de cajas, un impacto quita las que pilla en un radio, y las que se
+quedan sin nada debajo caen **en vertical**, sin girar. Se ve bien, se lee bien y
+no hace falta motor ninguno. A cambio, no habrá torres que se venzan hacia un
+lado: caen a plomo.
+
+- **Coste:** medio-alto. La física de tiro está hecha; lo nuevo son los bloques,
+  la propagación del derrumbe y unos cuantos niveles dibujados a mano.
+- **Riesgo:** que se parezca demasiado a Puntería. Si los derrumbes no se
+  disfrutan, es Puntería con decorado.
+- **Recomendación:** después del de artillería, y sólo si al jugar a Puntería se
+  echa de menos que las cosas se rompan.
+
+### 💥 Artillería (tipo Worms) — nivel 40
+
+Dos mascotas, una en cada punta, y terreno destructible en medio. Por turnos:
+eliges ángulo y fuerza, sale un huevo describiendo una parábola, y donde cae abre
+un cráter y hace daño según lo cerca que quedara. Gana quien deje al otro sin
+vida.
+
+**Es el que mejor encaja de los dos**, y no por gusto: las tres piezas que
+necesita ya están escritas.
+
+| Lo que necesita | Lo que ya hay |
+|---|---|
+| Un turno = una jugada | `salas.js`, que es exactamente eso |
+| Que los dos vean el mismo tiro | `ctx.semilla` + física determinista |
+| Terreno destructible | el mapa de alturas de [El agujero](../src/core/game/minijuegos/agujero.js) |
+
+El terreno es un mapa de alturas por columna —lo mismo que el montón del
+agujero— y un cráter es restarle una campana centrada en el impacto. El disparo
+viaja por la sala como `{t:'disparo', angulo, fuerza}`: dos números, y los dos
+extremos simulan lo mismo.
+
+- **Coste:** alto, pero repartido en cosas conocidas. Lo nuevo de verdad es el
+  terreno y la interfaz de apuntar.
+- **Riesgo:** la **deriva numérica**. Si los dos lados simulan por separado y uno
+  redondea distinto, los cráteres acaban en sitios distintos y la partida se
+  parte sin que nadie se entere. Se ataja mandando también el resultado —dónde
+  cayó y cuánto daño— y dejando de árbitro al anfitrión, como ya hace con la
+  sincronía.
+- **Recomendación:** es el mejor candidato a juego de nivel 40. Un arma sola —el
+  huevo—, viento, y tres o cuatro turnos por partida. Nada de inventario.
+
+**Si hubiera que elegir uno: el de artillería.** Trae un modo que no existe
+todavía —por turnos con física compartida— mientras que el de derribos es una
+variante de algo que ya se puede jugar.
+
+### 📈 Marcador de récords
 
 Sin servidor propio, un "marcador global" por *broadcast* es en realidad **un
 marcador de la sesión**: cada pato ve lo que se anunció mientras él estaba

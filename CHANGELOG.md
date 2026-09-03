@@ -9,6 +9,14 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ### Cambiado
 
+- **Los juegos se reparten hasta el nivel 40.** Hay gente que lleva meses con el
+  pato y ya no tenía nada que desbloquear, así que la cuesta se estira: tres en
+  raya pasa al 6, la paleta al 9, la puntería al 12 y el agujero al 16, y los que
+  faltan por hacer se colocan entre el 8 y el 40. Con un día activo normal, el
+  nivel 16 son unos seis días y el 40 son veintitrés. **Lo que ya hayas jugado no
+  se pierde** aunque un juego se te vuelva a bloquear: las marcas se guardan
+  aparte del catálogo.
+
 - **El selector de juegos cabe otra vez.** Con ocho juegos la rejilla medía 305
   píxeles y el panel entero 405, así que acababa colocándose debajo del pato.
   Ahora enseña dos filas y se desplaza.
