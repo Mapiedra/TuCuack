@@ -337,6 +337,7 @@ para todos: ninguno pide ampliarlo.
 | Juego | Nivel | Modos | Superficie | Lo que estrena |
 |---|---|---|---|---|
 | 🕳️ El agujero | 9 | solo | escenario | varios cuerpos con la física a la vez; progresión dentro de la partida |
+| ⚠️ No tocar | — | — | escenario | no es un juego: ver §*La broma* |
 | 🎯 Puntería | 8 | solo | escenario | apuntar y soltar, sin nada que se mueva solo |
 | 🔤 Ahorcado | 6 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
 | 🚢 Hundir la flota | 11 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
@@ -376,8 +377,9 @@ Tres decisiones que conviene dejar dichas antes de escribirlo:
 2. **Las acumuladas no se repintan.** Con calibre 8 y el suelo medio lleno hay
    cincuenta y pico sprites por fotograma en un lienzo a pantalla completa. Las
    que ya han aterrizado se pintan **una vez** a un lienzo de fondo y no se
-   vuelven a tocar; sólo se animan las que están en el aire. Es la única decisión
-   técnica que hay que tomar bien desde el principio.
+   vuelven a tocar; sólo se animan las que están en el aire. Es la mitad de
+   §*Amontonarse*, que es la decisión técnica que hay que tomar bien desde el
+   principio.
 3. **La barra va en el lienzo**, no en el marcador. `Pista.marcador` recibe
    texto, y una barra no es texto; pintarla con canvas evita tocar el contrato
    por un juego.
@@ -399,3 +401,83 @@ honestidad y con el nombre de quien declara la marca al lado. Uno de verdad
 necesita una tabla en Supabase con RLS, y eso sí es un cambio de arquitectura
 —hoy ni `chat.js` ni `sw.js` usan nada que no sea Realtime—. Merece su propia
 decisión, no colarse en la tarea de otro juego.
+
+---
+
+## Amontonarse
+
+Las que no se recogen se quedan en el suelo, y cuando el suelo se acaba se ponen
+unas encima de otras. La pregunta es si eso se hace con física de verdad —cuerpo
+contra cuerpo, con sus rebotes— o no.
+
+**Con física de verdad, no.** No por falta de ganas, sino porque el montón es
+justo el caso que la física ingenua hace mal:
+
+- Detectar que dos círculos se solapan y separarlos es trivial. Lo difícil es el
+  **contacto en reposo**: cada fotograma la gravedad los mete uno dentro de otro
+  y la separación los vuelve a sacar. Un montón así tiembla, se hunde o revienta.
+  Que no lo haga es lo que resuelven los motores de verdad, con un solucionador
+  iterativo de impulsos —diez pasadas por fotograma— y detección de reposo. Eso
+  es un motor de física, y aquí no hace falta ninguno.
+- **Los círculos no se apilan.** Aunque el solucionador fuera perfecto, un montón
+  de círculos bajo gravedad se desparrama hasta quedar en una sola capa: ruedan
+  unos sobre otros. Saldría una alfombra, no un montón.
+- Y son N²: doscientos cuerpos son veinte mil comprobaciones por fotograma.
+
+**Lo que sí, y además queda mejor.** Una mascota está en uno de dos estados, y
+nunca en los dos:
+
+1. **En el aire** — física entera, `fisica.paso()` como ahora, un cuerpo contra
+   las paredes y el suelo. No sabe que existen las demás.
+2. **Posada** — ya no se mueve nunca más. Se pinta una vez en el lienzo de fondo
+   y se olvida.
+
+El paso de uno a otro es lo único que hay que escribir, y son unas quince líneas:
+al tocar el suelo o a una posada, mira si a su izquierda o a su derecha hay hueco
+más abajo; si lo hay, **rueda hacia allí** y sigue cayendo. Si no, se queda.
+
+Eso da montones que se ven como montones —crecen en picos y se desparraman
+cuando la pendiente es mucha— y sale más creíble que la simulación de verdad,
+que como se ha dicho los dejaría planos. Lo N² desaparece con un **mapa de
+alturas**: un array de "cuánto llega el montón en esta columna". Una mascota que
+cae mira su columna y ya, sin comprobar contra nadie.
+
+## La broma
+
+`⚠️ No tocar`, al final de Ajustes y en su propia sección. Se pulsa, sale un
+cartel que dice **«No debiste hacer eso»** y empiezan a caer patos. Si haces
+clic en uno, se parte en dos más pequeños. Y otra vez. Y otra vez.
+
+No es un juego: no da experiencia, no cuenta partidas, no guarda marca y no pasa
+por `tam.play()`. Usa el escenario y poco más.
+
+Aquí **sí** hay choques entre cuerpos, y al revés que en el agujero: es que la
+gracia es el desorden. Un solucionador ingenuo de círculo contra círculo, sin
+reposo ni solucionador iterativo, con una rejilla espacial para no morir de N².
+Que tiemble, que se cuele uno por una pared, que el montón se sacuda: ahí eso no
+son fallos, son el chiste. Es la única parte del proyecto donde la física mal
+hecha es la especificación.
+
+Tres cosas que hay que hacer bien para que sea una broma y no un parte de
+incidencias:
+
+1. **Se tiene que poder salir, siempre.** En el escritorio esto es un overlay a
+   pantalla completa capturando el ratón: es el [riesgo número
+   uno](#juegos-de-escenario) del proyecto con un cartel encima. `Esc` desde el
+   primer momento y dicho en el cartel, un botón **Basta** que ningún pato pueda
+   tapar, el tope de diez minutos de `escenario.js` de red, y `alApagar` como
+   siempre. Cuantos más patos hay, más grande se pone el Basta: la gracia es
+   agobiar, no secuestrar.
+2. **«Sin fin» tiene que tener techo.** Partir en dos sin límite son veinte clics
+   buenos hasta el millón de patos, y ahí la pestaña se muere de verdad. El techo
+   va por **tamaño mínimo**: por debajo de cierto tamaño ya no se parte, revienta
+   en una nubecilla y desaparece. Se siente infinito —nunca ganas, se multiplican
+   más rápido de lo que los revientas— pero el número de bichos vivos está
+   acotado. Y de paso da mecánica: *puedes* limpiarlo, pero no a ese ritmo.
+3. **Sobre una página ajena, no.** Como todos los de escenario
+   (`juegosDeEscenario`), y aquí con más motivo: llenar de patos la web que
+   alguien está leyendo mientras se le captura el ratón no es una broma. En esa
+   carcasa el botón ni aparece.
+
+Y el pato de verdad se entera: `playOnce('sad')` y un bocadillo. *Te dije que
+no.* Sin eso es un salvapantallas; con eso es suyo.
