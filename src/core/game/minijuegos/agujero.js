@@ -49,9 +49,24 @@ const APILADO = 0.6;
 
 /** Lo ancho que es el agujero, respecto a la mascota. */
 const AGUJERO = 0.62;
-/** A qué velocidad puede moverse. Sin tope, se teletransportaría y no habría
- *  juego: la mitad del reto es llegar. */
-const VELOCIDAD = 1250;
+/**
+ * A qué velocidad se mueve el agujero.
+ *
+ * Sigue habiendo tope —no se teletransporta, y la mitad del reto es llegar—
+ * pero es alto: sin una mascota a la vista empujándolo, un agujero que va por
+ * detrás del ratón no se lee como peso, se lee como que va lento.
+ */
+const VELOCIDAD = 2600;
+
+/**
+ * Cada cuánto el agujero se traga una de las que ya están posadas.
+ *
+ * Sin esto, el montón era definitivo: lo que se posaba se quedaba para siempre,
+ * y como además tapa el paso, un descuido temprano dejaba media pantalla muerta
+ * sin nada que hacer al respecto. Pasar el agujero por debajo se las va tragando
+ * de una en una, así que un montón es un problema y no una condena.
+ */
+const MORDISCO_MS = 220;
 
 /**
  * Cada cuánto cae una tanda, y hasta dónde se acelera.
@@ -118,10 +133,15 @@ export function crearPartida(ctx) {
   let objetivo = objetivoDe(1);
   let agujeroX = m0.ancho / 2;
   let desdeLaTanda = 0;
+  let desdeElMordisco = 0;
   let terminada = false;
 
   const hojas = cargarHojas(ctx.nivel);
   const fondo = crearFondo(m0);
+
+  // Aquí la mascota no es un personaje, es el mando: verla plantada en medio del
+  // agujero que maneja estorba más que acompaña. El escenario la devuelve sola.
+  pista.esconderMascota(true);
 
   marcar();
 
@@ -143,6 +163,8 @@ export function crearPartida(ctx) {
       desdeLaTanda = 0;
       soltarTanda(medidas);
     }
+
+    morder(dt, medidas);
 
     caer(dt, p, medidas);
     if (terminada) return;
@@ -209,6 +231,52 @@ export function crearPartida(ctx) {
    */
   function cabeEnElAgujero(c, medidas) {
     return altura[c] <= medidas.suelo + cuerpoAlto * APILADO * 1.5;
+  }
+
+  /**
+   * Se traga lo que tenga encima, de una en una.
+   *
+   * NO cuenta como recogida, y eso es media regla del juego: si contara, lo
+   * rentable sería aparcarse sobre un montón y dejar que el agujero fuera
+   * comiendo. Medido: contándolo, hasta un jugador que barre a ciegas llegaba al
+   * calibre 5 sin recoger nada al vuelo. Limpiar quita el estorbo, que ya es
+   * bastante premio; para subir hay que cazarlas cayendo.
+   */
+  function morder(dt, medidas) {
+    desdeElMordisco += dt * 1000;
+    if (desdeElMordisco < MORDISCO_MS) return;
+
+    const c = columnaMasAltaBajoElAgujero(medidas);
+    if (c < 0) return;
+    desdeElMordisco = 0;
+
+    // La de más arriba de esa columna, que es la que se puede quitar sin dejar
+    // el montón flotando.
+    let cual = -1;
+    for (let i = 0; i < posadas.length; i++) {
+      if (posadas[i].col !== c) continue;
+      if (cual < 0 || posadas[i].y > posadas[cual].y) cual = i;
+    }
+    if (cual < 0) { altura[c] = medidas.suelo; return; }
+
+    posadas.splice(cual, 1);
+    altura[c] = Math.max(medidas.suelo, altura[c] - cuerpoAlto * APILADO);
+    // Quitar un sprite de un lienzo no se puede: se repinta el montón entero.
+    // Sale a unas cuatro veces por segundo, así que no es un fotograma perdido.
+    fondo.repintar(posadas, medidas, dibujarPosada);
+    // Grave y corto, para que no se confunda con el de recoger una al vuelo.
+    ctx.sonido.nota(180, 0.07);
+  }
+
+  function columnaMasAltaBajoElAgujero(medidas) {
+    const desde = columnaDe(agujeroX - agujeroMitad, medidas);
+    const hasta = columnaDe(agujeroX + agujeroMitad, medidas);
+    let mejor = -1;
+    for (let c = desde; c <= hasta; c++) {
+      if (altura[c] <= medidas.suelo + 0.5) continue;
+      if (mejor < 0 || altura[c] > altura[mejor]) mejor = c;
+    }
+    return mejor;
   }
 
   // ---- Lo que cae --------------------------------------------------------
@@ -294,7 +362,7 @@ export function crearPartida(ctx) {
     const y = altura[col];
     altura[col] = y + cuerpoAlto * APILADO;
 
-    const posada = { x: centroDeColumna(col, medidas), y, skin: bicho.skin, pose: bicho.pose };
+    const posada = { col, x: centroDeColumna(col, medidas), y, skin: bicho.skin, pose: bicho.pose };
     posadas.push(posada);
     fondo.pintar(posada, medidas, dibujarPosada);
     ctx.sonido.boing(0.12);
@@ -509,6 +577,11 @@ function crearFondo(medidas) {
       dimensionar(m);
       for (const posada of posadas) dibujar(g, posada, m);
     },
-    pintar(posada, m, dibujar) { dibujar(g, posada, m); }
+    pintar(posada, m, dibujar) { dibujar(g, posada, m); },
+    /** Cuando se quita una del montón: de un lienzo no se puede borrar un trozo. */
+    repintar(posadas, m, dibujar) {
+      g.clearRect(0, 0, lienzo.width, lienzo.height);
+      for (const posada of posadas) dibujar(g, posada, m);
+    }
   };
 }

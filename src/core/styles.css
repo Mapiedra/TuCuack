@@ -772,11 +772,20 @@ html, body {
 /* A dos columnas y no a tres como los diseños: las tarjetas llevan texto
    (el modo, cuántos jugadores) y a tres no cabría. */
 .panel-juegos { width: 330px; }
+/* Dos filas y a rodar. Con ocho juegos la rejilla medía 305 px y el panel
+   entero 405: `colocarPanel` acaba tirándolo debajo del pato. La altura de fila
+   va fija para que el corte caiga siempre entre filas y se vea que hay más. */
 .juegos-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: 71px;
   gap: 7px;
   margin-bottom: 10px;
+  max-height: 149px;
+  overflow-y: auto;
+  /* Que la rueda no se escape al panel de detrás al llegar al final. */
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 .juego-icono { font-size: 26px; line-height: 1.1; }
 .juego-modo { font-size: 9px; color: #8a8a95; text-align: center; }

@@ -7,6 +7,21 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Cambiado
+
+- **El selector de juegos cabe otra vez.** Con ocho juegos la rejilla medía 305
+  píxeles y el panel entero 405, así que acababa colocándose debajo del pato.
+  Ahora enseña dos filas y se desplaza.
+- **En El agujero ya no se ve la mascota.** Ahí no es un personaje, es el mando,
+  y verla plantada en medio del agujero que maneja estorbaba. Vuelve sola al
+  terminar la partida, salga como salga.
+- **El agujero se traga lo que ya está en el suelo.** Antes sólo valía para lo
+  que caía encima: lo que se posaba se quedaba para siempre y, como además tapa
+  el paso, un descuido temprano dejaba media pantalla muerta sin nada que hacer.
+  Ahora pasar por debajo lo va limpiando de una en una. No puntúa —si contara,
+  lo rentable sería aparcarse sobre un montón—: limpiar quita el estorbo, y para
+  subir de calibre hay que cazarlas al vuelo.
+
 ### Añadido
 
 - **El agujero.** Nivel 9, en la pantalla entera. Caen mascotas desde arriba y la

@@ -156,9 +156,11 @@ panel se coloca debajo del pato y entra en scroll.
 ## Juegos de escenario
 
 Un juego de superficie `'escenario'` no vive en un panel: toma prestado el pato,
-el suelo y la pantalla entera. El que hay es
-[**toques con la paleta**](../src/core/game/minijuegos/paleta.js), y sirve de
-ejemplo de todo lo que sigue.
+el suelo y la pantalla entera. Hay tres —[la
+paleta](../src/core/game/minijuegos/paleta.js), [la
+puntería](../src/core/game/minijuegos/punteria.js) y [el
+agujero](../src/core/game/minijuegos/agujero.js)— y la paleta sirve de ejemplo de
+todo lo que sigue.
 
 Recibe una `pista` en `ctx.escenario`:
 
@@ -180,7 +182,14 @@ export function crearPartida(ctx) {
 
 La `pista` trae `pato`, `fisica`, `vuelo`, `ajustes`, `limites()`, `medidas`,
 `pintor` (canvas a pantalla completa, detrás del pato), `aPantalla(y)`,
-`entrada` (ratón con inercia y teclas), `marcador(texto)` y `salir()`.
+`entrada` (ratón con inercia y teclas), `marcador(texto)`,
+`esconderMascota(si)` y `salir()`.
+
+`esconderMascota` la quita de la vista sin quitarla del sitio —`cuerpo()` y las
+medidas siguen valiendo—, para los juegos donde la mascota no es un personaje
+sino un mando: en el agujero, verla plantada en medio de lo que maneja estorba.
+No hay que acordarse de deshacerlo: el escenario la devuelve a la vista al
+terminar, pase lo que pase.
 
 Dimensiona con **`medidas.patoAncho`**, no en píxeles absolutos: un juego medido
 a ojo sale distinto en el overlay de 1920 px y en el panel lateral de 350.
@@ -417,6 +426,11 @@ nunca en los dos:
 El paso de uno a otro es lo único que hay que escribir, y son unas quince líneas:
 al tocar el suelo o a una posada, mira si a su izquierda o a su derecha hay hueco
 más abajo; si lo hay, **rueda hacia allí** y sigue cayendo. Si no, se queda.
+
+Y un montón se puede deshacer: pasar el agujero por debajo se va tragando lo
+posado de una en una. **Eso no puntúa**, y es media regla del juego: si contara,
+lo rentable sería aparcarse sobre un montón a esperar. Limpiar quita el estorbo,
+que ya es premio de sobra; para subir de calibre hay que cazarlas cayendo.
 
 Eso da montones que se ven como montones —crecen en picos y se desparraman
 cuando la pendiente es mucha— y sale más creíble que la simulación de verdad,

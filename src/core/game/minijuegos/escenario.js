@@ -52,6 +52,10 @@ const TOPE_PARTIDA_MS = 10 * 60 * 1000;
  * @property {(y:number) => number} aPantalla
  * @property {Object} entrada   ratón y teclado (ver entrada.js)
  * @property {(texto:string) => void} marcador
+ * @property {(si:boolean) => void} esconderMascota
+ *   La quita de la vista sin quitarla del sitio. Para los juegos donde la
+ *   mascota no es un personaje sino un mando —el agujero—, y verla plantada en
+ *   medio de lo que maneja estorba. Se deshace sola al devolver el escenario.
  * @property {(motivo?:MotivoFin) => void} salir
  *   Deja la partida sin resultado. Para terminarla con resultado, el juego usa
  *   `ctx.alTerminar` como cualquier otro.
@@ -119,8 +123,17 @@ export function prestarEscenario(entorno) {
     aPantalla: (y) => window.innerHeight - y,
     entrada,
     marcador: (t) => marcador.poner(t),
+    esconderMascota,
     salir: terminar
   };
+
+  /**
+   * `visibility` y no `display`: el pato sigue midiendo y ocupando su sitio, así
+   * que `cuerpo()` y las medidas siguen valiendo mientras está escondido.
+   */
+  function esconderMascota(si) {
+    pato.el.style.visibility = si ? 'hidden' : '';
+  }
 
   return { pista, ejecutar, terminar };
 
@@ -161,6 +174,9 @@ export function prestarEscenario(entorno) {
       console.warn(`[juego:${idJuego}] fallo al destruir`, err);
     } finally {
       clearTimeout(relojTope);
+      // Antes que nada de lo demás: un juego que la escondió y reventó no puede
+      // dejar al usuario sin mascota.
+      esconderMascota(false);
       quitarTeclas();
       quitarResize();
       soltarOverlay(lienzo);      // lo saca del DOM y recalcula la captura
