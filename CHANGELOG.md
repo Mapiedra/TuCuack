@@ -7,6 +7,8 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.14.0] - 2026-09-04
+
 ### Añadido
 
 - **Los juegos de pantalla completa se presentan antes de empezar.** Malabares,
