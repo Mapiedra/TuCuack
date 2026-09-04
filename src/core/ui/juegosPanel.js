@@ -264,8 +264,17 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
 
     const nota = document.createElement('p');
     nota.className = 'muted';
-    nota.textContent = 'Las marcas se guardan aunque un juego se vuelva a bloquear.';
+    // Dicho con palabras además de con el globo: el marcador global es lo más
+    // nuevo del panel y lo único que hay que descubrir para llegar a él.
+    nota.textContent = hayFilasConMarcador()
+      ? 'Pulsa una fila con 🌐 para ver el marcador de todos los patos.'
+      : 'Las marcas se guardan aunque un juego se vuelva a bloquear.';
     cuerpo.appendChild(nota);
+  }
+
+  /** Si alguna fila lleva a un marcador, para no prometer lo que no hay. */
+  function hayFilasConMarcador() {
+    return !!handlers.hayMarcadorGlobal && MINIJUEGOS.some((j) => j.marca);
   }
 
   function filaDeRecord(juego) {
@@ -313,7 +322,16 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
       ? `${m.mejor} ${juego.marca.etiqueta}`
       : '';
 
-    li.append(icono, medio, marca);
+    // El globo y la flecha son toda la pista de que la fila lleva a algún
+    // sitio. Sin ellos sólo lo delataba el cursor al pasarle por encima, que
+    // es tanto como no decirlo: nadie pasa el ratón por una lista que ha
+    // venido a leer. La columna existe siempre para que las marcas de las
+    // filas sin marcador no se descoloquen respecto a las que sí lo tienen.
+    const flecha = document.createElement('span');
+    flecha.className = 'records-flecha';
+    flecha.textContent = conMarcador ? '🌐›' : '';
+
+    li.append(icono, medio, marca, flecha);
     return li;
   }
 
