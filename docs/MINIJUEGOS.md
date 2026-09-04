@@ -577,6 +577,85 @@ otros indefinidamente.
 
 ---
 
+## Los cuacks: la moneda
+
+**Propuesta, no implementada.** Se apunta entera porque la decisión de fondo ya
+está tomada y conviene que no se pierda.
+
+Además del nivel, los juegos se **compran**. Así jugar da algo más que un número
+y hay que jugar para poder jugar más; y como cada juego paga según su nivel,
+comprarse el caro machacando el barato es posible pero absurdo.
+
+### La regla que manda sobre todas
+
+> **Lo que ya está desbloqueado no se toca.** La moneda es para los juegos que
+> vengan a partir de ahora. Al actualizar, todo juego con nivel ≤ tu nivel queda
+> comprado, gratis y para siempre.
+
+Es la tercera vez que aparece esta misma lección —con el reparto de niveles y con
+las marcas guardadas— y va escrita aquí para que no haya una cuarta: quitarle a
+alguien algo que ya tenía no es una mecánica, es un parte de incidencias.
+
+### Cómo se ganan
+
+Base por partida terminada: `2 + nivel del juego`. Ahí está lo de que un juego
+mayor pague más: piedra papel tijera da 3, The Hole 18, la artillería 52.
+
+| Multiplicador | |
+|---|---|
+| Ganar | ×2 |
+| Contra otro pato, en red | ×2 |
+| Récord nuevo | +50 % de la base, una vez |
+
+Y dos fuentes que no son partidas, y son las que impiden el bloqueo:
+
+- **Subir de nivel**: `nivel × 10`. Importa más de lo que parece: significa que
+  **cuidar al pato también paga**, así que el Tamagotchi no se queda de adorno
+  mientras se juega.
+- **La racha del día**: +25 la primera partida de cada día.
+
+### El freno: rinde menos por juego repetido
+
+Cada juego paga completo sus **3 primeras partidas del día**; de la cuarta en
+adelante, el 20 %. Es lo que hace que machacar el barato no compense:
+
+| Doce partidas | Cuacks |
+|---|---|
+| Doce de piedra papel tijera | ~14 |
+| Tres de cada uno de cuatro juegos (niveles 1, 6, 9 y 16) | ~130 |
+
+Diez veces más por jugar variado, sin prohibir nada.
+
+### Cuánto cuestan
+
+`precio = 12 × nivel^1.35`, y el de nivel 1 es gratis —si no, un pato recién
+nacido no tiene nada que hacer—.
+
+| Nivel | 1 | 4 | 8 | 16 | 26 | 36 | 50 |
+|---|---|---|---|---|---|---|---|
+| Precio | 0 | 78 | 199 | 505 | 962 | 1.470 | 2.296 |
+
+Están calculados para que cada juego cueste **entre dos y cuatro días** de juego
+normal en el momento en que el nivel te lo abre, porque los ingresos suben a la
+vez que los precios.
+
+### Lo que NO se hace
+
+- **Comprar cuacks con dinero.** Obvio, pero mejor escrito.
+- **Perder cuacks al perder una partida.** Ya has perdido; castigar dos veces es
+  feo.
+- **Que caduquen.**
+
+### Un riesgo conocido
+
+El ×2 de red se puede granjear entre dos que se turnen para dejarse ganar. El
+tope de tres partidas al día por juego lo acota —dos personas con ocho juegos
+sacan haciendo trampa poco más que jugando de verdad—, así que no compensa el
+aburrimiento, pero no es imposible. Si molesta, la respuesta barata es que el ×2
+de red sólo cuente las seis primeras partidas en red del día, en total.
+
+---
+
 ## Récords y ranking
 
 Dos cosas distintas que suenan igual, y conviene no mezclarlas: **lo tuyo** y
