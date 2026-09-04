@@ -7,6 +7,8 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.13.1] - 2026-09-04
+
 ### Añadido
 
 - **🏅 Tus récords.** Un botón debajo de la rejilla del panel de juegos, con el
