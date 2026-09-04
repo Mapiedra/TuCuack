@@ -778,6 +778,14 @@ de los demás, ni borrarlo, ni bajarlo.
 > tablas ni funciones —para eso hace falta la `service_role` o entrar al panel—.
 > Es un pegar y darle a «Run».
 
+Para comprobar que quedó bien: **`npm run marcador`**. Se conecta con la misma
+clave publicable que lleva la app, así que verifica exactamente lo que va a poder
+hacer un pato. Y **no escribe nada**, que no es prudencia sino consecuencia del
+diseño: con esta clave no se puede borrar una fila —ni la propia—, así que una de
+pruebas se quedaría en el marcador de todo el mundo para siempre. La puerta de
+escritura se comprueba llamándola mal a propósito, que es un camino que responde
+sin tocar la tabla.
+
 ### En la interfaz
 
 Va donde ya está [Tus récords](#-tus-récords--hecho): una pestaña más, o una
