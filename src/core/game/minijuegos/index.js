@@ -115,7 +115,8 @@ export const MINIJUEGOS = [
   },
   {
     id: 'obstaculos',
-    nombre: 'Obstáculos',
+    // «Pato Runner», «Cuacky Runner». El id se queda: no se renombran nunca.
+    nombre: '{mascota} Runner',
     icono: '🌵',
     descripcion: 'Corre y salta con la barra espaciadora. Hasta que falles.',
     nivel: 8,

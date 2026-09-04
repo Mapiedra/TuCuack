@@ -10,7 +10,7 @@ abren desde `🎮 Juegos` en el menú del pato.
 | 🃏 Memoria | 4 | solo · red (2) | panel |
 | 🎲 Par o impar | 3 | solo · red (2) | panel |
 | ⭕ Tres en raya | 6 | solo · red (2) | panel |
-| 🌵 Obstáculos | 8 | solo | escenario |
+| 🌵 «Pato Runner» | 8 | solo | escenario |
 | 🏓 Malabares | 9 | solo | escenario |
 | 🎯 «Pato Hook» | 12 | solo | escenario |
 | 🕳️ The Hole | 16 | solo | escenario |
@@ -432,17 +432,17 @@ La escalera entera, con lo hecho y lo que falta:
 | 3 | 🎲 Par o impar | hecho |
 | 4 | 🃏 Memoria | hecho |
 | 6 | ⭕ Tres en raya | hecho |
-| 8 | 🌵 Obstáculos | hecho |
+| 8 | 🌵 «Pato Runner» | hecho |
 | 9 | 🏓 Malabares | hecho |
 | 12 | 🎯 «Pato Hook» | hecho |
-| 14 | 🪶 Aleteo | falta |
+| 14 | 🪶 «Flappy Pato» | falta |
 | 16 | 🕳️ The Hole | hecho |
 | 18 | 🏓 Pong | falta |
 | 21 | 🧱 Ladrillos | falta |
 | 24 | 🔤 Ahorcado | falta |
 | 28 | 👾 Invasores | falta |
 | 32 | 🚢 Hundir la flota | falta |
-| 40 | 🏹 Derribos | por confirmar |
+| 40 | 🏹 «Angry Pato» | por confirmar |
 | 50 | 💥 Artillería | por confirmar |
 
 **Los rangos acompañan.** Se acababan en «Leyenda» al 20, que era el techo de
@@ -468,31 +468,31 @@ para todos: ninguno pide ampliarlo.
 
 | Juego | Nivel | Modos | Superficie | Lo que estrena |
 |---|---|---|---|---|
-| 🪶 Aleteo | 14 | solo | escenario | volar a base de aletazos, entre huecos |
+| 🪶 «Flappy Pato» | 14 | solo | escenario | volar a base de aletazos, entre huecos |
 | 🏓 Pong | 18 | solo | escenario | la mascota ES la pala, y enfrente hay otra |
 | 🧱 Ladrillos | 21 | solo | escenario | un muro que se rompe, sobre el Pong |
 | 🔤 Ahorcado | 24 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
 | 👾 Invasores | 28 | solo | escenario | disparar hacia arriba, y algo que baja |
 | 🚢 Hundir la flota | 32 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
 
-Y tres [por confirmar](#en-el-tintero): derribar estructuras (nivel 40),
-artillería por turnos (nivel 50) y el ranking entre patos, que no es un juego
-sino una decisión de arquitectura.
+Y tres [por confirmar](#en-el-tintero): «Angry {mascota}» (nivel 40), artillería
+por turnos (nivel 50) y el ranking entre patos, que no es un juego sino una
+decisión de arquitectura.
 
-### 🪶 Aleteo
+### 🪶 «Flappy {mascota}»
 
-Es [Obstáculos](../src/core/game/minijuegos/obstaculos.js) **con la gravedad
+Es [«Pato Runner»](../src/core/game/minijuegos/obstaculos.js) **con la gravedad
 cambiada de bando**, y por eso sale casi por el precio del cambio: la mascota cae
 sola y cada espaciazo le da un aletazo hacia arriba; hay que colarse por los
 huecos. El mismo botón, la decisión contraria: cuándo NO dejarla caer.
 
-De Obstáculos se lleva casi todo hecho: el desfile que entra por la derecha
+De «Pato Runner» se lleva casi todo hecho: el desfile que entra por la derecha
 acelerando, la separación medida en tiempo y no en píxeles, la colisión de
 círculo contra rectángulo y el marcador. Lo que cambia son los números de
 `conAjustes` y que el impulso va en cada pulsación en vez de sólo desde el suelo.
 
 - `marca: { etiqueta: 'huecos', mejor: 'mas' }`.
-- El espacio ya está resuelto: `escenario.js` se lo traga desde Obstáculos.
+- El espacio ya está resuelto: `escenario.js` se lo traga desde «Pato Runner».
 
 Y una nota de lo aprendido allí: **la separación entre obstáculos tiene que
 apretarse con el avance**, no sólo escalar con la velocidad. Con el hueco fijo en
@@ -553,7 +553,7 @@ huevo es un círculo.
 
 - **Marca:** `{ etiqueta: 'oleada', mejor: 'mas' }`. No se gana: se aguanta.
 - La barra espaciadora dispara, o sea que necesita el mismo arreglo de
-  `escenario.js` que Obstáculos y Aleteo. Uno solo para los cuatro.
+  `escenario.js` que «Pato Runner» y «Flappy Pato». Ya está hecho.
 
 ---
 
@@ -624,7 +624,7 @@ marcador se convierte en el motivo por el que se abre el pato.
 Ideas con forma pero sin aprobar. Se apuntan con lo que costarían, que es la
 mitad de la decisión.
 
-### 🏹 Derribos (tipo Angry Birds) — nivel 40
+### 🏹 «Angry {mascota}» (tipo Angry Birds) — nivel 40
 
 Lanzas a la mascota contra **estructuras que se vienen abajo**. Ojo, porque el
 lanzamiento ya lo tenemos: **eso es «Pato Hook»**. Lo único que aportaría de nuevo

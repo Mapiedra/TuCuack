@@ -7,6 +7,14 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.14.1] - 2026-09-04
+
+### Cambiado
+
+- **Obstáculos pasa a llamarse «Pato Runner»** —o «Cuacky Runner», o como se
+  llame la tuya—. Y los dos que aún no están se apuntan con el mismo apellido:
+  Aleteo será **«Flappy {mascota}»** y Derribos, **«Angry {mascota}»**.
+
 ## [0.14.0] - 2026-09-04
 
 ### Añadido

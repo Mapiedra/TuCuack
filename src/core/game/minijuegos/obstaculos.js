@@ -1,4 +1,4 @@
-// Obstáculos: correr y saltar. El dinosaurio de Chrome, con tu mascota.
+// «{mascota} Runner»: correr y saltar. El dinosaurio de Chrome, con tu mascota.
 //
 // La mascota corre en el sitio, el mundo pasa por detrás, y con la barra
 // espaciadora salta lo que venga. Un botón y una sola decisión: cuándo.
@@ -7,8 +7,8 @@
 // mueve —lo que se mueve es el suelo— y saltar es un lanzamiento vertical con la
 // misma física de siempre. Todo lo que hay que escribir de verdad es el desfile.
 //
-// Su gemelo es Aleteo: el mismo juego con la gravedad cambiada de bando. Si se
-// escribe, conviene mirar aquí primero.
+// Su gemelo es «Flappy {mascota}»: el mismo juego con la gravedad cambiada de
+// bando. Si se escribe, conviene mirar aquí primero.
 
 import { sembrar } from './azar.js';
 
