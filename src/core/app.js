@@ -1030,6 +1030,10 @@ function abrirEscena(juego, modo, opciones) {
     // marcador de la partida no puede salir un `{mascota}` a medio hacer.
     pato: duck, behavior, vuelo, alApagar, toast,
     nombre: nombreDeJuego(juego, duckName()),
+    // La misma línea que sale al pasar por encima del botón. El escenario la
+    // enseña con una cuenta atrás antes de empezar: en pantalla completa no hay
+    // panel donde leer de qué va la cosa.
+    descripcion: juego.descripcion,
     registrarOverlay: registerOverlay,
     soltarOverlay: unregisterOverlay,
     // Pase lo que pase —fin normal, Esc, error del juego o apagado— esto se

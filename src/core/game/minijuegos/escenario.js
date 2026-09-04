@@ -31,6 +31,20 @@ import { crearEntrada } from './entrada.js';
 /** Red de seguridad, no regla de juego: ninguna partida dura diez minutos. */
 const TOPE_PARTIDA_MS = 10 * 60 * 1000;
 
+/**
+ * Segundos de presentación antes de empezar.
+ *
+ * Un juego de pantalla completa arranca de golpe y sin panel donde leer nada, y
+ * el que lo abre por primera vez no sabe ni qué se espera de él. Así que antes
+ * de la primera jugada se enseñan el nombre, la misma línea que sale al pasar
+ * por encima del botón, y una cuenta atrás.
+ *
+ * Durante la cuenta el juego NO corre: no se le llama a `actualizar` ni con
+ * `dt` a cero. Con cero tampoco es inofensivo —«Pato Hook» dispararía al soltar
+ * el ratón y la paleta podría dar un toque— así que sencillamente se espera.
+ */
+const PRESENTACION_S = 5;
+
 /** @typedef {'usuario'|'fin'|'apagado'|'error'} MotivoFin */
 
 /**
@@ -88,10 +102,18 @@ const TOPE_PARTIDA_MS = 10 * 60 * 1000;
 export function prestarEscenario(entorno) {
   const {
     pato, behavior, vuelo, alApagar, toast,
-    registrarOverlay, soltarOverlay, alDevolver, nombre
+    registrarOverlay, soltarOverlay, alDevolver, nombre, descripcion
   } = entorno;
 
   let devuelto = false;
+  /**
+   * Lo que queda de presentación, en segundos.
+   *
+   * Sin descripción no hay presentación, y eso es a propósito: lo que no viene
+   * del catálogo —la broma del «No tocar»— ya trae su propio cartel, y meterle
+   * una cuenta atrás delante le quitaría toda la gracia.
+   */
+  let presentacion = descripcion ? PRESENTACION_S : 0;
   /** El trozo de interfaz que haya montado el juego, si ha montado alguno. */
   let panelDelJuego = null;
   /** Si el juego se ha quedado con el Esc y el botón de salir. */
@@ -194,6 +216,13 @@ export function prestarEscenario(entorno) {
         if (devuelto || !juego || typeof juego.actualizar !== 'function') return;
         entrada.tic();
         pintor.clearRect(0, 0, pista.medidas.ancho, pista.medidas.alto);
+
+        if (presentacion > 0) {
+          presentacion -= dt;
+          dibujarPresentacion();
+          return;
+        }
+
         try {
           juego.actualizar(dt, pista);
         } catch (err) {
@@ -203,6 +232,69 @@ export function prestarEscenario(entorno) {
       },
       terminar
     };
+  }
+
+  /**
+   * El cartel de antes de empezar: nombre, de qué va, y la cuenta atrás.
+   *
+   * Se pinta en el lienzo y no con DOM porque es efímero y no se pulsa. El
+   * número crece un poco al cambiar de segundo, que es lo que hace que se lea
+   * como una cuenta y no como un adorno.
+   */
+  function dibujarPresentacion() {
+    const { ancho, alto } = pista.medidas;
+    const cx = ancho / 2;
+    const cy = alto * 0.34;
+    const quedan = Math.max(1, Math.ceil(presentacion));
+    // De 0 a 1 dentro del segundo actual: 1 justo al cambiar.
+    const reciente = 1 - (Math.ceil(presentacion) - presentacion);
+
+    pintor.save();
+    pintor.textAlign = 'center';
+
+    // Una tarjeta detrás: esto se pinta sobre el escritorio de cualquiera, y
+    // sin fondo el texto es ilegible la mitad de las veces.
+    const w = Math.min(560, ancho * 0.8);
+    const h = 190;
+    pintor.beginPath();
+    if (pintor.roundRect) pintor.roundRect(cx - w / 2, cy - 64, w, h, 16);
+    else pintor.rect(cx - w / 2, cy - 64, w, h);
+    pintor.fillStyle = 'rgba(255, 253, 247, 0.94)';
+    pintor.fill();
+    pintor.lineWidth = 3;
+    pintor.strokeStyle = '#2b2b3a';
+    pintor.stroke();
+
+    pintor.fillStyle = '#2b2b3a';
+    pintor.font = '700 30px system-ui, sans-serif';
+    pintor.fillText(nombre || 'Partida', cx, cy - 22);
+
+    pintor.font = '400 16px system-ui, sans-serif';
+    recortarEnLineas(descripcion, w - 48, 22, cx, cy + 6);
+
+    pintor.font = `700 ${Math.round(40 + reciente * 10)}px system-ui, sans-serif`;
+    pintor.fillStyle = '#fb8500';
+    pintor.fillText(String(quedan), cx, cy + 100);
+    pintor.restore();
+  }
+
+  /** Parte el texto en líneas que quepan. Dos como mucho: es una frase. */
+  function recortarEnLineas(texto, ancho, alto, cx, cy) {
+    const palabras = String(texto).split(' ');
+    const lineas = [];
+    let linea = '';
+    for (const p of palabras) {
+      const prueba = linea ? `${linea} ${p}` : p;
+      if (pintor.measureText(prueba).width > ancho && linea) {
+        lineas.push(linea);
+        linea = p;
+      } else {
+        linea = prueba;
+      }
+    }
+    if (linea) lineas.push(linea);
+    const y0 = cy - ((lineas.length - 1) * alto) / 2;
+    lineas.forEach((l, i) => pintor.fillText(l, cx, y0 + i * alto));
   }
 
   // ---- Devolución --------------------------------------------------------

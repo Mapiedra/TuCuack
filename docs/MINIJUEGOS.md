@@ -216,6 +216,20 @@ Estos juegos sólo se ofrecen donde el pato tiene la pantalla para él
 (`capacidades.juegosDeEscenario`): escritorio, panel lateral y banco de pruebas.
 Sobre una página ajena, no.
 
+**Antes de empezar hay cinco segundos de presentación.** El escenario enseña el
+nombre del juego, su `descripcion` del catálogo —la misma línea que sale al pasar
+por encima del botón— y una cuenta atrás. En pantalla completa no hay panel donde
+leer de qué va la cosa, y un juego de reflejos que arranca de golpe no se entiende
+la primera vez.
+
+Durante la cuenta **el juego no corre**: no se le llama a `actualizar` ni con `dt`
+a cero. Con cero tampoco es inofensivo —«Pato Hook» dispararía al soltar el ratón
+y Malabares podría dar un toque—, así que sencillamente se espera. Lo controla
+`PRESENTACION_S` en [`escenario.js`](../src/core/game/minijuegos/escenario.js), y
+sólo aparece si quien presta el escenario pasa `descripcion`: lo que no viene del
+catálogo —la broma del «No tocar»— ya trae su propio cartel, y una cuenta atrás
+delante le quitaría la gracia.
+
 **La franja de la barra de tareas queda libre.** En el escritorio la ventana
 cubre el monitor entero —barra incluida, que es por donde el pato camina— y
 durante una partida el ratón está capturado de principio a fin. Eso dejaría el

@@ -9,6 +9,13 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ### Añadido
 
+- **Los juegos de pantalla completa se presentan antes de empezar.** Malabares,
+  «Pato Hook», The Hole y Obstáculos enseñan durante cinco segundos su nombre, de
+  qué van —la misma línea que sale al pasar por encima del botón— y una cuenta
+  atrás. Ahí no hay panel donde leer nada, y un juego de reflejos que arranca de
+  golpe no se entiende la primera vez. Mientras dura la cuenta el juego está
+  quieto de verdad: no empieza a caer nada ni se gasta un disparo.
+
 - **🌵 Obstáculos.** Nivel 8, en la pantalla entera. Tu mascota corre, el suelo
   pasa por detrás y con la **barra espaciadora** salta lo que venga: cactus
   bajos, altos y dobles. Y a partir de un rato, gaviotas a la altura de la
