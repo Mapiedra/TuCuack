@@ -9,7 +9,7 @@
 //     `img-src` del sitio lo bloquearía;
 //   - el suelo es el borde inferior de la ventana.
 
-import { conectarChat, leerAjustes, escribirAjustes, leerEstado, escribirEstado,
+import { conectarChat, marcador, leerAjustes, escribirAjustes, leerEstado, escribirEstado,
   alCerrarDocumento, ocultarElPato } from './almacen.js';
 
 /**
@@ -34,7 +34,11 @@ export function crearPlataformaPagina(anfitrion) {
       comandosExternos: true,
       // Aquí no: el pato está de prestado sobre la web de otro, y tomarle la
       // pantalla entera al usuario mientras lee sería un secuestro.
-      juegosDeEscenario: false
+      juegosDeEscenario: false,
+      // Esto sí: el marcador lo pide el worker, que es quien tiene las
+      // credenciales y quien sobrevive a que el pato se mude de pestaña. Desde
+      // aquí sólo se le pregunta.
+      marcadorGlobal: true
     },
 
     async config() {
@@ -87,6 +91,7 @@ export function crearPlataformaPagina(anfitrion) {
       });
     },
 
-    chat: conectarChat()
+    chat: conectarChat(),
+    marcador
   };
 }

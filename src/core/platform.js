@@ -43,10 +43,35 @@ const CAPACIDADES_POR_DEFECTO = {
   // ajena, no: capturar el ratón de toda la ventana dejaría al usuario sin poder
   // pulsar nada de la web que estaba leyendo, y eso no es un juego, es un
   // secuestro.
-  juegosDeEscenario: false
+  juegosDeEscenario: false,
+  // ¿Hay marcador global? Hace falta hablar con Supabase desde fuera del
+  // documento, así que sólo donde la carcasa puede: el escritorio y la
+  // extensión. En el banco de pruebas no, y por eso se pregunta antes de
+  // ofrecerlo en vez de dar por hecho que existe.
+  marcadorGlobal: false
 };
 
 const CONFIG_POR_DEFECTO = { version: '0.0.0', isDev: false, ground: 0, sprites: {} };
+
+/**
+ * El marcador global, cuando no lo hay.
+ *
+ * Ojo al reparto de trabajo, que es lo único raro de este trozo del contrato: el
+ * núcleo NUNCA ve la firma con la que se escribe. Pide «guarda esta marca» y
+ * quien la firma es la carcasa, desde donde el secreto no puede salir. Si
+ * viajara hasta aquí estaría también en la extensión, dentro de la página web de
+ * cualquiera. Ver `main/marcador.js` y `supabase/records.sql`.
+ *
+ * Las dos devuelven `{ok, datos?, error?}` y no lanzan: quien las llama es el
+ * pato acabando una partida, y ahí una excepción sin dueño se lleva por delante
+ * algo que sí importaba.
+ */
+const MARCADOR_DESACTIVADO = {
+  /** @type {(juego:string, mejorEs:'mas'|'menos') => Promise<object>} */
+  mejores: async () => ({ ok: false, error: 'sin-marcador' }),
+  /** @type {(r:{juego:string, nombre:string, marca:number, mejorEs:string}) => Promise<object>} */
+  guardar: async () => ({ ok: false, error: 'sin-marcador' })
+};
 
 const CHAT_DESACTIVADO = {
   enviar: noop,
@@ -127,7 +152,10 @@ export function normalizarPlataforma(p = {}) {
     instalarActualizacion: p.instalarActualizacion || noop,
 
     // ---- Chat entre patos ------------------------------------------------
-    chat: { ...CHAT_DESACTIVADO, ...(p.chat || {}) }
+    chat: { ...CHAT_DESACTIVADO, ...(p.chat || {}) },
+
+    // ---- Marcador global -------------------------------------------------
+    marcador: { ...MARCADOR_DESACTIVADO, ...(p.marcador || {}) }
   };
 }
 

@@ -174,6 +174,100 @@ async function leerCredenciales() {
   }
 }
 
+// ---- Marcador global ----------------------------------------------------
+//
+// El gemelo de `main/marcador.js`, por el mismo motivo por el que el chat está
+// duplicado: cada carcasa habla con Supabase desde donde puede. Aquí, desde el
+// worker, que es el único sitio de la extensión que sobrevive a que el pato se
+// mude de pestaña.
+//
+// Y sobre todo: la FIRMA con la que se escribe se queda aquí. El pato pide
+// «guarda esta marca» y no la ve. Si viajara al content script estaría dentro de
+// la página web de cualquiera, y con ella los récords de su dueño.
+
+const CLAVE_SECRETO = 'recordSecreto';
+const TOPE_MARCADOR_MS = 8000;
+const TOPE_FILAS = 20;
+
+/**
+ * La firma de este pato para el marcador. Se estrena una vez y se queda.
+ *
+ * Va en `storage.local` y no en `session`: perderla es perder los récords para
+ * siempre, porque en la tabla el dueño de una fila ES el hash de esto y no hay
+ * a quién reclamar (ver supabase/records.sql).
+ */
+async function secretoDelMarcador() {
+  try {
+    const guardado = await chrome.storage.local.get(CLAVE_SECRETO);
+    const v = guardado[CLAVE_SECRETO];
+    if (typeof v === 'string' && v.length >= 24) return v;
+    const trozo = () => Math.random().toString(36).slice(2).padEnd(16, '0').slice(0, 16);
+    const nuevo = `${trozo()}${trozo()}`;
+    await chrome.storage.local.set({ [CLAVE_SECRETO]: nuevo });
+    return nuevo;
+  } catch (err) {
+    console.warn('[marcador] no se pudo guardar la firma:', err);
+    return '';
+  }
+}
+
+/** Llama y se rinde a tiempo. Devuelve `{ok, datos, error}`; no lanza. */
+async function pedirAlMarcador(ruta, opciones) {
+  const cred = await leerCredenciales();
+  if (!cred) return { ok: false, error: 'sin-credenciales' };
+
+  const corta = new AbortController();
+  const reloj = setTimeout(() => corta.abort(), TOPE_MARCADOR_MS);
+  try {
+    const res = await fetch(`${cred.url}${ruta}`, {
+      ...opciones,
+      headers: {
+        apikey: cred.clave,
+        Authorization: `Bearer ${cred.clave}`,
+        'Content-Type': 'application/json'
+      },
+      signal: corta.signal
+    });
+    const texto = await res.text();
+    if (!res.ok) return { ok: false, error: `${res.status} ${texto.slice(0, 120)}` };
+    return { ok: true, datos: texto ? JSON.parse(texto) : null };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err.name === 'AbortError' ? 'sin respuesta' : String(err.message || err)
+    };
+  } finally {
+    clearTimeout(reloj);
+  }
+}
+
+function mejoresDelMarcador(juego, mejorEs) {
+  const orden = mejorEs === 'menos' ? 'marca.asc' : 'marca.desc';
+  return pedirAlMarcador(
+    `/rest/v1/records_publicos?juego=eq.${encodeURIComponent(juego)}`
+    + `&order=${orden}&limit=${TOPE_FILAS}&select=nombre,marca,actualizado`,
+    { method: 'GET' }
+  );
+}
+
+async function guardarEnElMarcador(r) {
+  const secreto = await secretoDelMarcador();
+  if (!secreto) return { ok: false, error: 'sin-firma' };
+  if (!r || !r.juego || typeof r.marca !== 'number' || !Number.isFinite(r.marca)) {
+    return { ok: false, error: 'marca-mala' };
+  }
+  return pedirAlMarcador('/rest/v1/rpc/guardar_record', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_secreto: secreto,
+      p_juego: String(r.juego).slice(0, 40),
+      p_nombre: String(r.nombre || 'Pato').slice(0, 40),
+      p_marca: Math.max(0, Math.round(r.marca)),
+      p_mejor_es: r.mejorEs === 'menos' ? 'menos' : 'mas'
+    })
+  });
+}
+
 // ---- Conexión -----------------------------------------------------------
 //
 // `iniciar` se llama desde varios sitios a la vez —al arrancar el worker, al
@@ -546,6 +640,16 @@ chrome.runtime.onMessage.addListener((msg, _emisor, responder) => {
       }));
     return true;   // la respuesta llega de forma asíncrona
   }
+  if (msg.tipo === 'marcador-mejores') {
+    mejoresDelMarcador(msg.juego, msg.mejorEs).then(responder);
+    return true;
+  }
+
+  if (msg.tipo === 'marcador-guardar') {
+    guardarEnElMarcador(msg.record).then(responder);
+    return true;
+  }
+
   if (msg.tipo === 'abrir' && typeof msg.url === 'string' && /^https?:\/\//.test(msg.url)) {
     chrome.tabs.create({ url: msg.url });
     return false;

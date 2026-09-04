@@ -3,6 +3,7 @@
 const { app, BrowserWindow, screen, ipcMain, shell } = require('electron');
 const path = require('path');
 const store = require('./store');
+const marcador = require('./marcador');
 const { createTray } = require('./tray');
 const { initUpdater, configurarAvisos, estadoActualizacion, buscarActualizacion, instalarActualizacion }
   = require('./updater');
@@ -242,6 +243,11 @@ ipcMain.handle('chat:status', () => ({
 // Actualizaciones a mano. Lo automático sigue igual: esto es para poder mirar
 // cuando uno quiera y aplicarla sin esperar a salir de la app.
 ipcMain.handle('update:status', () => estadoActualizacion());
+
+// Marcador global. La firma con la que se escribe se queda aquí: el renderer
+// pide «guarda esta marca» y no sabe con qué se firma. Ver main/marcador.js.
+ipcMain.handle('marcador:mejores', (_evt, juego, mejorEs) => marcador.mejores(juego, mejorEs));
+ipcMain.handle('marcador:guardar', (_evt, record) => marcador.guardar(record));
 ipcMain.on('update:check', () => buscarActualizacion());
 ipcMain.on('update:install', () => instalarActualizacion(() => win));
 

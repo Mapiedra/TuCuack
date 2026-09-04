@@ -1124,3 +1124,45 @@ html, body {
   border-radius: 3px;
 }
 .peaje-reloj-barra.poco { background: #c1121f; }
+
+/* El marcador global de un juego. Va dentro de Tus récords, así que se parece a
+   su lista: lo que cambia es que aquí las filas son de otra gente. */
+.marcador-lista {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+  max-height: 210px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  counter-reset: puesto;
+}
+.marcador-fila {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 2px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 12px;
+  counter-increment: puesto;
+}
+.marcador-fila:first-child { border-top: 0; }
+/* El puesto se pinta con CSS y no con un nodo: es decoración, no información
+   que haya que poder copiar. */
+.marcador-fila::before {
+  content: counter(puesto) '.';
+  min-width: 20px;
+  text-align: right;
+  color: #8a8a95;
+  font-variant-numeric: tabular-nums;
+}
+.marcador-nombre { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.marcador-fila b { color: var(--accent-2); white-space: nowrap; }
+/* Los tres primeros, un poco más. Sin medallas: no hay sitio y sobran. */
+.marcador-fila:nth-child(-n+3) b { font-size: 13px; }
+
+/* Una fila de récords que lleva a su marcador se comporta como algo que se
+   pulsa, porque lo es. */
+.records-fila.conMarcador { cursor: pointer; border-radius: 6px; }
+.records-fila.conMarcador:hover,
+.records-fila.conMarcador:focus-visible { background: rgba(255, 183, 3, 0.16); outline: none; }

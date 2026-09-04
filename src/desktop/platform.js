@@ -21,7 +21,8 @@ export function crearPlataformaElectron() {
       autoArranque: true,
       actualizaciones: true,
       comandosExternos: true,
-      juegosDeEscenario: true
+      juegosDeEscenario: true,
+      marcadorGlobal: true
     },
 
     config: () => pato.getConfig(),
@@ -49,6 +50,11 @@ export function crearPlataformaElectron() {
     alCerrar: (cb) => pato.onBeforeQuit(cb),
     alRecibirComando: (cb) => pato.onTrayCommand(cb),
     alRecibirActualizacion: (cb) => pato.onUpdateEvent(cb),
+
+    marcador: {
+      mejores: (juego, mejorEs) => pato.marcadorMejores(juego, mejorEs),
+      guardar: (record) => pato.marcadorGuardar(record)
+    },
 
     chat: {
       enviar: (msg) => pato.sendChat(msg),

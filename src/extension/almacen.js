@@ -79,6 +79,32 @@ export const leerAjustes = () => leer(CLAVE_AJUSTES);
 export const escribirAjustes = (d) => escribir(CLAVE_AJUSTES, d);
 
 /**
+ * El marcador global, preguntándoselo al worker.
+ *
+ * Va por ahí y no directamente porque las credenciales y —sobre todo— la firma
+ * con la que se escriben los récords viven allí. Desde aquí no se ve el secreto,
+ * que es justo el punto: este código corre dentro de la página web de
+ * cualquiera.
+ *
+ * Devuelven `{ok, datos?, error?}` y no lanzan, como el gemelo del escritorio.
+ */
+export const marcador = {
+  mejores: (juego, mejorEs) => preguntarAlWorker({ tipo: 'marcador-mejores', juego, mejorEs }),
+  guardar: (record) => preguntarAlWorker({ tipo: 'marcador-guardar', record })
+};
+
+async function preguntarAlWorker(msg) {
+  try {
+    const r = await chrome.runtime.sendMessage(msg);
+    return r || { ok: false, error: 'sin-respuesta' };
+  } catch (err) {
+    // El worker duerme y a veces no despierta a tiempo. No es un fallo del
+    // que haya que enterarse a gritos: es un marcador.
+    return { ok: false, error: String((err && err.message) || err) };
+  }
+}
+
+/**
  * Puente de chat con el service worker, que es quien mantiene la conexión.
  *
  * El puerto se abre al arrancar y se queda abierto: además de traer los

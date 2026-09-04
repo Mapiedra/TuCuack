@@ -27,6 +27,8 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
   let elegido = null;
   /** Si se está viendo la lista de récords en vez de la rejilla. */
   let enRecords = false;
+  /** Juego cuyo marcador global se está viendo, o null. */
+  let enMarcador = null;
 
   const el = document.createElement('div');
   el.className = 'panel panel-juegos hot';
@@ -50,22 +52,29 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
 
   function pintar() {
     if (cabecera) cabecera.remove();
-    const dentro = elegido || enRecords;
-    cabecera = panelHeader(
-      elegido ? nombreDeJuego(elegido, estado.yo) : (enRecords ? 'Tus récords' : 'Juegos'),
-      {
-        // El botón de volver cambia de destino según la vista: desde dentro
-        // vuelve a la rejilla, y desde la rejilla al menú del pato.
-        onBack: dentro ? () => { elegido = null; enRecords = false; pintar(); } : handlers.onBack,
-        onClose: handlers.onClose
-      }
-    );
+    const dentro = elegido || enRecords || enMarcador;
+    cabecera = panelHeader(titulo(), {
+      // El botón de volver cambia de destino según la vista. Desde el marcador
+      // de un juego se vuelve a la lista de récords, que es de donde se entró;
+      // desde el resto, a la rejilla.
+      onBack: enMarcador
+        ? () => { enMarcador = null; enRecords = true; pintar(); }
+        : (dentro ? () => { elegido = null; enRecords = false; pintar(); } : handlers.onBack),
+      onClose: handlers.onClose
+    });
     el.prepend(cabecera);
 
     cuerpo.textContent = '';
-    if (elegido) pintarModos(elegido);
+    if (enMarcador) pintarMarcador(enMarcador);
+    else if (elegido) pintarModos(elegido);
     else if (enRecords) pintarRecords();
     else pintarRejilla();
+  }
+
+  function titulo() {
+    if (enMarcador) return nombreDeJuego(enMarcador, estado.yo);
+    if (elegido) return nombreDeJuego(elegido, estado.yo);
+    return enRecords ? 'Tus récords' : 'Juegos';
   }
 
   // ---- Rejilla -----------------------------------------------------------
@@ -157,6 +166,77 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
    * invitación—, y también las marcas de un juego que se te haya vuelto a
    * bloquear, porque el progreso se guarda aparte del catálogo.
    */
+  /**
+   * El marcador global de un juego.
+   *
+   * Se pide al abrirlo y no antes: son juegos que la mayoría no va a mirar, y
+   * una petición de red por cada uno al abrir el panel sería pagar por lo que
+   * nadie ha pedido.
+   */
+  function pintarMarcador(juego) {
+    const mio = progreso.de(juego.id);
+
+    const nota = document.createElement('p');
+    nota.className = 'muted';
+    nota.textContent = mio.mejor != null
+      ? `Tu marca: ${mio.mejor} ${juego.marca.etiqueta}`
+      : 'Todavía no tienes marca en este juego.';
+    cuerpo.appendChild(nota);
+
+    const lista = document.createElement('ol');
+    lista.className = 'marcador-lista';
+    const cargando = document.createElement('li');
+    cargando.className = 'muted';
+    cargando.textContent = 'Preguntando…';
+    lista.appendChild(cargando);
+    cuerpo.appendChild(lista);
+
+    const aviso = document.createElement('p');
+    aviso.className = 'muted';
+    // Y esto no es letra pequeña: sin un servidor que juegue la partida, una
+    // marca es lo que su dueño dice que es. Decirlo es más honesto que
+    // presentarlo como verificado, y además explica por qué sale el nombre.
+    aviso.textContent = 'Lo declara cada pato. Nadie lo comprueba.';
+    cuerpo.appendChild(aviso);
+
+    handlers.onMarcador(juego).then((res) => {
+      // El panel puede haberse cerrado o cambiado de vista mientras tanto.
+      if (enMarcador !== juego || !lista.isConnected) return;
+      lista.textContent = '';
+      if (!res || !res.ok) {
+        const mal = document.createElement('li');
+        mal.className = 'muted';
+        mal.textContent = 'No se ha podido consultar. ¿Hay conexión?';
+        lista.appendChild(mal);
+        return;
+      }
+      if (!res.datos.length) {
+        const vacio = document.createElement('li');
+        vacio.className = 'muted';
+        vacio.textContent = 'Nadie ha marcado nada todavía. Estrénalo.';
+        lista.appendChild(vacio);
+        return;
+      }
+      for (const fila of res.datos) lista.appendChild(filaDelMarcador(fila, juego));
+    });
+  }
+
+  function filaDelMarcador(fila, juego) {
+    const li = document.createElement('li');
+    li.className = 'marcador-fila';
+
+    const quien = document.createElement('span');
+    // Los nombres los escribe otra gente: `textContent` siempre.
+    quien.textContent = fila.nombre;
+    quien.className = 'marcador-nombre';
+
+    const marca = document.createElement('b');
+    marca.textContent = `${fila.marca} ${juego.marca.etiqueta}`;
+
+    li.append(quien, marca);
+    return li;
+  }
+
   function pintarRecords() {
     const t = progreso.totales();
 
@@ -191,9 +271,25 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
   function filaDeRecord(juego) {
     const m = progreso.de(juego.id);
     const jugado = m.partidas > 0;
+    // Sólo los juegos con marca tienen marcador: los demás se ganan o se
+    // pierden, y una tabla de «victorias» no compara nada entre patos.
+    const conMarcador = !!(juego.marca && handlers.hayMarcadorGlobal);
 
     const li = document.createElement('li');
-    li.className = 'records-fila' + (jugado ? '' : ' vacia');
+    li.className = 'records-fila' + (jugado ? '' : ' vacia')
+      + (conMarcador ? ' conMarcador' : '');
+    if (conMarcador) {
+      li.tabIndex = 0;
+      li.title = 'Ver el marcador de todos';
+      li.addEventListener('click', () => { enMarcador = juego; enRecords = false; pintar(); });
+      li.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        enMarcador = juego;
+        enRecords = false;
+        pintar();
+      });
+    }
 
     const icono = document.createElement('span');
     icono.className = 'records-icono';

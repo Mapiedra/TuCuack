@@ -880,6 +880,8 @@ function openOnline(x, y) {
 
 function openJuegos(x, y) {
   const { el, actualizar } = buildJuegosPanel(level, juegos, estadoPresencia(), api.capacidades, {
+    hayMarcadorGlobal: !!api.capacidades.marcadorGlobal,
+    onMarcador: (juego) => api.marcador.mejores(juego.id, juego.marca.mejor),
     onJugar: (juego, modo, opciones) => {
       unregisterOverlay(el);
       openPartida(juego, modo, opciones, x, y);
@@ -1091,10 +1093,46 @@ function veredicto(r) {
 
 /** Anota el resultado, suma la experiencia y guarda. Un solo sitio. */
 function anotarPartida(juego, r) {
+  const antes = juegos.de(juego.id).mejor;
   juegos.anotar(juego.id, r);
   const xp = level.minijuego(r.resultado);
   saveNow();     // un récord no se pierde por cerrar antes del guardado
+  contarloFuera(juego, antes);
   return { xp };
+}
+
+/**
+ * Si la marca ha mejorado, se manda al marcador global.
+ *
+ * Se dispara sólo al MEJORAR y no en cada partida: el servidor descartaría lo
+ * demás igualmente —sólo acepta marcas que suban— y no hay por qué llamar a
+ * nadie para que nos diga que no.
+ *
+ * Y no se espera a la respuesta. Esto ocurre justo cuando el pie de la partida
+ * enseña el resultado, y colgar eso de que conteste una petición de red sería
+ * pagar el marcador con la única parte que el jugador está mirando. Si falla, se
+ * queda apuntado en la consola: la marca de casa ya está guardada, y la próxima
+ * vez que se bata se vuelve a intentar.
+ */
+function contarloFuera(juego, mejorAntes) {
+  if (!api.capacidades.marcadorGlobal || !juego.marca) return;
+  const ahora = juegos.de(juego.id).mejor;
+  if (typeof ahora !== 'number' || ahora === mejorAntes) return;
+  // Un cero donde gana el número más alto no es un récord, es el suelo: pasa
+  // con perder la primera ronda, y llenaría el marcador de gente que abrió el
+  // juego una vez. Donde gana el más bajo —el minigolf— un cero sí valdría, así
+  // que sólo se descarta en una dirección.
+  if (ahora === 0 && juego.marca.mejor !== 'menos') return;
+
+  Promise.resolve(api.marcador.guardar({
+    juego: juego.id,
+    nombre: duckName(),
+    marca: ahora,
+    mejorEs: juego.marca.mejor
+  })).then((res) => {
+    if (!res || res.ok) return;
+    console.warn('[marcador] no se pudo mandar la marca:', res.error);
+  }).catch((err) => console.warn('[marcador] no se pudo mandar la marca:', err));
 }
 
 /**
