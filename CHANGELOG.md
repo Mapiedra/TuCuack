@@ -7,6 +7,42 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.19.0] - 2026-09-04
+
+### Cambiado
+
+- **Los juegos ahora cuestan cuacks —y lo que ya tenías sigue siendo tuyo.** En
+  la 0.18.0 los diez juegos de siempre eran gratis para todo el mundo, y eso
+  dejaba con el catálogo entero regalado a quien instalase mañana. Lo que había
+  que proteger no era el juego: era lo conseguido.
+
+  Ahora **todos llevan precio menos el de nivel 1** —que es la puerta: sin uno
+  con el que empezar a ganar no habría forma de comprar el segundo—, y al
+  estrenar el monedero **se te regalan de golpe todos los que tu nivel ya tenía
+  abiertos**. Las dos cosas a la vez no se contradicen: la diferencia no es el
+  juego, es cuándo se abrió.
+
+  | Quién eres | Se te regalan | Pagas |
+  |---|---|---|
+  | Instalas hoy, nivel 1 | sólo el de nivel 1 | los otros nueve |
+  | Venías jugando, nivel 10 | siete | Jumping, Flappy y The Hole |
+  | Venías jugando, nivel 16 o más | los diez | nada |
+
+  Y sí, los que **todavía no** habías abierto por nivel se pagan aunque lleves
+  meses con tu mascota. Un juego que aún no tenías no era tuyo; ahí no se le
+  quita nada a nadie. Los precios van de 100 («Pato dice») a 725 (The Hole), y
+  cada uno sale por unas veinte partidas del anterior.
+
+- **El saldo de arranque cambia de sentido.** Ya no compensa lo de atrás —de
+  eso se encarga el regalo—: está para lo de delante, para que a quien le falten
+  juegos por abrir no le cambien las reglas justo al llegar al siguiente. Siguen
+  siendo cinco cuacks por partida jugada, con tope de 500.
+
+- **El aviso de subir de nivel dice el precio.** Anunciar «Nuevo juego: Par o
+  impar» y que al abrir el panel resulte que hay que comprarlo sería prometer de
+  más. El nivel lo ABRE, y ahora el cartel lo dice tal cual: «Par o impar ·
+  🪙 125».
+
 ## [0.18.0] - 2026-09-04
 
 ### Añadido
