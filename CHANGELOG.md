@@ -7,6 +7,34 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.17.0] - 2026-09-04
+
+### Añadido
+
+- **🌐 Marcador global.** Las marcas de los juegos de puntuación ya no se
+  quedan en tu ordenador: se comparan con las de todos los patos. Se entra
+  desde **🏅 Tus récords**, pulsando la fila del juego —las que llevan
+  marcador salen con un 🌐 al final—, y sale la tabla de los veinte
+  mejores con el nombre de cada pato.
+
+  Sube sola cuando bates tu propia marca, y sólo entonces: si la partida no
+  mejora lo tuyo, no se manda nada. Los juegos que sólo se ganan o se pierden
+  no tienen tabla, porque una lista de victorias no compara nada.
+
+  Y se dice donde se lee: **lo declara cada pato y nadie lo comprueba**. Sin un
+  servidor que juegue la partida, una marca es lo que su dueño dice que es;
+  presentarlo como verificado sería mentir, y además explica por qué sale el
+  nombre de quien la firma.
+
+### Seguridad
+
+- **Tus récords son tuyos y de nadie más.** Cada instalación estrena una firma
+  privada que no sale de ella —ni al pato, ni a la extensión, ni por la red— y
+  en la tabla el dueño de una fila es el hash de esa firma. Nadie puede
+  escribir sobre la marca de otro ni reservarse un nombre. La contrapartida es
+  honesta: **si pierdes la instalación, pierdes las filas**, porque no hay a
+  quién reclamarlas.
+
 ## [0.16.0] - 2026-09-04
 
 ### Cambiado
