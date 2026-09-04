@@ -247,7 +247,16 @@ export function crearBroma(ctx) {
     if (terminada) return;
     if (peaje) { peaje.enfocar(); return; }
     peaje = crearPeaje(
-      () => { if (peaje) { peaje.cerrar(); peaje = null; } pista.panel(null); pista.salir('usuario'); },
+      () => {
+        if (peaje) { peaje.cerrar(); peaje = null; }
+        pista.panel(null);
+        pista.salir('usuario');
+        // Y DESPUÉS se cobra, con la mascota ya devuelta: el aviso del premio
+        // sale en un cartel sobre ella, y sacarlo antes sería pintarlo encima de
+        // una pantalla que está desapareciendo. Quien paga es app.js, que es
+        // quién tiene la cartera; la broma sólo dice que se ha pasado.
+        if (ctx.alPasarElPeaje) ctx.alPasarElPeaje();
+      },
       () => cerrarElPeaje()
     );
     pista.panel(peaje.el);

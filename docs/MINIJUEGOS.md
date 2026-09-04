@@ -33,8 +33,13 @@ Tres pasos, y ninguno toca `app.js`:
 1. Escribe `src/core/game/minijuegos/<id>.js` exportando `crearPartida(ctx)`.
 2. Añade su entrada al array `MINIJUEGOS` de
    [`src/core/game/minijuegos/index.js`](../src/core/game/minijuegos/index.js).
-3. Ya está. El panel de selección, el candado por nivel, la experiencia, el
-   progreso guardado y el aviso al subir de nivel salen todos de esa lista.
+3. Ya está. El panel de selección, el candado por nivel, **la tienda**, la
+   experiencia, el progreso guardado y el aviso al subir de nivel salen todos de
+   esa lista.
+
+El `precio` sale de `precioSugerido(nivel)` en
+[`cuacks.js`](../src/core/game/cuacks.js) —ver [Los cuacks](#los-cuacks)—. El
+nivel ABRE el juego; el precio lo COMPRA.
 
 ```js
 {
@@ -43,6 +48,7 @@ Tres pasos, y ninguno toca `app.js`:
   icono: '🔤',                 // un emoji: nada de arte que empaquetar
   descripcion: 'Uno piensa la palabra y los demás la adivinan.',
   nivel: 4,                    // a qué nivel se desbloquea
+  precio: 175,                 // y lo que cuesta comprarlo, en cuacks
   modos: ['turnos'],           // 'solo' | 'turnos'
   jugadores: { min: 2, max: 4 },
   superficie: 'panel',         // 'panel' | 'escenario'
@@ -379,6 +385,68 @@ Jugar también gasta energía del pato (`tam.play()`), y un pato agotado no jueg
 
 ---
 
+## Los cuacks
+
+La moneda. Se ganan jugando y se gastan en comprar juegos, y viven en
+[`core/game/cuacks.js`](../src/core/game/cuacks.js).
+
+### Lo que paga una partida
+
+`valor(juego) = 5 + nivel × 3`, y encima el final:
+
+| | × |
+|---|---|
+| Perder, pero terminar | 0,3 |
+| Empatar | 0,6 |
+| Ganar | 1 |
+| Contra otra mascota | × 2 encima de lo anterior |
+
+En los juegos de marca no hay bonus aparte por batir el récord, y no hace falta:
+esos juegos declaran `victoria` **sólo cuando se bate** (mira el `esRecord` de
+cualquiera de ellos), o sea que el premio por el récord ES el ×1 de ganar frente
+al 0,3 de perder. Un solo multiplicador y ninguna cuenta doble.
+
+### No hay tope diario, y es a propósito
+
+La experiencia lo lleva porque no hay nada más que la pare. Los cuacks no lo
+necesitan: cada partida gasta diez de energía de la mascota, así que de ochenta
+se juegan ocho y a dormir. **El cuello de botella son las partidas, no los
+minutos** —y por eso el pago va por partida—. Si fuera por tiempo, «piedra, papel
+o tijera» pagaría más por minuto que The Hole sólo por durar quince segundos, que
+es justo lo contrario de lo que se busca.
+
+### Lo que cuesta el siguiente juego
+
+`precioSugerido(nivel) = redondear(nivel × 45 a múltiplos de 25)`. Calibrado
+para que salga por unas **cuarenta partidas del último juego que tengas** —y esa
+cifra se mantiene en toda la escalera, del 20 al 68—. Machacando el más tonto en
+vez del más alto, la misma compra pide de 180 a 610 partidas. Eso es todo el
+mecanismo: no hay nada que lo prohíba, simplemente no sale a cuenta.
+
+### Lo que ya se tenía no se cobra
+
+Los diez juegos que había cuando llegó la moneda valen `precio: 0`, y van a
+seguir valiendo 0. Quitarle a alguien algo que ya usaba para vendérselo después
+no se hace. Por eso el precio vive en el descriptor de cada juego y no en una
+fórmula que se aplique a todos por igual.
+
+Y a quien ya venía jugando se le abonó una bienvenida al estrenar la cartera:
+cinco cuacks por partida jugada, con tope de 500. Sale de las partidas que ya
+estaban guardadas —dato real, no un número inventado— y se paga una sola vez.
+
+### La broma también paga
+
+Pasar las diez cuentas del peaje del «No tocar» da `120 + nivel × 10`, **una vez
+al día**. Una al día y no una por peaje porque el peaje se puede repetir: fallar
+devuelve a la primera pregunta, pero pasarlo dos veces seguidas es cuestión de
+paciencia, y entonces la broma sería una máquina de hacer cuacks.
+
+La cifra se dice en Ajustes **antes** de que nadie lo pulse, porque es la mitad
+del trato y esconderla sería hacer trampa. Lo que no se adorna es la otra mitad,
+así que el consejo se mantiene tal cual: no lo pulses.
+
+---
+
 ## Cómo se prueba
 
 ```bash
@@ -398,6 +466,8 @@ npx electron . --dev --probe "(__pato.verJuegos(), document.querySelectorAll('.j
 - `__pato.verPartida('tresenraya', 'solo')` — abre una partida
 - `__pato.juegos()` — el progreso guardado
 - `__pato.darXp(700)` — para ver el aviso de desbloqueo
+- `__pato.cuacks()` — saldo, ganado, comprados y el día que se cobró la broma
+- `__pato.darCuacks(1000)` — para probar la tienda sin jugar cuarenta partidas
 - `__pato.probarEscena({revienta: true})` — presta el escenario a un juego que
   falla, para comprobar que el pato vuelve igualmente
 
@@ -428,32 +498,33 @@ que son una línea en un array.
 
 ### Dónde cae cada uno
 
-| # | Nivel | Juego | Qué pide | Días |
-|---|---|---|---|---|
-| 1 | 1 | ✌️ Piedra, papel o tijera | suerte | 0 |
-| 2 | 2 | 🔊 «Pato dice» | memoria corta | 0 |
-| 3 | 3 | 🎲 Par o impar | suerte y una apuesta | 0 |
-| 4 | 4 | 🃏 Memoria | memoria espacial | 1 |
-| 5 | 6 | ⭕ Tres en raya | pensar | 1 |
-| 6 | 8 | 🌵 «Pato Runner» | reflejos, un botón | 2 |
-| 7 | 9 | 🎯 «Pato Hook» | puntería, sin prisa | 3 |
-| 8 | 12 | 🏓 «Pato Jumping» | reflejos y ratón continuo | 4 |
-| 9 | 14 | 🪶 «Flappy Pato» | reflejos finos, castiga | 5 |
-| 10 | 16 | 🕳️ The Hole | varias cosas a la vez | 6 |
-| 11 | 20 | ⛳ Minigolf | puntería fina, sin prisa | 8 |
-| 12 | 24 | 🏓 Pong | reflejos contra un rival | 11 |
-| 13 | 28 | 🧱 Ladrillos | Pong con puntería | 14 |
-| 14 | 33 | 🌋 El suelo es lava | dos ejes y ritmo | 17 |
-| 15 | 38 | 👾 Invasores | reflejos y disparar | 21 |
-| 16 | 43 | 🔤 Ahorcado | vocabulario, y hacen falta dos | 25 |
-| 17 | 49 | 🚢 Hundir la flota | deducción, partidas largas | 31 |
-| 18 | 55 | 🎱 8 Pool | tacto para la física | 36 |
-| 19 | 61 | 🏹 «Angry Pato» | puntería y leer estructuras | 42 |
-| 20 | 68 | 💥 Artillería | todo junto | 49 |
+| # | Nivel | Juego | Qué pide | Días | Precio |
+|---|---|---|---|---|---|
+| 1 | 1 | ✌️ Piedra, papel o tijera | suerte | 0 | gratis |
+| 2 | 2 | 🔊 «Pato dice» | memoria corta | 0 | gratis |
+| 3 | 3 | 🎲 Par o impar | suerte y una apuesta | 0 | gratis |
+| 4 | 4 | 🃏 Memoria | memoria espacial | 1 | gratis |
+| 5 | 6 | ⭕ Tres en raya | pensar | 1 | gratis |
+| 6 | 8 | 🌵 «Pato Runner» | reflejos, un botón | 2 | gratis |
+| 7 | 9 | 🎯 «Pato Hook» | puntería, sin prisa | 3 | gratis |
+| 8 | 12 | 🏓 «Pato Jumping» | reflejos y ratón continuo | 4 | gratis |
+| 9 | 14 | 🪶 «Flappy Pato» | reflejos finos, castiga | 5 | gratis |
+| 10 | 16 | 🕳️ The Hole | varias cosas a la vez | 6 | gratis |
+| 11 | 20 | ⛳ Minigolf | puntería fina, sin prisa | 8 | 900 |
+| 12 | 24 | 🏓 Pong | reflejos contra un rival | 11 | 1075 |
+| 13 | 28 | 🧱 Ladrillos | Pong con puntería | 14 | 1250 |
+| 14 | 33 | 🌋 El suelo es lava | dos ejes y ritmo | 17 | 1475 |
+| 15 | 38 | 👾 Invasores | reflejos y disparar | 21 | 1700 |
+| 16 | 43 | 🔤 Ahorcado | vocabulario, y hacen falta dos | 25 | 1925 |
+| 17 | 49 | 🚢 Hundir la flota | deducción, partidas largas | 31 | 2200 |
+| 18 | 55 | 🎱 8 Pool | tacto para la física | 36 | 2475 |
+| 19 | 61 | 🏹 «Angry Pato» | puntería y leer estructuras | 42 | 2750 |
+| 20 | 68 | 💥 Artillería | todo junto | 49 | 3050 |
 
 Los días son de uso normal —unas 736 XP diarias entre convivencia, cuidados,
-racha, chat y el tope de partidas—. Los diez primeros están **hechos**; del 11 en
-adelante, [por hacer](#los-que-faltan).
+racha, chat y el tope de partidas—. Los diez primeros están **hechos** y son
+**gratis para siempre**; del 11 en adelante, [por hacer](#los-que-faltan), y con
+precio: el nivel los abre y los cuacks los compran.
 
 ### Ordenados por dificultad, no por antigüedad
 

@@ -8,20 +8,25 @@
 
 import { MINIJUEGOS, estaDesbloqueado, admiteModo, nombreDeJuego } from '../game/minijuegos/index.js';
 import { XP, JUEGOS_TOPE_DIARIO } from '../game/Level.js';
+import { CUACK } from '../game/cuacks.js';
 import { panelHeader } from './panelHeader.js';
 
 /**
  * @param {import('../game/Level.js').Level} level
  * @param {import('../game/minijuegos/progreso.js').ProgresoJuegos} progreso
+ * @param {import('../game/cuacks.js').Cartera} cartera
  * @param {{yo:string, otros:string[], presentes:object[], conectado:boolean}} presencia
  * @param {Object} capacidades   lo que la carcasa permite (ver core/platform.js)
  * @param {Object} handlers
  * @param {(juego, modo:'solo'|'turnos', opciones:object) => void} handlers.onJugar
+ * @param {(juego) => boolean} handlers.onComprar
+ *   Cobra y apunta la compra. Devuelve si se ha comprado. Lo hace app.js y no
+ *   este panel: aquí no se guarda en disco.
  * @param {Function} [handlers.onBack]
  * @param {Function} handlers.onClose
  * @returns {{el:HTMLElement, actualizar:(p:object)=>void}}
  */
-export function buildJuegosPanel(level, progreso, presencia, capacidades, handlers) {
+export function buildJuegosPanel(level, progreso, cartera, presencia, capacidades, handlers) {
   let estado = presencia;
   /** Juego cuya vista de modo está abierta, o null si se ve la rejilla. */
   let elegido = null;
@@ -29,6 +34,8 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
   let enRecords = false;
   /** Juego cuyo marcador global se está viendo, o null. */
   let enMarcador = null;
+  /** Juego que se está mirando para comprarlo, o null. */
+  let enTienda = null;
 
   const el = document.createElement('div');
   el.className = 'panel panel-juegos hot';
@@ -52,20 +59,23 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
 
   function pintar() {
     if (cabecera) cabecera.remove();
-    const dentro = elegido || enRecords || enMarcador;
+    const dentro = elegido || enRecords || enMarcador || enTienda;
     cabecera = panelHeader(titulo(), {
       // El botón de volver cambia de destino según la vista. Desde el marcador
       // de un juego se vuelve a la lista de récords, que es de donde se entró;
       // desde el resto, a la rejilla.
       onBack: enMarcador
         ? () => { enMarcador = null; enRecords = true; pintar(); }
-        : (dentro ? () => { elegido = null; enRecords = false; pintar(); } : handlers.onBack),
+        : (dentro
+          ? () => { elegido = null; enRecords = false; enTienda = null; pintar(); }
+          : handlers.onBack),
       onClose: handlers.onClose
     });
     el.prepend(cabecera);
 
     cuerpo.textContent = '';
     if (enMarcador) pintarMarcador(enMarcador);
+    else if (enTienda) pintarTienda(enTienda);
     else if (elegido) pintarModos(elegido);
     else if (enRecords) pintarRecords();
     else pintarRejilla();
@@ -73,6 +83,7 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
 
   function titulo() {
     if (enMarcador) return nombreDeJuego(enMarcador, estado.yo);
+    if (enTienda) return nombreDeJuego(enTienda, estado.yo);
     if (elegido) return nombreDeJuego(elegido, estado.yo);
     return enRecords ? 'Tus récords' : 'Juegos';
   }
@@ -80,6 +91,8 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
   // ---- Rejilla -----------------------------------------------------------
 
   function pintarRejilla() {
+    cuerpo.appendChild(tiraDelSaldo());
+
     const grid = document.createElement('div');
     grid.className = 'juegos-grid';
 
@@ -88,16 +101,26 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
       // partes: sobre una página ajena el pato está de prestado. Se enseña
       // igual, pero apagado y diciendo por qué.
       const cabe = juego.superficie !== 'escenario' || !!capacidades.juegosDeEscenario;
-      const libre = estaDesbloqueado(juego, level.nivel) && cabe;
+      // Dos puertas distintas, y hay que distinguirlas: «te falta nivel» no se
+      // arregla igual que «te faltan cuacks». Abierto es lo primero; comprado,
+      // lo segundo. Los juegos que valen 0 salen comprados de fábrica.
+      const abierto = estaDesbloqueado(juego, level.nivel) && cabe;
+      const comprado = cartera.tiene(juego);
+      const libre = abierto && comprado;
       const marcas = progreso.de(juego.id);
 
       const card = document.createElement('button');
-      card.className = 'juego-card' + (libre ? '' : ' bloqueada');
+      card.className = 'juego-card' + (libre ? '' : ' bloqueada')
+        + (abierto && !comprado ? ' enVenta' : '');
       card.type = 'button';
-      card.disabled = !libre;
+      // Una tarjeta en venta SÍ se pulsa: lleva a comprarla. Apagarla sería
+      // enseñar un escaparate con la puerta cerrada.
+      card.disabled = !abierto;
       card.title = !cabe
         ? 'Este juego necesita la pantalla entera: se juega en la app de escritorio.'
-        : libre ? juego.descripcion : `Se desbloquea en el nivel ${juego.nivel}`;
+        : !abierto ? `Se desbloquea en el nivel ${juego.nivel}`
+          : comprado ? juego.descripcion
+            : `Ya lo tienes abierto: te falta comprarlo por ${juego.precio} cuacks`;
 
       const icono = document.createElement('span');
       icono.className = 'juego-icono';
@@ -113,11 +136,16 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
 
       card.append(icono, nom, modos);
 
-      if (!libre) {
+      if (!abierto) {
         const lock = document.createElement('span');
         lock.className = 'skin-lock';
         lock.textContent = cabe ? `🔒 Nv ${juego.nivel}` : '🖥 Sólo en escritorio';
         card.appendChild(lock);
+      } else if (!comprado) {
+        const precio = document.createElement('span');
+        precio.className = 'skin-lock juego-precio';
+        precio.textContent = `${CUACK} ${juego.precio}`;
+        card.appendChild(precio);
       } else if (marcas.victorias > 0) {
         const tick = document.createElement('span');
         tick.className = 'skin-tick';
@@ -127,7 +155,8 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
       }
 
       card.addEventListener('click', () => {
-        if (!libre) return;
+        if (!abierto) return;
+        if (!comprado) { enTienda = juego; pintar(); return; }
         // Con un solo modo no hay nada que preguntar.
         if (juego.modos.length === 1) {
           handlers.onJugar(juego, juego.modos[0], {});
@@ -153,6 +182,87 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
     cuerpo.appendChild(verRecords);
 
     cuerpo.appendChild(bloqueAyuda());
+    cuerpo.appendChild(bloqueCuacks());
+  }
+
+  /**
+   * El saldo, arriba del todo.
+   *
+   * Con la bienvenida dicha cuando toca: a quien ya venía jugando se le abonó
+   * algo por lo jugado el día que apareció la moneda, y un saldo que aparece de
+   * la nada sin explicación se lee como un fallo, no como un regalo.
+   */
+  function tiraDelSaldo() {
+    const caja = document.createElement('div');
+    caja.className = 'cuacks-tira';
+
+    const saldo = document.createElement('b');
+    saldo.textContent = `${CUACK} ${cartera.saldo}`;
+    saldo.title = 'Cuacks. Se ganan jugando y se gastan en comprar juegos.';
+    caja.appendChild(saldo);
+
+    if (cartera.estrenada && cartera.deBienvenida > 0) {
+      const nota = document.createElement('span');
+      nota.className = 'muted';
+      nota.textContent = `+${cartera.deBienvenida} por lo que ya llevabas jugado`;
+      caja.appendChild(nota);
+    }
+    return caja;
+  }
+
+  // ---- La tienda -----------------------------------------------------------
+
+  /**
+   * Comprar un juego que el nivel ya ha abierto.
+   *
+   * Es una vista aparte y no un botón en la tarjeta porque gastar no es elegir
+   * modo: conviene ver el precio, el saldo y lo que se lleva uno ANTES de
+   * pulsar, y en una tarjeta de la rejilla no cabe nada de eso.
+   */
+  function pintarTienda(juego) {
+    const desc = document.createElement('p');
+    desc.className = 'muted';
+    desc.textContent = juego.descripcion;
+    cuerpo.appendChild(desc);
+
+    const precio = document.createElement('p');
+    precio.className = 'tienda-precio';
+    precio.textContent = `${CUACK} ${juego.precio}`;
+    cuerpo.appendChild(precio);
+
+    const falta = juego.precio - cartera.saldo;
+
+    const saldo = document.createElement('p');
+    saldo.className = 'muted';
+    saldo.textContent = falta > 0
+      ? `Tienes ${cartera.saldo}. Te faltan ${falta}.`
+      : `Tienes ${cartera.saldo}. Te quedarán ${cartera.saldo - juego.precio}.`;
+    cuerpo.appendChild(saldo);
+
+    const comprar = document.createElement('button');
+    comprar.className = 'btn';
+    comprar.type = 'button';
+    comprar.textContent = falta > 0 ? 'Todavía no te llega' : `Comprarlo por ${juego.precio}`;
+    comprar.disabled = falta > 0;
+    comprar.addEventListener('click', () => {
+      // Quien cobra es app.js. Si dice que no —saldo justo, dos clics seguidos—
+      // se vuelve a pintar y el botón se apaga solo: no hace falta un mensaje.
+      if (!handlers.onComprar(juego)) { pintar(); return; }
+      enTienda = null;
+      elegido = juego.modos.length > 1 ? juego : null;
+      pintar();
+      // Con un solo modo se entra directo: acabas de pagar por jugar, y hacerte
+      // pulsar otra vez sería un trámite.
+      if (juego.modos.length === 1) handlers.onJugar(juego, juego.modos[0], {});
+    });
+    cuerpo.appendChild(comprar);
+
+    const nota = document.createElement('p');
+    nota.className = 'muted';
+    nota.textContent = falta > 0
+      ? 'Los cuacks se ganan jugando: cuanto más alto es el juego, más paga.'
+      : 'Una vez comprado es tuyo para siempre, también si algún día te baja el nivel.';
+    cuerpo.appendChild(nota);
   }
 
   // ---- Récords -----------------------------------------------------------
@@ -428,6 +538,49 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
     p.textContent = texto;
     return p;
   }
+}
+
+/**
+ * De dónde salen los cuacks y para qué sirven.
+ *
+ * La última línea es la importante y va sin adornos: los juegos que ya se
+ * tenían siguen siendo gratis. Si no se dice, ver un precio en la pantalla de
+ * juegos da un susto que no toca.
+ */
+function bloqueCuacks() {
+  const det = document.createElement('details');
+  det.className = 'ayuda-xp';
+
+  const sum = document.createElement('summary');
+  sum.textContent = `¿Y los ${CUACK} cuacks?`;
+  det.appendChild(sum);
+
+  const ul = document.createElement('ul');
+  for (const [txt, val] of [
+    ['Perder, pero terminar la partida', 'algo'],
+    ['Ganarla, o batir tu marca', 'el triple'],
+    ['Jugarla contra otra mascota', 'el doble'],
+    ['Pasar el peaje del «No tocar»', 'una vez al día']
+  ]) {
+    const li = document.createElement('li');
+    const a = document.createElement('span');
+    a.textContent = txt;
+    const b = document.createElement('b');
+    b.textContent = val;
+    li.append(a, b);
+    ul.appendChild(li);
+  }
+  det.appendChild(ul);
+
+  const nota = document.createElement('p');
+  nota.className = 'muted';
+  nota.textContent = 'Cuanto más alto es el juego, más paga: así no sale a cuenta '
+    + 'comprar el más caro machacando el más tonto. No hay tope diario —el tope '
+    + 'ya lo pone el cansancio de tu mascota—. Y los juegos que ya tienes '
+    + 'siguen siendo gratis: los cuacks son para los que vengan.';
+  det.appendChild(nota);
+
+  return det;
 }
 
 function bloqueAyuda() {

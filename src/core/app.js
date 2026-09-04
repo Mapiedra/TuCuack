@@ -22,6 +22,7 @@ import { Level } from './game/Level.js';
 import { SKINS, skinPorId, estaDesbloqueada, SKIN_POR_DEFECTO } from './game/skins.js';
 import { MINIJUEGOS, minijuegoPorId, nombreDeJuego } from './game/minijuegos/index.js';
 import { ProgresoJuegos } from './game/minijuegos/progreso.js';
+import { Cartera, pagoDePartida, CUACK } from './game/cuacks.js';
 import { buildJuegosPanel } from './ui/juegosPanel.js';
 import { buildPartidaPanel } from './ui/partidaPanel.js';
 import { prestarEscenario } from './game/minijuegos/escenario.js';
@@ -43,7 +44,7 @@ import { crearInercia } from './pet/inercia.js';
 // para que nada reviente si algo se dispara antes de tiempo.
 let api = normalizarPlataforma();
 
-let duck, behavior, tam, chat, speech, level, visitas, juegos, salas;
+let duck, behavior, tam, chat, speech, level, visitas, juegos, salas, cartera;
 let settings = { displayName: '', autoLaunch: false };
 let config = { version: '0.0.0', isDev: false };
 
@@ -198,6 +199,10 @@ export async function arrancarPato(plataforma) {
   // desbloqueado o no existe, se vuelve al de por defecto).
   level = new Level(saved.level);
   juegos = new ProgresoJuegos(saved.minijuegos);
+  // Después de `juegos`, y no es casualidad: si el guardado es anterior a la
+  // moneda, la cartera se estrena con una bienvenida calculada sobre las
+  // partidas que ya hay. Ver `Cartera` en game/cuacks.js.
+  cartera = new Cartera(saved.cuacks, juegos.totales());
   const skin = skinPorId(settings.skin);
   const skinValida = skin && estaDesbloqueada(skin, level.nivel) ? skin.id : SKIN_POR_DEFECTO;
 
@@ -306,6 +311,10 @@ export async function arrancarPato(plataforma) {
         openPartida(minijuegoPorId(id), modo, {}, p.x, p.y);
       },
       juegos: () => juegos.toJSON(),
+      cuacks: () => ({ ...cartera.toJSON(), estrenada: cartera.estrenada,
+                       deBienvenida: cartera.deBienvenida }),
+      /** Para probar la tienda sin esperar a que exista un juego de pago. */
+      darCuacks: (n) => cartera.ingresar(n),
       salas: () => salas,
       /** Un vistazo a la partida por red, para ver dónde se ha atascado. */
       estadoDeJuego: () => {
@@ -528,6 +537,7 @@ function saveNow() {
     stats: tam.stats,
     level: level.toJSON(),
     minijuegos: juegos.toJSON(),
+    cuacks: cartera.toJSON(),
     // Como proporción del sitio disponible, no en píxeles: la ventana de la
     // pestaña siguiente no tiene por qué medir lo mismo.
     x: Math.min(1, Math.max(0, x / sitioLibre))
@@ -787,6 +797,8 @@ function openSettings(x, y) {
     // abierto encima sería enseñarle al usuario el botón que acaba de pulsar
     // mientras le llueven patos.
     onLaBroma: () => { unregisterOverlay(el); abrirLaBroma(); },
+    // Cuánto paga hoy la broma, para poder decirlo antes de que nadie la pulse.
+    premioDeLaBroma: () => cartera.bromaPendiente(level.nivel),
     actualizaciones: api.capacidades.actualizaciones,
     estadoActualizacion: () => ultimaActualizacion,
     alCambiarActualizacion: (cb) => {
@@ -879,8 +891,16 @@ function openOnline(x, y) {
 }
 
 function openJuegos(x, y) {
-  const { el, actualizar } = buildJuegosPanel(level, juegos, estadoPresencia(), api.capacidades, {
+  const { el, actualizar } = buildJuegosPanel(level, juegos, cartera, estadoPresencia(), api.capacidades, {
     hayMarcadorGlobal: !!api.capacidades.marcadorGlobal,
+    // Cobrar y guardar es de aquí: el panel pinta el precio, pero no toca el
+    // disco. Guardar en el acto y no al cerrar, que una compra no se puede
+    // perder por apagar justo después.
+    onComprar: (juego) => {
+      const hecho = cartera.comprar(juego);
+      if (hecho) { sonido.fanfarria(); saveNow(); }
+      return hecho;
+    },
     onMarcador: (juego) => api.marcador.mejores(juego.id, juego.marca.mejor),
     onJugar: (juego, modo, opciones) => {
       unregisterOverlay(el);
@@ -906,6 +926,13 @@ function openPartida(juego, modo, opciones, x, y) {
   if (!juego) return;
   // Una partida cada vez, sea de la superficie que sea.
   if (escena) return;
+  // Y la segunda puerta: comprado. El panel ya no ofrece jugar a lo que no se ha
+  // comprado, pero esto no se fía del panel —las sondas y una revancha por red
+  // llegan aquí por otro camino— y quien no puede equivocarse es el de abajo.
+  if (!cartera.tiene(juego)) {
+    toast(`Ese juego hay que comprarlo: ${juego.precio} cuacks.`);
+    return;
+  }
 
   // Retar es el paso previo, no la partida: no hay nada que abrir hasta que el
   // otro conteste. Cuando conteste, la sala avisa y se vuelve por aquí con
@@ -938,7 +965,7 @@ function openPartida(juego, modo, opciones, x, y) {
     ctx: datosDePartida(juego, modo, opciones),
     // Anotar, puntuar y guardar, en un solo sitio: el marco no sabe de
     // experiencia ni de disco, y los juegos menos.
-    onFin: (r) => anotarPartida(juego, r),
+    onFin: (r) => anotarPartida(juego, r, enRed),
     // En red, "¿Otra?" es una propuesta: la partida nueva la abre la sala cuando
     // los dos hayan dicho que sí (ver `empiezaLaPartida`).
     onRevancha: enRed ? () => salas.proponerRevancha() : undefined,
@@ -1007,7 +1034,8 @@ function abrirLaBroma() {
       sprites: config.sprites || {},
       nivel: level.nivel,
       sonido,
-      decir: (t) => toast(t)
+      decir: (t) => toast(t),
+      alPasarElPeaje: () => pagarElPeaje()
     }));
     if (!enMarcha) return;
     escena = enMarcha;
@@ -1015,6 +1043,27 @@ function abrirLaBroma() {
     console.error('[broma] no se pudo abrir', err);
     prestamo.terminar('error');
   });
+}
+
+/**
+ * El premio por pasar las diez cuentas del peaje.
+ *
+ * Una vez al día, y no una por peaje: fallar devuelve a la primera pregunta,
+ * pero pasarlo dos veces seguidas es cuestión de paciencia, y entonces la broma
+ * sería una máquina de hacer cuacks en vez de una broma.
+ *
+ * Cuando ya se ha cobrado hoy se dice, en vez de callarse y no pagar: quien
+ * acaba de resolver diez cuentas se merece saber por qué no ha caído nada.
+ */
+function pagarElPeaje() {
+  const { cuacks, yaCobrado } = cartera.cobrarLaBroma(level.nivel);
+  saveNow();
+  if (yaCobrado) {
+    toast('El peaje ya lo cobraste hoy. Sigue sin ser buena idea.');
+    return;
+  }
+  sonido.fanfarria();
+  toast(`Pagado: +${cuacks} ${CUACK}. Te lo habíamos avisado.`);
 }
 
 /**
@@ -1062,10 +1111,14 @@ function abrirEscena(juego, modo, opciones) {
       if (contada) return;
       contada = true;
       const res = anotarPartida(juego, r);
-      // Sin panel donde pintar el pie, el resultado se dice en un cartel.
-      toast(res.xp > 0
-        ? `${veredicto(r.resultado)} · +${res.xp} XP`
-        : `${veredicto(r.resultado)} · hoy ya no da experiencia`);
+      // Sin panel donde pintar el pie, el resultado se dice en un cartel. Los
+      // cuacks van siempre —no tienen tope— y la experiencia sólo mientras
+      // quede cupo; decir por qué se ha parado evita que parezca un fallo.
+      toast([
+        veredicto(r.resultado),
+        `+${res.cuacks} ${CUACK}`,
+        res.xp > 0 ? `+${res.xp} XP` : 'hoy ya no da experiencia'
+      ].join(' · '));
       sonido[r.resultado === 'victoria' ? 'victoria' : 'derrota']();
       prestamo.terminar('fin');
     }
@@ -1091,14 +1144,27 @@ function veredicto(r) {
   return r === 'victoria' ? '¡Ganaste!' : r === 'empate' ? 'Empate' : 'Perdiste';
 }
 
-/** Anota el resultado, suma la experiencia y guarda. Un solo sitio. */
-function anotarPartida(juego, r) {
+/**
+ * Anota el resultado, suma la experiencia, paga los cuacks y guarda. Un solo
+ * sitio, y los dos finales —el pie del panel y el cartel del escenario— pasan
+ * por aquí.
+ *
+ * La experiencia lleva tope diario y los cuacks no, y no es un descuido: lo que
+ * limita cuántos cuacks se sacan del tirón es que cada partida gasta diez de
+ * energía de la mascota, o sea que el freno ya existe y es de los que se
+ * entienden solos (ver el comentario largo de game/cuacks.js).
+ *
+ * `enRed` lo pone quien abrió la partida y no lo dice el resultado: un juego no
+ * tiene por qué saber —ni debería— lo que pagan sus partidas.
+ */
+function anotarPartida(juego, r, enRed) {
   const antes = juegos.de(juego.id).mejor;
   juegos.anotar(juego.id, r);
   const xp = level.minijuego(r.resultado);
+  const cuacks = cartera.ingresar(pagoDePartida(juego, r.resultado, { enRed: !!enRed }));
   saveNow();     // un récord no se pierde por cerrar antes del guardado
   contarloFuera(juego, antes);
-  return { xp };
+  return { xp, cuacks };
 }
 
 /**

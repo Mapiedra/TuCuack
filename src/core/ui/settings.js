@@ -247,6 +247,20 @@ export function buildSettingsPanel(settings, version, handlers) {
     avisoBroma.className = 'muted';
     avisoBroma.textContent = 'En serio.';
     el.appendChild(avisoBroma);
+
+    // El cebo, y con la cifra por delante: la broma paga si se pasa el peaje, y
+    // callarlo sería esconder la mitad del trato. Lo que NO se hace es adornar
+    // la otra mitad —que son diez cuentas con reloj y que fallar te devuelve a
+    // la primera—, así que el consejo se mantiene tal cual: no lo pulses.
+    const premio = handlers.premioDeLaBroma ? handlers.premioDeLaBroma() : null;
+    if (premio) {
+      const cebo = document.createElement('div');
+      cebo.className = 'muted broma-cebo';
+      cebo.textContent = premio.yaCobrado
+        ? 'El peaje ya lo cobraste hoy. Sigue sin ser buena idea.'
+        : `Pasar el peaje da ${premio.cuacks} cuacks. Sigue sin ser buena idea.`;
+      el.appendChild(cebo);
+    }
   }
 
   const setError = (msg) => {

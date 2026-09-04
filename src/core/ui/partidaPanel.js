@@ -7,6 +7,7 @@
 // juego nuevo sólo tiene que saber pintar su tablero.
 
 import { cargarMinijuego } from '../game/minijuegos/index.js';
+import { CUACK } from '../game/cuacks.js';
 import { panelHeader } from './panelHeader.js';
 import { nombreDeJuego } from '../game/minijuegos/index.js';
 import * as sonido from '../audio/sounds.js';
@@ -22,9 +23,9 @@ const VEREDICTO = {
  * @param {'solo'|'turnos'} modo
  * @param {Object} handlers
  * @param {Object} handlers.ctx        lo que aporta app.js al contexto del juego
- * @param {(r:import('../game/minijuegos/index.js').ResultadoPartida) => {xp:number}} handlers.onFin
- *   Anota, puntúa y guarda. Devuelve la experiencia concedida para poder
- *   enseñarla en el pie.
+ * @param {(r:import('../game/minijuegos/index.js').ResultadoPartida) => {xp:number, cuacks:number}} handlers.onFin
+ *   Anota, puntúa, paga y guarda. Devuelve lo concedido —experiencia y cuacks—
+ *   para poder enseñarlo en el pie.
  * @param {Function} [handlers.onRevancha]
  *   Sólo en 'turnos'. Propone otra partida al rival; no la empieza. Quien la
  *   empieza es la sala, cuando los dos hayan dicho que sí.
@@ -169,14 +170,14 @@ export function buildPartidaPanel(juego, modo, handlers) {
         if (terminada || !vivo) return;
         terminada = true;
         const r = normalizar(resultado);
-        let xp = 0;
+        let premio = { xp: 0, cuacks: 0 };
         try {
           const info = handlers.onFin(r) || {};
-          xp = Number(info.xp) || 0;
+          premio = { xp: Number(info.xp) || 0, cuacks: Number(info.cuacks) || 0 };
         } catch (err) {
           console.warn(`[juego:${juego.id}] fallo al anotar el resultado`, err);
         }
-        pintarPie(r, xp);
+        pintarPie(r, premio);
       },
 
       /**
@@ -216,7 +217,7 @@ export function buildPartidaPanel(juego, modo, handlers) {
 
   // ---- El pie -------------------------------------------------------------
 
-  function pintarPie(r, xp) {
+  function pintarPie(r, premio) {
     if (r.resultado === 'victoria') sonido.victoria();
     else sonido.derrota();
 
@@ -235,10 +236,21 @@ export function buildPartidaPanel(juego, modo, handlers) {
       pie.appendChild(d);
     }
 
+    // Los cuacks primero y en su propia línea: son lo único que cae SIEMPRE, y
+    // ahí abajo compiten con un mensaje de tope que a veces sale y a veces no.
+    if (premio.cuacks > 0) {
+      const pago = document.createElement('p');
+      pago.className = 'cuacks-pago';
+      pago.textContent = `+${premio.cuacks} ${CUACK}`;
+      pie.appendChild(pago);
+    }
+
     const exp = document.createElement('p');
-    exp.className = xp > 0 ? 'xp' : 'muted';
+    exp.className = premio.xp > 0 ? 'xp' : 'muted';
     // Decir por qué no suma evita que el tope parezca un fallo.
-    exp.textContent = xp > 0 ? `+${xp} XP` : 'Hoy ya no da más experiencia. Se juega igual.';
+    exp.textContent = premio.xp > 0
+      ? `+${premio.xp} XP`
+      : 'Hoy ya no da más experiencia. Se juega igual.';
     pie.appendChild(exp);
 
     notaPie = document.createElement('p');

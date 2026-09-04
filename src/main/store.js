@@ -50,6 +50,11 @@ const DEFAULT_STATE = {
   // Partidas, victorias y récords de cada minijuego, por id
   // (ver core/game/minijuegos/progreso.js).
   minijuegos: {},
+  // El monedero: saldo, ganado en total, juegos comprados y el día que se cobró
+  // la broma (ver core/game/cuacks.js). `null` y no `{}` a propósito: la cartera
+  // distingue «no existía» de «existía vacía» para saber si tiene que estrenarse
+  // con la bienvenida de quien ya venía jugando.
+  cuacks: null,
   // Dónde estaba el pato, como proporción del ancho disponible (ver core/app.js).
   x: null,
   savedAt: 0
@@ -127,6 +132,9 @@ module.exports = {
       // récords, que es exactamente lo que había.
       minijuegos: (state.minijuegos && typeof state.minijuegos === 'object')
         ? state.minijuegos : {},
+      // Un guardado anterior a la moneda no lo trae, y eso es información: es lo
+      // que le dice a la cartera que la estrene. Por eso pasa `null` y no `{}`.
+      cuacks: (state.cuacks && typeof state.cuacks === 'object') ? state.cuacks : null,
       x: proporcion(state.x),
       savedAt: typeof state.savedAt === 'number' ? state.savedAt : 0
     };
@@ -137,6 +145,7 @@ module.exports = {
       stats: (data && data.stats) || DEFAULT_STATE.stats,
       level: (data && data.level) || DEFAULT_STATE.level,
       minijuegos: (data && data.minijuegos) || {},
+      cuacks: (data && data.cuacks) || null,
       x: proporcion(data && data.x),
       savedAt: Date.now()
     });

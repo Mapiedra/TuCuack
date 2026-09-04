@@ -6,7 +6,9 @@
 // Para añadir uno nuevo:
 //   1. Escribe `src/core/game/minijuegos/<id>.js` cumpliendo el contrato de
 //      abajo (exporta `crearPartida(ctx)`).
-//   2. Añade su entrada a MINIJUEGOS.
+//   2. Añade su entrada a MINIJUEGOS, con su `nivel` y su `precio` (mira
+//      `precioSugerido` en game/cuacks.js: el nivel abre el juego, el precio lo
+//      compra).
 //   3. Ya está. El panel de selección, el desbloqueo, la experiencia, el
 //      progreso guardado y el aviso al subir de nivel salen todos de esta lista.
 //
@@ -25,6 +27,12 @@
  * @property {string} icono        un emoji; así no hay arte que empaquetar
  * @property {string} descripcion
  * @property {number} nivel        nivel al que se desbloquea
+ * @property {number} precio
+ *   Lo que cuesta comprarlo, en cuacks (ver game/cuacks.js). **Cero es cero
+ *   para siempre**: los diez juegos que había cuando llegó la moneda valen 0 y
+ *   van a seguir valiendo 0, porque quitárselos a quien ya los usaba para
+ *   vendérselos después no se hace. Los que vengan llevan precio; para elegirlo,
+ *   `precioSugerido(nivel)` en cuacks.js.
  * @property {Array<'solo'|'turnos'>} modos
  * @property {{min:number, max:number}} jugadores  sólo cuenta en 'turnos'
  * @property {'panel'|'escenario'} superficie
@@ -54,6 +62,7 @@ export const MINIJUEGOS = [
     icono: '✌️',
     descripcion: 'Al mejor de tres. Los dos eligen a la vez.',
     nivel: 1,
+    precio: 0,
     modos: ['solo', 'turnos'],
     jugadores: { min: 2, max: 2 },
     superficie: 'panel',
@@ -71,6 +80,7 @@ export const MINIJUEGOS = [
     icono: '🔊',
     descripcion: 'Repite la serie sin equivocarte. Cada ronda, una más.',
     nivel: 2,
+    precio: 0,
     modos: ['solo'],
     jugadores: { min: 1, max: 1 },
     superficie: 'panel',
@@ -83,6 +93,7 @@ export const MINIJUEGOS = [
     icono: '🎲',
     descripcion: 'Uno pide par, el otro impar, y la suma decide.',
     nivel: 3,
+    precio: 0,
     modos: ['solo', 'turnos'],
     jugadores: { min: 2, max: 2 },
     superficie: 'panel',
@@ -95,6 +106,7 @@ export const MINIJUEGOS = [
     icono: '🃏',
     descripcion: 'Parejas con tu mascota. Doce cartas, seis poses.',
     nivel: 4,
+    precio: 0,
     modos: ['solo', 'turnos'],
     jugadores: { min: 2, max: 2 },
     superficie: 'panel',
@@ -107,6 +119,7 @@ export const MINIJUEGOS = [
     icono: '⭕',
     descripcion: 'El de siempre. Contra tu mascota o contra otra.',
     nivel: 6,
+    precio: 0,
     modos: ['solo', 'turnos'],
     jugadores: { min: 2, max: 2 },
     superficie: 'panel',
@@ -120,6 +133,7 @@ export const MINIJUEGOS = [
     icono: '🌵',
     descripcion: 'Corre y salta con la barra espaciadora. Hasta que falles.',
     nivel: 8,
+    precio: 0,
     modos: ['solo'],
     jugadores: { min: 1, max: 1 },
     superficie: 'escenario',
@@ -134,6 +148,7 @@ export const MINIJUEGOS = [
     icono: '🎯',
     descripcion: 'Seis disparos, cinco dianas. Apunta y suelta.',
     nivel: 9,
+    precio: 0,
     modos: ['solo'],
     jugadores: { min: 1, max: 1 },
     superficie: 'escenario',
@@ -148,6 +163,7 @@ export const MINIJUEGOS = [
     icono: '🏓',
     descripcion: 'Que no toque el suelo. Se juega en la pantalla entera.',
     nivel: 12,
+    precio: 0,
     modos: ['solo'],
     jugadores: { min: 1, max: 1 },
     superficie: 'escenario',
@@ -160,6 +176,7 @@ export const MINIJUEGOS = [
     icono: '🪶',
     descripcion: 'Aletea con el espacio y cuélate por los huecos.',
     nivel: 14,
+    precio: 0,
     modos: ['solo'],
     jugadores: { min: 1, max: 1 },
     superficie: 'escenario',
@@ -174,6 +191,7 @@ export const MINIJUEGOS = [
     icono: '🕳️',
     descripcion: 'Recoge las que caen. Las que no, se quedan en el suelo.',
     nivel: 16,
+    precio: 0,
     modos: ['solo'],
     jugadores: { min: 1, max: 1 },
     superficie: 'escenario',
@@ -327,9 +345,28 @@ export function estaDesbloqueado(juego, nivel) {
 /**
  * Los que se pueden jugar ya. El panel los enseña TODOS, con candado en los que
  * faltan; esto es para todo lo demás.
+ *
+ * Mira el nivel y nada más, a propósito: lo usa el aviso de subir de nivel, y
+ * ahí lo que se anuncia es que el juego se ha ABIERTO. Que además haya que
+ * comprarlo es la noticia siguiente, y la da el panel.
  */
 export function juegosDisponibles(nivel) {
   return MINIJUEGOS.filter((j) => estaDesbloqueado(j, nivel));
+}
+
+/**
+ * Las dos puertas de un juego, juntas: el nivel lo abre y los cuacks lo compran.
+ *
+ * Van separadas en todas partes menos aquí porque el panel necesita distinguir
+ * los dos casos —no es lo mismo «te falta nivel» que «te faltan 300 cuacks»—,
+ * pero quien sólo quiere saber si se puede jugar pregunta esto.
+ *
+ * @param {Minijuego} juego
+ * @param {number} nivel
+ * @param {{tiene:(j:Minijuego)=>boolean}} cartera
+ */
+export function sePuedeJugar(juego, nivel, cartera) {
+  return estaDesbloqueado(juego, nivel) && (!cartera || cartera.tiene(juego));
 }
 
 /** @param {Minijuego} juego @param {'solo'|'turnos'} modo */

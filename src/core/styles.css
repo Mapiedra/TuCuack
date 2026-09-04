@@ -1178,3 +1178,46 @@ html, body {
 }
 .records-fila.conMarcador:hover .records-flecha,
 .records-fila.conMarcador:focus-visible .records-flecha { opacity: 1; }
+
+/* ---- Cuacks, la moneda (ver core/game/cuacks.js) ---- */
+
+/* El saldo, arriba de la rejilla. En su propia línea y a la derecha: es un dato
+   que se consulta de reojo, no un título. */
+.cuacks-tira {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+.cuacks-tira b { color: var(--accent-2); font-weight: 700; }
+.cuacks-tira .muted { font-size: 10px; }
+
+/* Un juego que el nivel ya ha abierto pero que falta comprar. Se queda
+   atenuado —todavía no es tuyo— pero SÍ se pulsa, así que recupera el cursor
+   y se enciende al pasar por encima: un escaparate, no una puerta cerrada. */
+.juego-card.enVenta { cursor: pointer; }
+.juego-card.enVenta:hover { background: rgba(255, 183, 3, 0.14); }
+.juego-card.enVenta:hover .juego-icono { filter: none; }
+.juego-card.enVenta:hover .skin-nombre { color: var(--ink); }
+.juego-precio { background: rgba(255, 183, 3, 0.92); color: #2b2b33; }
+
+/* La tienda de un juego. El precio, grande: es la decisión. */
+.tienda-precio {
+  margin: 6px 0 2px;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--accent-2);
+  text-align: center;
+}
+
+/* Lo que paga la partida, en el pie. Del mismo color que la experiencia, que
+   son las dos cosas que se llevan: una encima de la otra y en la misma
+   familia. */
+.cuacks-pago { margin: 6px 0 0; color: var(--accent-2); font-weight: 700; }
+
+/* El cebo del «No tocar», en Ajustes. Un pelín más vivo que el resto de la
+   letra pequeña, porque es lo único de ese bloque que da una razón para
+   pulsar; el resto del bloque da razones para no hacerlo. */
+.broma-cebo { color: var(--accent-2); }
