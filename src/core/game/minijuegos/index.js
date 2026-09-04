@@ -127,32 +127,32 @@ export const MINIJUEGOS = [
     cargar: () => import('./obstaculos.js')
   },
   {
-    id: 'paleta',
-    // Con el apellido de la familia, como el Runner y el Hook. «Pong» se deja
-    // libre a propósito, que va a haber uno de verdad.
-    nombre: '{mascota} Jumping',
-    icono: '🏓',
-    descripcion: 'Que no toque el suelo. Se juega en la pantalla entera.',
-    nivel: 9,
-    modos: ['solo'],
-    jugadores: { min: 1, max: 1 },
-    superficie: 'escenario',
-    marca: { etiqueta: 'toques', mejor: 'mas' },
-    cargar: () => import('./paleta.js')
-  },
-  {
     id: 'punteria',
     // Robin Hood con la mascota de casa: «Pato Hook», «Cuacky Hook». El id se
     // queda como estaba, que los ids no se renombran nunca.
     nombre: '{mascota} Hook',
     icono: '🎯',
     descripcion: 'Seis disparos, cinco dianas. Apunta y suelta.',
-    nivel: 12,
+    nivel: 9,
     modos: ['solo'],
     jugadores: { min: 1, max: 1 },
     superficie: 'escenario',
     marca: { etiqueta: 'puntos', mejor: 'mas' },
     cargar: () => import('./punteria.js')
+  },
+  {
+    id: 'paleta',
+    // Con el apellido de la familia, como el Runner y el Hook. «Pong» se deja
+    // libre a propósito, que va a haber uno de verdad.
+    nombre: '{mascota} Jumping',
+    icono: '🏓',
+    descripcion: 'Que no toque el suelo. Se juega en la pantalla entera.',
+    nivel: 12,
+    modos: ['solo'],
+    jugadores: { min: 1, max: 1 },
+    superficie: 'escenario',
+    marca: { etiqueta: 'toques', mejor: 'mas' },
+    cargar: () => import('./paleta.js')
   },
   {
     id: 'flappy',

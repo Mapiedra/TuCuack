@@ -7,6 +7,18 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Cambiado
+
+- **«Pato Hook» y «Pato Jumping» se intercambian**: Hook pasa al nivel 9 y
+  Jumping al 12. Apuntar sin prisa es más fácil que seguir una pelota con el
+  ratón, y estaban al revés. Si estás justo entre el 9 y el 11, Jumping se te
+  vuelve a cerrar un rato; **tus marcas no se pierden**.
+- **La escalera de niveles ya no tiene techo.** Estaba encajada a la fuerza en
+  50; ahora lo fijo es la regla —cada juego se coloca un poco más arriba que el
+  anterior, y el hueco crece— y los niveles se amplían con los juegos que
+  vengan. Los rangos acompañan: siguen hasta «Cuack eterno» en el 70, y se
+  alargan cuando haga falta.
+
 ## [0.15.0] - 2026-09-04
 
 ### Añadido

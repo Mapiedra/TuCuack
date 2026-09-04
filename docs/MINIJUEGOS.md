@@ -11,8 +11,8 @@ abren desde `🎮 Juegos` en el menú del pato.
 | 🎲 Par o impar | 3 | solo · red (2) | panel |
 | ⭕ Tres en raya | 6 | solo · red (2) | panel |
 | 🌵 «Pato Runner» | 8 | solo | escenario |
-| 🏓 «Pato Jumping» | 9 | solo | escenario |
-| 🎯 «Pato Hook» | 12 | solo | escenario |
+| 🎯 «Pato Hook» | 9 | solo | escenario |
+| 🏓 «Pato Jumping» | 12 | solo | escenario |
 | 🪶 «Flappy Pato» | 14 | solo | escenario |
 | 🕳️ The Hole | 16 | solo | escenario |
 
@@ -409,61 +409,63 @@ quedar ni un bucle ni un error en la consola.
 
 ## La escalera
 
-Los juegos se reparten **hasta el nivel 50**, no hasta el 10. El motivo es de
-uso: hay gente que lleva meses con el pato y ya no tiene nada que desbloquear,
-así que la cuesta se estira y las piezas grandes se ponen arriba del todo.
+**No hay tope.** La escalera no cabe en cincuenta niveles ni en cien: cada juego
+nuevo se coloca por encima del anterior y los niveles se amplían con él. Lo que
+está fijado es la REGLA, no el final.
 
-Lo que cuesta llegar, con un día activo normal (unas 736 XP entre convivencia,
-cuidados, racha, chat y el tope diario de partidas):
+### La regla
 
-| Nivel | 4 | 8 | 12 | 16 | 21 | 28 | 32 | 40 | 50 |
-|---|---|---|---|---|---|---|---|---|---|
-| Días | 0,6 | 2 | 4 | 6 | 9 | 14 | 17 | 23 | 32 |
+> El hueco entre un juego y el siguiente crece de tres en tres:
+> `hueco(n) = 1 + ⌊(n − 1) / 3⌋`, siendo `n` el número de orden del juego.
 
-Los niveles se eligen para que **caiga algo cada dos o tres niveles al principio
-y cada cinco o seis al final**, alternando con los diseños de
-[`skins.js`](../src/core/game/skins.js), que están en 1, 3, 6, 10 y 15.
+Los tres primeros van seguidos, los tres siguientes de dos en dos, los tres
+siguientes de tres en tres, y así. Sale de que cada nivel cuesta más que el
+anterior: con hueco constante, los últimos juegos caerían todos encima.
 
-La escalera entera, con lo hecho y lo que falta:
+Al añadir un juego se aplica la regla y ya está; si eso pide un nivel que no
+existía, se amplía. Y con él, los rangos de [`Level.js`](../src/core/game/Level.js),
+que son una línea en un array.
 
-| Nivel | | Estado |
-|---|---|---|
-| 1 | ✌️ Piedra, papel o tijera | hecho |
-| 2 | 🔊 «Pato dice» | hecho |
-| 3 | 🎲 Par o impar | hecho |
-| 4 | 🃏 Memoria | hecho |
-| 6 | ⭕ Tres en raya | hecho |
-| 8 | 🌵 «Pato Runner» | hecho |
-| 9 | 🏓 «Pato Jumping» | hecho |
-| 12 | 🎯 «Pato Hook» | hecho |
-| 14 | 🪶 «Flappy Pato» | hecho |
-| 16 | 🕳️ The Hole | hecho |
-| 18 | 🏓 Pong | falta |
-| 21 | 🧱 Ladrillos | falta |
-| 22 | 🌋 El suelo es lava | falta |
-| 24 | 🔤 Ahorcado | falta |
-| 26 | ⛳ Minigolf | falta |
-| 28 | 👾 Invasores | falta |
-| 32 | 🚢 Hundir la flota | falta |
-| 36 | 🎱 8 Pool | falta |
-| 40 | 🏹 «Angry Pato» | por confirmar |
-| 50 | 💥 Artillería | por confirmar |
+### Dónde cae cada uno
 
-**Los rangos acompañan.** Se acababan en «Leyenda» al 20, que era el techo de
-cuando lo único que se desbloqueaba eran diseños; ahora siguen cada cinco
-niveles hasta «Cuack supremo» al 50. Es lo único que se ve en la cabecera del
-panel de cuidados y en el aviso de subir de nivel, así que sin eso la mitad del
-camino no daba señal ninguna.
+| # | Nivel | Juego | Qué pide | Días |
+|---|---|---|---|---|
+| 1 | 1 | ✌️ Piedra, papel o tijera | suerte | 0 |
+| 2 | 2 | 🔊 «Pato dice» | memoria corta | 0 |
+| 3 | 3 | 🎲 Par o impar | suerte y una apuesta | 0 |
+| 4 | 4 | 🃏 Memoria | memoria espacial | 1 |
+| 5 | 6 | ⭕ Tres en raya | pensar | 1 |
+| 6 | 8 | 🌵 «Pato Runner» | reflejos, un botón | 2 |
+| 7 | 9 | 🎯 «Pato Hook» | puntería, sin prisa | 3 |
+| 8 | 12 | 🏓 «Pato Jumping» | reflejos y ratón continuo | 4 |
+| 9 | 14 | 🪶 «Flappy Pato» | reflejos finos, castiga | 5 |
+| 10 | 16 | 🕳️ The Hole | varias cosas a la vez | 6 |
+| 11 | 20 | ⛳ Minigolf | puntería fina, sin prisa | 8 |
+| 12 | 24 | 🏓 Pong | reflejos contra un rival | 11 |
+| 13 | 28 | 🧱 Ladrillos | Pong con puntería | 14 |
+| 14 | 33 | 🌋 El suelo es lava | dos ejes y ritmo | 17 |
+| 15 | 38 | 👾 Invasores | reflejos y disparar | 21 |
+| 16 | 43 | 🔤 Ahorcado | vocabulario, y hacen falta dos | 25 |
+| 17 | 49 | 🚢 Hundir la flota | deducción, partidas largas | 31 |
+| 18 | 55 | 🎱 8 Pool | tacto para la física | 36 |
+| 19 | 61 | 🏹 «Angry Pato» | puntería y leer estructuras | 42 |
+| 20 | 68 | 💥 Artillería | todo junto | 49 |
 
-> **Al repartir, un juego no debería subir más de lo imprescindible.** Subirlo se
-> lo quita a quien ya lo tenía. En este reparto sólo se movieron cuatro —tres en
-> raya 5→6, paleta 7→9, puntería 8→12 y The Hole 9→16, que es el más largo de
-> todos y estaba demasiado abajo—. El progreso guardado NO se pierde aunque el
-> juego se vuelva a bloquear: `ProgresoJuegos.toJSON` no filtra por catálogo, y
-> es a propósito.
+Los días son de uso normal —unas 736 XP diarias entre convivencia, cuidados,
+racha, chat y el tope de partidas—. Los diez primeros están **hechos**; del 11 en
+adelante, [por hacer](#los-que-faltan).
 
+### Ordenados por dificultad, no por antigüedad
 
----
+La columna que manda es «qué pide», no cuándo se escribió. Por eso «Pato Hook» y
+«Pato Jumping» **se han intercambiado**: apuntar sin prisa es más fácil que
+seguir una pelota con el ratón, y estaban al revés.
+
+> **Al reordenar, bajar es gratis y subir cuesta.** Bajar un juego se lo da a más
+> gente; subirlo se lo quita a quien ya lo tenía. En este cambio sólo sube uno
+> —«Pato Jumping», del 9 al 12— y afecta a quien esté justo entre esos niveles.
+> El progreso guardado no se pierde en ningún caso: `ProgresoJuegos.toJSON` no
+> filtra por catálogo.
 
 ## Los que faltan
 
@@ -472,18 +474,20 @@ para todos: ninguno pide ampliarlo.
 
 | Juego | Nivel | Modos | Superficie | Lo que estrena |
 |---|---|---|---|---|
-| 🏓 Pong | 18 | solo | escenario | la mascota ES la pala, y enfrente hay otra |
-| 🧱 Ladrillos | 21 | solo | escenario | un muro que se rompe, sobre el Pong |
-| 🌋 El suelo es lava | 22 | solo | escenario | plataformas que se mueven y se hunden |
-| ⛳ Minigolf | 26 | solo | escenario | el primero que puntúa a MENOS |
-| 🔤 Ahorcado | 24 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
-| 👾 Invasores | 28 | solo | escenario | disparar hacia arriba, y algo que baja |
-| 🚢 Hundir la flota | 32 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
-| 🎱 8 Pool | 36 | solo · red (2) | escenario | choques entre bolas: el único caso donde la física exacta sale bien |
+| ⛳ Minigolf | 20 | solo | escenario | el primero que puntúa a MENOS |
+| 🏓 Pong | 24 | solo | escenario | la mascota ES la pala, y enfrente hay otra |
+| 🧱 Ladrillos | 28 | solo | escenario | un muro que se rompe, sobre el Pong |
+| 🌋 El suelo es lava | 33 | solo | escenario | plataformas que se mueven y se hunden |
+| 👾 Invasores | 38 | solo | escenario | disparar hacia arriba, y algo que baja |
+| 🔤 Ahorcado | 43 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
+| 🚢 Hundir la flota | 49 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
+| 🎱 8 Pool | 55 | solo · red (2) | escenario | choques entre bolas: el único caso donde la física exacta sale bien |
+| 🏹 «Angry {mascota}» | 61 | solo | escenario | estructuras que se vienen abajo |
+| 💥 Artillería | 68 | red (2) | escenario | terreno destructible y turnos con física compartida |
 
-Y tres [por confirmar](#en-el-tintero): «Angry {mascota}» (nivel 40), artillería
-por turnos (nivel 50) y el ranking entre patos, que no es un juego sino una
-decisión de arquitectura.
+Los dos últimos estaban en el tintero y **están confirmados**: se hacen, y se
+hacen al final. El [ranking entre patos](#-ranking-entre-patos) tampoco está en
+esta tabla porque no es un juego: es lo siguiente que se ejecuta.
 
 ### 🧱 Ladrillos
 
@@ -687,43 +691,85 @@ la mañana le habría dicho «8 de 8».
 La lista se desplaza, por lo mismo que la rejilla: con los juegos que hay, el
 panel entero se iba a 500 px.
 
-### 🌐 Ranking entre patos — necesita una decisión antes
+### 🌐 Ranking entre patos — decidido, y es lo siguiente
 
-Aquí es donde hay que elegir, y la elección es de arquitectura, no de interfaz.
+**Global, permanente y para todos.** Se descarta la opción barata —anunciar las
+marcas por el canal y quedarse con lo que se oyó mientras estabas conectado— y se
+va a una **tabla en Supabase con RLS**. Es un cambio de arquitectura y conviene
+decirlo entero antes de empezar: hasta hoy el proyecto usa de Supabase **sólo
+Realtime**, que es un tubo por el que pasan mensajes y no guarda nada. Con la
+primera tabla entran el esquema, las políticas de acceso y una identidad.
 
-**Hoy no hay servidor propio.** Ni `chat.js` ni `sw.js` usan de Supabase nada más
-que Realtime, que es un tubo por el que pasan mensajes y no guarda nada. Con eso,
-un «ranking» es en realidad **un ranking de la sesión**: cada pato anuncia sus
-marcas al conectarse, y cada uno ve lo que se anunció mientras él estaba
-delante. Nadie ve a quien no coincidió con él, nada sobrevive a cerrar el pato, y
-**nada es verificable**: quien quiera decir que ha hecho un millón, lo dice.
+### Lo que hace falta
 
-- **Opción A — el de la sesión.** Se puede entregar tal cual, con el nombre de
-  quien declara cada marca al lado y dicho en voz alta que es de la sesión. Coste
-  bajo: reutiliza el evento dirigido del canal, como las visitas y las jugadas.
-  Sirve para picarse entre dos que están conectados a la vez, que es el 90 % del
-  uso real.
-- **Opción B — el de verdad.** Una tabla en Supabase con RLS: cada pato escribe
-  sus marcas y lee el top. Persiste, es global y aguanta cerrar la app. Coste
-  alto y **cambia la arquitectura**: hoy el proyecto no tiene ni una tabla, y con
-  la primera entran las migraciones, las políticas de acceso y un modo de
-  identificar al pato que hoy no existe más allá del `patoId` local. Tampoco
-  arregla lo de las trampas: sin servidor que valide la partida, quien manda la
-  marca es el cliente.
+| Pieza | Estado |
+|---|---|
+| Proyecto de Supabase y clave publicable | **Ya está.** `supabase.json`, ver [`main/config.js`](../src/main/config.js) |
+| Cliente `@supabase/supabase-js` | **Ya está**, lo usa el chat |
+| Identidad estable del pato | **Ya está**: `settings.patoId`, el mismo que usan las salas |
+| La tabla y sus políticas | **Falta.** Hay que ejecutarlo en el proyecto, y eso se hace desde el panel de Supabase |
 
-**Recomendación:** hacer primero *Tus récords*, que es gratis y resuelve la
-pregunta que más se hace («¿cuál era mi mejor?»). Y si después se quiere el
-ranking, ir por la **opción A** etiquetada con honestidad; la B sólo si el
-marcador se convierte en el motivo por el que se abre el pato.
+### La tabla
+
+Una fila por pato y juego —no una por partida—: lo que se enseña es el récord, y
+guardar cada partida sería un histórico que nadie va a leer y que crece sin
+freno.
+
+```sql
+create table public.records (
+  pato_id    text    not null,
+  juego      text    not null,
+  nombre     text    not null,
+  marca      integer not null,
+  mejor_es   text    not null default 'mas',   -- 'mas' | 'menos'
+  actualizado timestamptz not null default now(),
+  primary key (pato_id, juego)
+);
+```
+
+### Las políticas, que es donde está el trabajo
+
+Con la clave publicable, **cualquiera puede escribir lo que quiera**: no hay
+servidor que valide una partida. Así que las reglas no buscan impedir trampas
+—eso no se puede sin servidor— sino que un listillo no pueda romperle el
+marcador a los demás:
+
+1. **Leer, todos.** Es un ranking.
+2. **Escribir, sólo tu propia fila.** La política compara la `pato_id` de la fila
+   con la que manda el cliente. No es una identidad de verdad —quien quiera puede
+   inventarse otra— pero impide lo que de verdad importa: **borrar o pisar la
+   marca de otro**.
+3. **Sin borrados.** Nadie borra filas, ni la suya.
+4. **Tope de tamaño** en `nombre` y rango en `marca`, para que una fila
+   disparatada no reviente la tabla ni la interfaz.
+
+Y una que conviene y no cuesta: **sólo se acepta una marca si mejora la que hay**
+—en la dirección que diga `mejor_es`—, con un `on conflict` que compare. Así no
+hace falta leer antes de escribir, y una marca peor no borra una buena por un
+descuido.
+
+### En la interfaz
+
+Va donde ya está [Tus récords](#-tus-récords--hecho): una pestaña más, o una
+columna al lado de tu marca con el mejor de todos y quién lo tiene. Los nombres
+los escribe otra gente, así que **`textContent` siempre**, como en el chat.
+
+### Lo que hay que decir en voz alta
+
+Sin servidor que valide, **una marca es lo que su dueño dice que es**. El
+marcador tiene que enseñarlo sin disimulo —con el nombre de quien la declara al
+lado— porque presentarlo como verificado sería mentir. Entre amigos, con eso
+basta; y si algún día deja de bastar, lo que hace falta no es otra política, es
+un servidor que juegue la partida.
 
 ---
 
-## En el tintero
+## Los dos grandes
 
-Ideas con forma pero sin aprobar. Se apuntan con lo que costarían, que es la
-mitad de la decisión.
+Aprobados, y los últimos de la escalera. Se apuntan con lo que costarían, que es
+la mitad de la decisión.
 
-### 🏹 «Angry {mascota}» (tipo Angry Birds) — nivel 40
+### 🏹 «Angry {mascota}» (tipo Angry Birds) — nivel 61
 
 Lanzas a la mascota contra **estructuras que se vienen abajo**. Ojo, porque el
 lanzamiento ya lo tenemos: **eso es «Pato Hook»**. Lo único que aportaría de nuevo
@@ -744,10 +790,10 @@ lado: caen a plomo.
   la propagación del derrumbe y unos cuantos niveles dibujados a mano.
 - **Riesgo:** que se parezca demasiado a «Pato Hook». Si los derrumbes no se
   disfrutan, es «Pato Hook» con decorado.
-- **Recomendación:** después del de artillería, y sólo si al jugar a «Pato Hook» se
-  echa de menos que las cosas se rompan.
+- **Orden:** después del de artillería. Los dos están aprobados; éste va el
+  penúltimo porque es el que más se parece a algo que ya se puede jugar.
 
-### 💥 Artillería (tipo Worms) — nivel 50
+### 💥 Artillería (tipo Worms) — nivel 68
 
 Dos mascotas, una en cada punta, y terreno destructible en medio. Por turnos:
 eliges ángulo y fuerza, sale un huevo describiendo una parábola, y donde cae abre
@@ -774,7 +820,7 @@ extremos simulan lo mismo.
   parte sin que nadie se entere. Se ataja mandando también el resultado —dónde
   cayó y cuánto daño— y dejando de árbitro al anfitrión, como ya hace con la
   sincronía.
-- **Recomendación:** es el mejor candidato a juego de nivel 50. Un arma sola —el
+- **Recomendación:** es el mejor candidato a juego de nivel 68. Un arma sola —el
   huevo—, viento, y tres o cuatro turnos por partida. Nada de inventario.
 
 **Si hubiera que elegir uno: el de artillería.** Trae un modo que no existe

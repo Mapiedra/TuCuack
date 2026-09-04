@@ -24,13 +24,15 @@ const CHAT_TOPE_DIARIO = 10;   // mensajes que puntúan por día
 export const JUEGOS_TOPE_DIARIO = 8;
 const UMBRAL_CUIDADO = 50;     // por debajo de esto, atender da XP
 
-// Rangos: cada uno abarca 5 niveles, hasta el 50.
+// Rangos: cada uno abarca 5 niveles.
 //
-// Llegaban al 20 y ahí se acababan, que era el techo de cuando lo único que se
-// desbloqueaba eran diseños. Con los juegos repartidos hasta el nivel 50 —unos
-// treinta y pico días de uso normal— la mitad del camino no cambiaba de rango ni
-// una vez, y el rango es lo único que se ve en la cabecera del panel de cuidados
-// y en el aviso de subir de nivel.
+// La lista NO tiene techo de diseño: se alarga cuando la escalera de juegos
+// llega más arriba, que es una línea. Llegó a acabarse en «Leyenda» al 20 —el
+// techo de cuando lo único que se desbloqueaba eran diseños— y con la escalera
+// pasando de ahí, media partida no cambiaba de rango ni una vez. El rango es lo
+// único que se ve en la cabecera del panel de cuidados y en el aviso de subir de
+// nivel, así que conviene que llegue siempre un poco más allá que el último
+// juego.
 export const RANGOS = [
   { desde: 1, nombre: 'Patito' },
   { desde: 5, nombre: 'Pato' },
@@ -42,7 +44,11 @@ export const RANGOS = [
   { desde: 35, nombre: 'Intocable' },
   { desde: 40, nombre: 'Jefe de jefes' },
   { desde: 45, nombre: 'Mito' },
-  { desde: 50, nombre: 'Cuack supremo' }
+  { desde: 50, nombre: 'Cuack supremo' },
+  { desde: 55, nombre: 'Cuack imperial' },
+  { desde: 60, nombre: 'Reliquia' },
+  { desde: 65, nombre: 'Ancestro' },
+  { desde: 70, nombre: 'Cuack eterno' }
 ];
 
 export function xpParaNivel(n) {
@@ -50,9 +56,19 @@ export function xpParaNivel(n) {
   return Math.round(BASE * Math.pow(n - 1, EXP));
 }
 
+/**
+ * Tope técnico, no de diseño.
+ *
+ * La escalera de juegos no tiene techo: cada juego nuevo se coloca por encima
+ * del anterior y los niveles se amplían con él. Esto sólo está para que el bucle
+ * no pueda irse a infinito con una XP absurda; queda tan por encima de cualquier
+ * partida real que nadie lo va a ver.
+ */
+const NIVEL_MAXIMO = 999;
+
 export function nivelDesdeXp(xp) {
   let n = 1;
-  while (n < 99 && xp >= xpParaNivel(n + 1)) n++;
+  while (n < NIVEL_MAXIMO && xp >= xpParaNivel(n + 1)) n++;
   return n;
 }
 
