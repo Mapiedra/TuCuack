@@ -7,6 +7,8 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.15.0] - 2026-09-04
+
 ### Añadido
 
 - **🪶 «Flappy Pato».** Nivel 14, en la pantalla entera. Tu mascota cae sola y
