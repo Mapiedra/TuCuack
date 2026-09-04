@@ -1,4 +1,4 @@
-// Toques con la paleta: mantener a la mascota en el aire sin que toque el suelo.
+// «{mascota} Jumping»: mantener a la mascota en el aire sin que toque el suelo.
 //
 // Es el primer juego que toma prestado el escenario entero (ver escenario.js):
 // en vez de un tablero dentro de un panel, pilota a la propia mascota por la

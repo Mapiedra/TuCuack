@@ -128,9 +128,9 @@ export const MINIJUEGOS = [
   },
   {
     id: 'paleta',
-    // Que es lo que se hace: mantenerla en el aire a base de toques. «Pong» se
-    // deja libre a propósito, que va a haber uno de verdad.
-    nombre: 'Malabares',
+    // Con el apellido de la familia, como el Runner y el Hook. «Pong» se deja
+    // libre a propósito, que va a haber uno de verdad.
+    nombre: '{mascota} Jumping',
     icono: '🏓',
     descripcion: 'Que no toque el suelo. Se juega en la pantalla entera.',
     nivel: 9,
@@ -153,6 +153,18 @@ export const MINIJUEGOS = [
     superficie: 'escenario',
     marca: { etiqueta: 'puntos', mejor: 'mas' },
     cargar: () => import('./punteria.js')
+  },
+  {
+    id: 'flappy',
+    nombre: 'Flappy {mascota}',
+    icono: '🪶',
+    descripcion: 'Aletea con el espacio y cuélate por los huecos.',
+    nivel: 14,
+    modos: ['solo'],
+    jugadores: { min: 1, max: 1 },
+    superficie: 'escenario',
+    marca: { etiqueta: 'huecos', mejor: 'mas' },
+    cargar: () => import('./flappy.js')
   },
   {
     id: 'agujero',

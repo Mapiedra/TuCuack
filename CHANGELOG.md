@@ -7,6 +7,18 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Añadido
+
+- **🪶 «Flappy Pato».** Nivel 14, en la pantalla entera. Tu mascota cae sola y
+  cada golpe de **espacio** le da un aletazo; hay que colarse por los huecos
+  entre columnas. Es el Runner con la gravedad cambiada de bando: allí decides
+  cuándo saltar, aquí cuándo **no** dejarla caer. El hueco se estrecha y las
+  columnas se juntan según vas pasando.
+
+### Cambiado
+
+- **Malabares pasa a llamarse «Pato Jumping»**, con el apellido de la familia.
+
 ## [0.14.1] - 2026-09-04
 
 ### Cambiado

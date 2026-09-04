@@ -11,8 +11,9 @@ abren desde `🎮 Juegos` en el menú del pato.
 | 🎲 Par o impar | 3 | solo · red (2) | panel |
 | ⭕ Tres en raya | 6 | solo · red (2) | panel |
 | 🌵 «Pato Runner» | 8 | solo | escenario |
-| 🏓 Malabares | 9 | solo | escenario |
+| 🏓 «Pato Jumping» | 9 | solo | escenario |
 | 🎯 «Pato Hook» | 12 | solo | escenario |
+| 🪶 «Flappy Pato» | 14 | solo | escenario |
 | 🕳️ The Hole | 16 | solo | escenario |
 
 La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
@@ -433,15 +434,18 @@ La escalera entera, con lo hecho y lo que falta:
 | 4 | 🃏 Memoria | hecho |
 | 6 | ⭕ Tres en raya | hecho |
 | 8 | 🌵 «Pato Runner» | hecho |
-| 9 | 🏓 Malabares | hecho |
+| 9 | 🏓 «Pato Jumping» | hecho |
 | 12 | 🎯 «Pato Hook» | hecho |
-| 14 | 🪶 «Flappy Pato» | falta |
+| 14 | 🪶 «Flappy Pato» | hecho |
 | 16 | 🕳️ The Hole | hecho |
 | 18 | 🏓 Pong | falta |
 | 21 | 🧱 Ladrillos | falta |
+| 22 | 🌋 El suelo es lava | falta |
 | 24 | 🔤 Ahorcado | falta |
+| 26 | ⛳ Minigolf | falta |
 | 28 | 👾 Invasores | falta |
 | 32 | 🚢 Hundir la flota | falta |
+| 36 | 🎱 8 Pool | falta |
 | 40 | 🏹 «Angry Pato» | por confirmar |
 | 50 | 💥 Artillería | por confirmar |
 
@@ -468,60 +472,18 @@ para todos: ninguno pide ampliarlo.
 
 | Juego | Nivel | Modos | Superficie | Lo que estrena |
 |---|---|---|---|---|
-| 🪶 «Flappy Pato» | 14 | solo | escenario | volar a base de aletazos, entre huecos |
 | 🏓 Pong | 18 | solo | escenario | la mascota ES la pala, y enfrente hay otra |
 | 🧱 Ladrillos | 21 | solo | escenario | un muro que se rompe, sobre el Pong |
+| 🌋 El suelo es lava | 22 | solo | escenario | plataformas que se mueven y se hunden |
+| ⛳ Minigolf | 26 | solo | escenario | el primero que puntúa a MENOS |
 | 🔤 Ahorcado | 24 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
 | 👾 Invasores | 28 | solo | escenario | disparar hacia arriba, y algo que baja |
 | 🚢 Hundir la flota | 32 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
+| 🎱 8 Pool | 36 | solo · red (2) | escenario | choques entre bolas: el único caso donde la física exacta sale bien |
 
 Y tres [por confirmar](#en-el-tintero): «Angry {mascota}» (nivel 40), artillería
 por turnos (nivel 50) y el ranking entre patos, que no es un juego sino una
 decisión de arquitectura.
-
-### 🪶 «Flappy {mascota}»
-
-Es [«Pato Runner»](../src/core/game/minijuegos/obstaculos.js) **con la gravedad
-cambiada de bando**, y por eso sale casi por el precio del cambio: la mascota cae
-sola y cada espaciazo le da un aletazo hacia arriba; hay que colarse por los
-huecos. El mismo botón, la decisión contraria: cuándo NO dejarla caer.
-
-De «Pato Runner» se lleva casi todo hecho: el desfile que entra por la derecha
-acelerando, la separación medida en tiempo y no en píxeles, la colisión de
-círculo contra rectángulo y el marcador. Lo que cambia son los números de
-`conAjustes` y que el impulso va en cada pulsación en vez de sólo desde el suelo.
-
-- `marca: { etiqueta: 'huecos', mejor: 'mas' }`.
-- El espacio ya está resuelto: `escenario.js` se lo traga desde «Pato Runner».
-
-Y una nota de lo aprendido allí: **la separación entre obstáculos tiene que
-apretarse con el avance**, no sólo escalar con la velocidad. Con el hueco fijo en
-tiempo, el juego se ve más rápido pero se juega igual de fácil al minuto que al
-segundo cinco.
-
-### 🏓 Pong
-
-El de siempre, con una diferencia que lo hace de esta casa: **la pala eres tú**.
-No hay rectángulo — la mascota se mueve arriba y abajo por su lado de la pantalla
-y devuelve la pelota con el cuerpo, que es el mismo círculo de `pato.cuerpo()` con
-el que ya se juega a [Malabares](../src/core/game/minijuegos/paleta.js).
-
-Y enfrente hay **otra mascota**: uno de los diseños que tengas desbloqueados,
-llevado por el juego. Se lleva bien con [Memoria](../src/core/game/minijuegos/memoria.js),
-que ya usa la colección de material, y da un rival que cambia con el nivel.
-
-Casi todo está escrito. La pelota es un `vuelo` con `fisica.paso` y gravedad cero;
-el rebote contra un cuerpo redondo es el mismo cálculo del golpe de Malabares,
-con el ángulo saliendo de por dónde se le pegue; y quien pierde un punto es quien
-deja pasar la pelota por su lado, que es mirar una coordenada.
-
-- **Modos:** solo. Un Pong por red pide tiempo real, y el canal va por turnos
-  (ver §[Partidas por red](#partidas-por-red)). Si algún día se quiere de dos, lo
-  barato es un duelo de marcas, no sincronizar una pelota.
-- **La torpeza de la rival baja con el nivel**, como en tres en raya: a nivel 18
-  llega tarde a las bolas colocadas, y de nivel 30 en adelante no se le escapa
-  casi nada. Si no, o es imposible o es un muro.
-- **Marca:** `{ etiqueta: 'puntos', mejor: 'mas' }`. Al mejor de cinco.
 
 ### 🧱 Ladrillos
 
@@ -554,6 +516,64 @@ huevo es un círculo.
 - **Marca:** `{ etiqueta: 'oleada', mejor: 'mas' }`. No se gana: se aguanta.
 - La barra espaciadora dispara, o sea que necesita el mismo arreglo de
   `escenario.js` que «Pato Runner» y «Flappy Pato». Ya está hecho.
+
+### 🌋 El suelo es lava
+
+El suelo es lava. Del techo caen bloques que flotan un momento y **se van
+hundiendo porque la lava los derrite**, así que hay que ir saltando de uno a otro
+antes de que el que pisas desaparezca. Se cuenta lo que aguantas.
+
+Es el primero que pide **moverse en dos ejes**: hasta ahora la mascota o corría
+en el sitio (Runner), o subía y bajaba (Flappy), o no se movía (Hook). Aquí hay
+izquierda, derecha y salto.
+
+Y trae lo único de verdad nuevo: **plataformas que se mueven**. `fisica.paso`
+sabe chocar contra un suelo fijo, no contra cajas que bajan; «estoy de pie sobre
+ese bloque, y bajo con él» hay que resolverlo a mano. Es media tarea, y conviene
+saberlo antes de empezar:
+
+- Cada bloque tiene su altura y su velocidad de hundimiento, que crece con el
+  tiempo que lleva pisado.
+- La mascota se apoya en el bloque cuyo techo tenga justo debajo, y hereda su
+  bajada mientras siga encima.
+- El salto es el del [Runner](../src/core/game/minijuegos/obstaculos.js), pero
+  desde el bloque en vez de desde el suelo.
+
+`marca: { etiqueta: 'segundos', mejor: 'mas' }`.
+
+### ⛳ Minigolf
+
+Un hoyo, unos obstáculos y los golpes contados. Apuntas y das fuerza igual que en
+[«Pato Hook»](../src/core/game/minijuegos/punteria.js) —de hecho, ahí está toda
+la interfaz de apuntar hecha, con su previa de trayectoria—, pero lo que sale
+rodando es una bola por el suelo y no la mascota por el aire.
+
+Es el primero que **puntúa a menos**: `marca: { etiqueta: 'golpes', mejor:
+'menos' }`. Esa dirección está en el contrato desde el principio y no la ha usado
+nadie todavía, así que de paso la estrena.
+
+Técnicamente es lo más barato de los tres: la bola es un `vuelo` sin gravedad y
+con mucho rozamiento, los obstáculos son rectángulos y el hoyo es un círculo. La
+mascota mira y celebra.
+
+### 🎱 8 Pool
+
+Billar americano: la mesa, las bolas, las troneras. Un tiro son dos números
+—ángulo y fuerza—, así que **encaja en la sala por turnos** exactamente igual que
+la [artillería](#-artillería-tipo-worms--nivel-50): se manda la jugada y los dos
+lados simulan lo mismo.
+
+Y aquí sí hace falta física de cuerpo contra cuerpo, pero es **el único caso del
+proyecto donde sale bien**, y conviene entender por qué: son círculos del MISMO
+tamaño, sin gravedad, en un plano y sin contactos en reposo. El choque elástico
+entre dos discos iguales es exacto en una línea de código y no necesita
+solucionador. Es justo lo contrario del montón de [The
+Hole](#amontonarse), que temblaba porque la gravedad los empujaba unos contra
+otros indefinidamente.
+
+- **Superficie:** escenario. Una mesa de billar en 280 × 300 px no se ve.
+- **Riesgo:** la deriva numérica en red, el mismo de la artillería. Se ataja
+  mandando también dónde acabó cada bola, con el anfitrión de árbitro.
 
 ---
 
