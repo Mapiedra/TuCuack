@@ -62,7 +62,8 @@ const DEFAULT_SETTINGS = {
   volumen: 0.5,
   silenciado: false,
   escala: 100,          // tamaño del pato en % (ver core/scale.js)
-  patoId: ''            // quién es este pato para los demás (ver abajo)
+  patoId: '',           // quién es este pato para los demás (ver abajo)
+  recordSecreto: ''     // la firma para el marcador global (ver abajo)
 };
 
 /**
@@ -82,6 +83,32 @@ function nuevoPatoId() {
 
 function patoIdValido(v) {
   return typeof v === 'string' && /^p-[a-z0-9]{6,24}$/.test(v);
+}
+
+/**
+ * La firma del pato para el marcador global.
+ *
+ * En la tabla, el dueño de una fila ES el sha256 de esto (ver
+ * supabase/records.sql). O sea que quien lo tenga puede escribir en tus récords
+ * y quien no, no. Por eso:
+ *
+ *   - **No sale de aquí.** El núcleo nunca lo ve: pide «guarda esta marca» y
+ *     quien la firma es el proceso principal. Si viviera en el renderer estaría
+ *     también en la extensión, dentro de la página de cualquiera.
+ *   - **No se puede recuperar.** Perder los ajustes es perder las filas, y no
+ *     hay a quién reclamar: no hay cuenta, ni correo, ni servidor que sepa quién
+ *     eres. Es el precio de no pedirle a nadie que se registre para jugar.
+ *
+ * Treinta y dos caracteres de dos tiradas: el SQL exige veinticuatro como
+ * mínimo, precisamente para que no se pueda adivinar a fuerza de llamadas.
+ */
+function nuevoRecordSecreto() {
+  const trozo = () => Math.random().toString(36).slice(2).padEnd(16, '0').slice(0, 16);
+  return `${trozo()}${trozo()}`;
+}
+
+function recordSecretoValido(v) {
+  return typeof v === 'string' && v.length >= 24 && v.length <= 64;
 }
 
 /** Valida una proporción 0..1; cualquier otra cosa se descarta. */
@@ -115,21 +142,64 @@ module.exports = {
     });
   },
 
+  /**
+   * Los ajustes que ve el pato.
+   *
+   * OJO: sale SIN `recordSecreto`. Ese campo vive en el disco y lo usa el
+   * proceso principal para firmar en el marcador; dárselo al renderer sería
+   * dárselo también a la extensión, dentro de la página web de cualquiera. Se
+   * lee con `secretoDelMarcador()`, que no cruza el puente.
+   */
   loadSettings() {
-    const s = readJson(SETTINGS_FILE, null);
-    const ajustes = (s && typeof s === 'object')
-      ? { ...DEFAULT_SETTINGS, ...s }
-      : { ...DEFAULT_SETTINGS };
-    // Se estrena y se guarda aquí mismo: el chat se conecta antes de que el pato
-    // haya arrancado siquiera, y necesita anunciar la identidad al presentarse.
-    if (!patoIdValido(ajustes.patoId)) {
-      ajustes.patoId = nuevoPatoId();
-      writeJson(SETTINGS_FILE, ajustes);
-    }
-    return ajustes;
+    const guardados = leerAjustes();
+    const { recordSecreto, ...paraElPato } = guardados;
+    return paraElPato;
   },
 
+  /**
+   * Guarda lo que manda el pato, conservando lo que el pato no conoce.
+   *
+   * Sin ese cuidado, el primer «Guardar» de Ajustes borraría el secreto —el
+   * renderer no lo tiene, así que lo mandaría vacío y el `...data` lo pisaría—
+   * y con él todos los récords de esta instalación, sin forma de recuperarlos.
+   */
   saveSettings(data) {
-    writeJson(SETTINGS_FILE, { ...DEFAULT_SETTINGS, ...(data || {}) });
+    const guardados = leerAjustes();
+    writeJson(SETTINGS_FILE, {
+      ...DEFAULT_SETTINGS,
+      ...(data || {}),
+      patoId: guardados.patoId,
+      recordSecreto: guardados.recordSecreto
+    });
+  },
+
+  /** La firma para el marcador global. Sólo la usa el proceso principal. */
+  secretoDelMarcador() {
+    return leerAjustes().recordSecreto;
   }
 };
+
+/**
+ * Los ajustes del disco, con la identidad y la firma ya estrenadas.
+ *
+ * Las dos se crean aquí y no donde se usan porque las dos hacen falta antes de
+ * que el pato arranque: el chat se conecta y tiene que presentarse.
+ */
+function leerAjustes() {
+  const s = readJson(SETTINGS_FILE, null);
+  const ajustes = (s && typeof s === 'object')
+    ? { ...DEFAULT_SETTINGS, ...s }
+    : { ...DEFAULT_SETTINGS };
+
+  let cambia = false;
+  if (!patoIdValido(ajustes.patoId)) {
+    ajustes.patoId = nuevoPatoId();
+    cambia = true;
+  }
+  if (!recordSecretoValido(ajustes.recordSecreto)) {
+    ajustes.recordSecreto = nuevoRecordSecreto();
+    cambia = true;
+  }
+  if (cambia) writeJson(SETTINGS_FILE, ajustes);
+  return ajustes;
+}
