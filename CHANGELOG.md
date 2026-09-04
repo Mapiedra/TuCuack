@@ -7,6 +7,8 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.16.0] - 2026-09-04
+
 ### Cambiado
 
 - **El peaje del «No tocar» ahora aprieta.** Cada una de las diez cuentas tiene
