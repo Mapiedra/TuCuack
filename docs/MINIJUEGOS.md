@@ -630,6 +630,17 @@ adelante, el 20 %. Es lo que hace que machacar el barato no compense:
 
 Diez veces más por jugar variado, sin prohibir nada.
 
+### Lo que paga la broma
+
+Pasar el [peaje del «No tocar»](#la-broma) entero da **`120 + nivel × 10`
+cuacks**, una vez al día. A nivel 16 son 280, más de la mitad de lo que cuesta
+The Hole.
+
+Paga tanto porque cuesta tanto: hay reloj en cada cuenta y cualquier fallo
+devuelve a la primera, así que no es un trámite que se despacha en treinta
+segundos. Y una vez al día porque, si no, sería la mejor forma de ganar cuacks
+del juego, y la broma dejaría de ser una broma para convertirse en el trabajo.
+
 ### Cuánto cuestan
 
 `precio = 12 × nivel^1.35`, y el de nivel 1 es gratis —si no, un pato recién
@@ -909,6 +920,20 @@ incidencias:
    radicandos son cuadrados perfectos y las divisiones exactas— así que con la
    calculadora del sistema se resuelven; las tres primeras, de cabeza.
 
+   **Y no es un trámite: hay reloj, y fallar cuesta la tanda entera.** Cada
+   cuenta tiene su tiempo —de 7 s la primera a 25 s la última, que sube con la
+   dificultad porque para un cubo hay que ir a por la calculadora— y quedarse sin
+   él, o contestar mal, **devuelve a la primera**. Es a propósito: el peaje
+   [paga](#los-cuacks-la-moneda), y un premio que se cobra sin riesgo no es un
+   premio.
+
+   **No se puede memorizar.** Los números ya salían al azar dentro de cada nivel;
+   ahora además **el orden se baraja en cada tanda**, y se vuelve a barajar cada
+   vez que se empieza de cero. La cuesta es siempre la misma —tres fáciles, tres
+   medias, tres de potencias y el remate— pero cuál toca en cada puesto, no. Sin
+   eso, volver a empezar sería una lata en vez de un castigo, porque a la tercera
+   ya te la sabrías.
+
    Lo que **no** se negocia son las salidas involuntarias, y son las que
    convierten esto en una broma y no en un secuestro:
 
@@ -919,9 +944,9 @@ incidencias:
      que se puede cerrar el pato desde ahí en cualquier momento.
    - El **apagado del pato** y el **fallo del propio juego**.
 
-   Y el peaje está hecho para poder pasarlo: fallar repite LA MISMA cuenta —ni
-   reinicia ni castiga—, no hay reloj, y hay un botón de «Vale, sigo» para
-   cerrarlo y seguir jugando.
+   Y sigue habiendo una puerta que no pasa por las cuentas: el botón de **«Vale,
+   sigo»** cierra el peaje y te devuelve a los patos. El peaje bloquea la salida
+   voluntaria, no el juego.
 2. **«Sin fin» tiene que tener techo**, y son dos. Por **tamaño**: cada partición
    encoge un 32 %, y por debajo del mínimo ya no se parte, revienta en una
    nubecilla y desaparece —cuatro clics matan a un pato, pero por el camino ha

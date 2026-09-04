@@ -160,6 +160,10 @@ export function crearBroma(ctx) {
       soltarUno(medidas);
     }
 
+    // El reloj del peaje va de aquí y no de un temporizador suyo: así se para
+    // solo cuando se para la broma, sin dejar nada suelto.
+    if (peaje) peaje.tic(dt);
+
     mirarElClic();
     mirarElCursor();
     mover(dt, p, medidas);

@@ -9,6 +9,15 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ### Cambiado
 
+- **El peaje del «No tocar» ahora aprieta.** Cada una de las diez cuentas tiene
+  su reloj —de 7 s la primera a 25 s la última— y **quedarse sin tiempo o
+  contestar mal devuelve a la primera**. Además el orden se baraja en cada tanda
+  y se vuelve a barajar al empezar de nuevo, así que repetirlo no enseña la
+  secuencia. Va a pagar cuacks cuando exista la moneda, y por eso deja de ser un
+  trámite. Lo que no cambia: el botón de «Vale, sigo» sigue cerrándolo para
+  volver a los patos, y las salidas que no se negocian —los diez minutos, el
+  icono de la bandeja y el apagado— siguen intactas.
+
 - **«Pato Hook» y «Pato Jumping» se intercambian**: Hook pasa al nivel 9 y
   Jumping al 12. Apuntar sin prisa es más fácil que seguir una pelota con el
   ratón, y estaban al revés. Si estás justo entre el 9 y el 11, Jumping se te

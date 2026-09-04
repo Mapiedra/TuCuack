@@ -1107,3 +1107,20 @@ html, body {
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
+
+/* El reloj del peaje. Va debajo de la cuenta porque es lo segundo que se mira:
+   primero qué hay que resolver, después cuánto queda. */
+.peaje-reloj {
+  height: 6px;
+  margin: 0 0 8px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.peaje-reloj-barra {
+  height: 100%;
+  width: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+}
+.peaje-reloj-barra.poco { background: #c1121f; }
