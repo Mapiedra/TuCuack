@@ -7,6 +7,46 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.18.0] - 2026-09-04
+
+### Añadido
+
+- **🪙 Los cuacks.** Una moneda que se gana jugando. El nivel te ABRE un juego
+  y los cuacks te lo COMPRAN, así que subir de nivel deja de ser lo único que
+  hay que hacer. El saldo sale arriba en 🎮 Juegos, lo que paga cada partida
+  sale en el pie, y hay un desplegable que lo explica entero.
+
+  Lo que paga una partida sube con el nivel del juego: comprar el siguiente
+  cuesta unas cuarenta partidas del último que tengas, y entre 180 y 610 si te
+  empeñas en machacar el más tonto contra la máquina. No hay nada que lo
+  prohíba; simplemente no sale a cuenta. Jugar contra otra mascota paga el
+  doble, y en los juegos de marca batir tu récord ya cuenta como ganar.
+
+  **No hay tope diario**, al revés que con la experiencia: el freno ya lo pone
+  el cansancio de tu mascota, que de ochenta de energía da para ocho partidas.
+
+- **El «No tocar» paga.** Pasar las diez cuentas del peaje da **120 + tu nivel
+  × 10** cuacks, una vez al día. La cifra se dice en Ajustes antes de que lo
+  pulses, porque es la mitad del trato. La otra mitad sigue sin adornarse: son
+  diez cuentas con reloj, fallar te devuelve a la primera y el consejo no ha
+  cambiado.
+
+### Cambiado
+
+- **Los juegos que ya tienes son gratis para siempre.** Los diez que había
+  valen 0 y van a seguir valiendo 0: quitarte algo que ya usabas para
+  vendértelo después no se hace. La moneda empieza a contar con los juegos que
+  vengan —el primero será el Minigolf—.
+- **Y si ya venías jugando, empiezas con saldo.** Al estrenar el monedero se
+  abonan cinco cuacks por cada partida que ya tuvieras guardada, hasta 500. Sale
+  de tus partidas de verdad, no de un número inventado, y se paga una sola vez.
+
+### Corregido
+
+- **El marcador global ya se encuentra.** Estaba, y la única puerta era pulsar
+  una fila de 🏅 Tus récords sin que nada lo dijera. Ahora las filas que
+  llevan a un marcador terminan en 🌐 y el pie de la lista lo explica.
+
 ## [0.17.0] - 2026-09-04
 
 ### Añadido
