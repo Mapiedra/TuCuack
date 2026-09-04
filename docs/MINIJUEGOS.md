@@ -453,7 +453,6 @@ para todos: ninguno pide ampliarlo.
 
 | Juego | Nivel | Modos | Superficie | Lo que estrena |
 |---|---|---|---|---|
-| 🏅 Tus récords | — | — | panel | tampoco es un juego: ver §*Récords y ranking* |
 | 🌵 Obstáculos | 8 | solo | escenario | correr y saltar con la barra espaciadora |
 | 🪶 Aleteo | 14 | solo | escenario | volar a base de aletazos, entre huecos |
 | 🏓 Pong | 18 | solo | escenario | la mascota ES la pala, y enfrente hay otra |
@@ -551,20 +550,31 @@ huevo es un círculo.
 Dos cosas distintas que suenan igual, y conviene no mezclarlas: **lo tuyo** y
 **lo de todos**.
 
-### 🏅 Tus récords — barato, y se puede hacer ya
+### 🏅 Tus récords — hecho
 
-Un panel con lo que ya está guardado: por cada juego, tu mejor marca, cuántas
-partidas y cuántas ganaste; y arriba, los totales. **No hay nada que inventar**,
-`ProgresoJuegos` ya lo tiene todo —`de(id)` para cada juego y `totales()` para la
-suma— y `toJSON` no filtra por catálogo, así que también se ven las marcas de
-juegos que hoy están bloqueados por nivel.
+Botón **🏅 Tus récords** debajo de la rejilla del panel de juegos, con el número
+de partidas al lado. Se entra a una **tercera vista dentro del mismo panel** —el
+`‹` vuelve a la rejilla— igual que ya hace la vista de modo: es el patrón que
+había, y no hace falta un panel nuevo.
 
-Lo único que hay que decidir es dónde se entra: lo natural es un botón en la
-cabecera del panel de juegos, al lado del de volver.
+Arriba, tres totales: partidas, ganadas y **cuántas de las de hoy han puntuado**,
+de las ocho que caben. Debajo, una fila por juego con su mejor marca, sus
+partidas y sus victorias.
 
-- **Coste:** bajo. Es un panel de lectura sobre datos que ya existen.
-- **Sin nivel:** se ve desde el primer día, aunque esté casi vacío. Un marcador
-  vacío es una invitación.
+Es una vista de **lectura**: no calcula nada que no esté en `ProgresoJuegos`
+—`de(id)` por juego y `totales()` para la suma—. Salen **todos** los juegos,
+también los que aún no tienes por nivel («se abre en el nivel N») y los que no
+has tocado («sin estrenar»), porque un marcador vacío es una invitación. Y
+también las marcas de un juego que se te haya vuelto a bloquear, porque `toJSON`
+no filtra por catálogo.
+
+Lo único que hubo que añadir fuera del panel es `Level.partidasQuePuntuanHoy()`.
+No vale leer `juegosHoy` a secas: ese contador se pone a cero al anotar la
+primera partida del día, no a medianoche, así que a alguien que acaba de empezar
+la mañana le habría dicho «8 de 8».
+
+La lista se desplaza, por lo mismo que la rejilla: con los juegos que hay, el
+panel entero se iba a 500 px.
 
 ### 🌐 Ranking entre patos — necesita una decisión antes
 

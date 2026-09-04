@@ -21,7 +21,7 @@ const CHAT_TOPE_DIARIO = 10;   // mensajes que puntúan por día
 // Partidas que puntúan por día. Un minijuego se puede repetir en bucle, así que
 // sin tope sería, con diferencia, la forma más rápida de subir de nivel. Pasado
 // el tope se sigue jugando —que es lo divertido—, pero deja de sumar.
-const JUEGOS_TOPE_DIARIO = 8;
+export const JUEGOS_TOPE_DIARIO = 8;
 const UMBRAL_CUIDADO = 50;     // por debajo de esto, atender da XP
 
 // Rangos: cada uno abarca 5 niveles, hasta el 50.
@@ -187,6 +187,20 @@ export class Level {
       this[campoContador] = 0;
     }
     return this[campoContador] < tope;
+  }
+
+  /**
+   * Cuántas partidas han puntuado HOY, de las que caben.
+   *
+   * Se mira el día en vez de devolver el contador a secas: `juegosHoy` se pone a
+   * cero al anotar la primera partida del día, no a medianoche, así que un
+   * contador leído sin más diría «8 de 8» a alguien que acaba de empezar la
+   * mañana. Esto sólo lee: no toca nada, que es lo que se espera de una
+   * consulta que hace un panel al abrirse.
+   */
+  partidasQuePuntuanHoy() {
+    const hoy = new Date().toISOString().slice(0, 10);
+    return this.diaDelJuego === hoy ? Math.min(this.juegosHoy, JUEGOS_TOPE_DIARIO) : 0;
   }
 
   _rachaDelDia() {

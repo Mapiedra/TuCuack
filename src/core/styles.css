@@ -1054,3 +1054,56 @@ html, body {
   color: var(--ink);
 }
 .panel-peaje .muted { margin: 8px 0 0; }
+
+/* Tus récords: una vista de lectura dentro del panel de juegos. */
+.records-totales {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.records-totales > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 2px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 10px;
+}
+.records-totales b { font-size: 17px; line-height: 1; }
+.records-totales span { font-size: 9px; color: #8a8a95; text-align: center; }
+
+.records-lista { list-style: none; margin: 0; padding: 0; }
+.records-fila {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 2px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+.records-fila:first-child { border-top: 0; }
+.records-icono { font-size: 17px; line-height: 1; text-align: center; }
+.records-fila b { display: block; font-size: 12px; line-height: 1.2; }
+.records-detalle { font-size: 10px; color: #8a8a95; }
+/* La marca es lo que se viene a mirar, así que se lee de un vistazo. */
+.records-marca {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-2);
+  text-align: right;
+  white-space: nowrap;
+}
+/* Sin estrenar: se ve que está, pero no compite con lo jugado. */
+.records-fila.vacia .records-icono { filter: grayscale(1) opacity(0.5); }
+.records-fila.vacia b { color: #8a8a95; font-weight: 600; }
+
+/* Y la lista se desplaza, por lo mismo que la rejilla: con los juegos que hay
+   el panel se iba a 500 px y `colocarPanel` acaba tirándolo debajo del pato. */
+.records-lista {
+  max-height: 190px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}

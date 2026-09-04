@@ -7,6 +7,15 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Añadido
+
+- **🏅 Tus récords.** Un botón debajo de la rejilla del panel de juegos, con el
+  número de partidas al lado. Dentro: tus totales —partidas, ganadas, y cuántas
+  de hoy han puntuado de las ocho que caben— y una fila por juego con su mejor
+  marca. Salen **todos**, también los que aún no tienes por nivel y los que no
+  has tocado, porque un marcador vacío es una invitación; y también las marcas de
+  un juego que se te haya vuelto a bloquear, que ésas no se pierden nunca.
+
 ## [0.13.0] - 2026-09-04
 
 ### Añadido

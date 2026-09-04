@@ -7,7 +7,7 @@
 // para una decisión que se toma una vez por partida.
 
 import { MINIJUEGOS, estaDesbloqueado, admiteModo, nombreDeJuego } from '../game/minijuegos/index.js';
-import { XP } from '../game/Level.js';
+import { XP, JUEGOS_TOPE_DIARIO } from '../game/Level.js';
 import { panelHeader } from './panelHeader.js';
 
 /**
@@ -25,6 +25,8 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
   let estado = presencia;
   /** Juego cuya vista de modo está abierta, o null si se ve la rejilla. */
   let elegido = null;
+  /** Si se está viendo la lista de récords en vez de la rejilla. */
+  let enRecords = false;
 
   const el = document.createElement('div');
   el.className = 'panel panel-juegos hot';
@@ -48,14 +50,21 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
 
   function pintar() {
     if (cabecera) cabecera.remove();
-    cabecera = panelHeader(elegido ? nombreDeJuego(elegido, estado.yo) : 'Juegos', {
-      onBack: elegido ? () => { elegido = null; pintar(); } : handlers.onBack,
-      onClose: handlers.onClose
-    });
+    const dentro = elegido || enRecords;
+    cabecera = panelHeader(
+      elegido ? nombreDeJuego(elegido, estado.yo) : (enRecords ? 'Tus récords' : 'Juegos'),
+      {
+        // El botón de volver cambia de destino según la vista: desde dentro
+        // vuelve a la rejilla, y desde la rejilla al menú del pato.
+        onBack: dentro ? () => { elegido = null; enRecords = false; pintar(); } : handlers.onBack,
+        onClose: handlers.onClose
+      }
+    );
     el.prepend(cabecera);
 
     cuerpo.textContent = '';
     if (elegido) pintarModos(elegido);
+    else if (enRecords) pintarRecords();
     else pintarRejilla();
   }
 
@@ -123,7 +132,93 @@ export function buildJuegosPanel(level, progreso, presencia, capacidades, handle
     }
 
     cuerpo.appendChild(grid);
+
+    const verRecords = document.createElement('button');
+    verRecords.className = 'btn';
+    verRecords.type = 'button';
+    const t = progreso.totales();
+    verRecords.textContent = t.partidas
+      ? `🏅 Tus récords · ${t.partidas} ${t.partidas === 1 ? 'partida' : 'partidas'}`
+      : '🏅 Tus récords';
+    verRecords.addEventListener('click', () => { enRecords = true; pintar(); });
+    cuerpo.appendChild(verRecords);
+
     cuerpo.appendChild(bloqueAyuda());
+  }
+
+  // ---- Récords -----------------------------------------------------------
+
+  /**
+   * Lo que llevas jugado, por juego y en total.
+   *
+   * Es una vista de LECTURA sobre lo que ya está guardado: no calcula nada que
+   * no esté en `ProgresoJuegos`. Salen todos los juegos, también los que aún no
+   * tienes por nivel y los que no has tocado —un marcador vacío es una
+   * invitación—, y también las marcas de un juego que se te haya vuelto a
+   * bloquear, porque el progreso se guarda aparte del catálogo.
+   */
+  function pintarRecords() {
+    const t = progreso.totales();
+
+    const resumen = document.createElement('div');
+    resumen.className = 'records-totales';
+    for (const [valor, etiqueta] of [
+      [t.partidas, t.partidas === 1 ? 'partida' : 'partidas'],
+      [t.victorias, t.victorias === 1 ? 'ganada' : 'ganadas'],
+      [`${level.partidasQuePuntuanHoy()}/${JUEGOS_TOPE_DIARIO}`, 'con XP hoy']
+    ]) {
+      const caja = document.createElement('div');
+      const n = document.createElement('b');
+      n.textContent = String(valor);
+      const e = document.createElement('span');
+      e.textContent = etiqueta;
+      caja.append(n, e);
+      resumen.appendChild(caja);
+    }
+    cuerpo.appendChild(resumen);
+
+    const lista = document.createElement('ul');
+    lista.className = 'records-lista';
+    for (const juego of MINIJUEGOS) lista.appendChild(filaDeRecord(juego));
+    cuerpo.appendChild(lista);
+
+    const nota = document.createElement('p');
+    nota.className = 'muted';
+    nota.textContent = 'Las marcas se guardan aunque un juego se vuelva a bloquear.';
+    cuerpo.appendChild(nota);
+  }
+
+  function filaDeRecord(juego) {
+    const m = progreso.de(juego.id);
+    const jugado = m.partidas > 0;
+
+    const li = document.createElement('li');
+    li.className = 'records-fila' + (jugado ? '' : ' vacia');
+
+    const icono = document.createElement('span');
+    icono.className = 'records-icono';
+    icono.textContent = juego.icono;
+
+    const medio = document.createElement('div');
+    const nom = document.createElement('b');
+    nom.textContent = nombreDeJuego(juego, estado.yo);
+    const bajo = document.createElement('span');
+    bajo.className = 'records-detalle';
+    bajo.textContent = jugado
+      ? `${m.partidas} ${m.partidas === 1 ? 'partida' : 'partidas'} · ${m.victorias} ${m.victorias === 1 ? 'ganada' : 'ganadas'}`
+      : (estaDesbloqueado(juego, level.nivel) ? 'sin estrenar' : `se abre en el nivel ${juego.nivel}`);
+    medio.append(nom, bajo);
+
+    const marca = document.createElement('span');
+    marca.className = 'records-marca';
+    // Sólo los juegos con `marca` guardan récord; los demás sólo se ganan o se
+    // pierden, y ahí lo que dice algo son las victorias, que ya están arriba.
+    marca.textContent = (juego.marca && m.mejor != null)
+      ? `${m.mejor} ${juego.marca.etiqueta}`
+      : '';
+
+    li.append(icono, medio, marca);
+    return li;
   }
 
   function etiquetaDeModos(juego) {
