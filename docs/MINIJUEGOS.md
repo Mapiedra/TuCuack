@@ -636,6 +636,24 @@ Pasar el [peaje del «No tocar»](#la-broma) entero da **`120 + nivel × 10`
 cuacks**, una vez al día. A nivel 16 son 280, más de la mitad de lo que cuesta
 The Hole.
 
+**Y se dice en el botón, con la cifra puesta.** Es el mejor cebo que tiene la
+broma: saber lo que hay dentro es justo lo que hace que la gente entre a por
+ello. Pero **no se miente en ningún sitio** —ni en el botón, ni en el cartel—:
+
+> ⚠️ **No tocar**
+> Dan 280 cuacks si pasas el peaje. No lo pulses.
+
+Las dos frases son verdad. Da 280, y la recomendación sigue siendo no entrar,
+porque el peaje tiene reloj y cualquier fallo devuelve a la primera. Que alguien
+lo pulse igualmente sabiendo las dos cosas es exactamente el chiste; engañarle
+para que lo pulse, no.
+
+Y cuando ya se ha cobrado hoy, el botón lo dice: *«Hoy ya lo has cobrado. Sigue
+sin ser buena idea.»* Un cebo que promete algo que no va a llegar es una mentira
+aunque el número fuera cierto ayer.
+
+
+
 Paga tanto porque cuesta tanto: hay reloj en cada cuenta y cualquier fallo
 devuelve a la primera, así que no es un trámite que se despacha en treinta
 segundos. Y una vez al día porque, si no, sería la mejor forma de ganar cuacks
@@ -718,46 +736,47 @@ primera tabla entran el esquema, las políticas de acceso y una identidad.
 | Proyecto de Supabase y clave publicable | **Ya está.** `supabase.json`, ver [`main/config.js`](../src/main/config.js) |
 | Cliente `@supabase/supabase-js` | **Ya está**, lo usa el chat |
 | Identidad estable del pato | **Ya está**: `settings.patoId`, el mismo que usan las salas |
-| La tabla y sus políticas | **Falta.** Hay que ejecutarlo en el proyecto, y eso se hace desde el panel de Supabase |
+| El secreto por pato, para reclamar sus filas | **Falta**, y es una línea al lado del `patoId` |
+| La tabla, la vista y la función | **Escritas** en [`supabase/records.sql`](../supabase/records.sql); falta **ejecutarlas** en el panel |
 
-### La tabla
+### La tabla y sus reglas
+
+Están escritas y listas para pegar en el editor SQL del panel:
+[`supabase/records.sql`](../supabase/records.sql). Es idempotente, así que se
+puede lanzar entero las veces que haga falta.
 
 Una fila por pato y juego —no una por partida—: lo que se enseña es el récord, y
 guardar cada partida sería un histórico que nadie va a leer y que crece sin
 freno.
 
-```sql
-create table public.records (
-  pato_id    text    not null,
-  juego      text    not null,
-  nombre     text    not null,
-  marca      integer not null,
-  mejor_es   text    not null default 'mas',   -- 'mas' | 'menos'
-  actualizado timestamptz not null default now(),
-  primary key (pato_id, juego)
-);
-```
+**Y aquí hay que corregir lo que decía antes este documento.** Se apuntó que la
+política compararía «la `pato_id` de la fila con la que manda el cliente». **Eso
+no se puede.** Con la clave publicable no hay `auth.uid()` contra el que
+comparar: el cliente dice quién es y el servidor se lo cree. Una política así no
+protege nada, y como las marcas sólo suben, un solo aburrido podría inflar el
+marcador de todos de forma permanente.
 
-### Las políticas, que es donde está el trabajo
+Lo que sí funciona, y es lo que está escrito:
 
-Con la clave publicable, **cualquiera puede escribir lo que quiera**: no hay
-servidor que valide una partida. Así que las reglas no buscan impedir trampas
-—eso no se puede sin servidor— sino que un listillo no pueda romperle el
-marcador a los demás:
+- **A la tabla no llega nadie.** RLS encendido y sin políticas, y los permisos
+  revocados. No hace falta escribir un «prohibido»: la ausencia ya lo es.
+- **Se lee una vista**, `records_publicos`, que no lleva el hash del secreto.
+- **Se escribe por una función** `security definer`, `guardar_record`, que es la
+  única puerta.
+- **Cada fila la reclama quien la crea**, con un secreto que el pato genera la
+  primera vez y guarda en sus ajustes al lado del `patoId`. Después, sólo se
+  toca presentando el mismo secreto.
+- **La marca sólo sube.** El nombre sí se actualiza siempre: cambiarle el nombre
+  al pato no debería obligar a batir un récord para que se note.
+- **Nadie borra nada.** Ni su propia fila.
 
-1. **Leer, todos.** Es un ranking.
-2. **Escribir, sólo tu propia fila.** La política compara la `pato_id` de la fila
-   con la que manda el cliente. No es una identidad de verdad —quien quiera puede
-   inventarse otra— pero impide lo que de verdad importa: **borrar o pisar la
-   marca de otro**.
-3. **Sin borrados.** Nadie borra filas, ni la suya.
-4. **Tope de tamaño** en `nombre` y rango en `marca`, para que una fila
-   disparatada no reviente la tabla ni la interfaz.
+Así, lo peor que puede hacer alguien es mentir sobre lo suyo. No puede tocar lo
+de los demás, ni borrarlo, ni bajarlo.
 
-Y una que conviene y no cuesta: **sólo se acepta una marca si mejora la que hay**
-—en la dirección que diga `mejor_es`—, con un `on conflict` que compare. Así no
-hace falta leer antes de escribir, y una marca peor no borra una buena por un
-descuido.
+> **Lo que hay que hacer a mano, y no lo puede hacer el pato:** ejecutar ese SQL
+> en el panel. La clave que lleva la app es la publicable, y con ésa no se crean
+> tablas ni funciones —para eso hace falta la `service_role` o entrar al panel—.
+> Es un pegar y darle a «Run».
 
 ### En la interfaz
 
