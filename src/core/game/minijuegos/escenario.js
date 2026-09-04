@@ -255,6 +255,11 @@ export function prestarEscenario(entorno) {
     // por eso vive aquí, una sola vez, y no en cada juego.
     const alPulsar = (e) => {
       if (e.key === 'Escape') { e.preventDefault(); salidaPedida(); return; }
+      // El espacio también se consume, y no sólo se apunta: sin esto desplaza la
+      // página de debajo mientras juegas. Va aquí, una vez, porque le hace falta
+      // a todo el que salte o dispare con él, y porque el contrato prohíbe a los
+      // juegos escuchar en `document`.
+      if (e.key === ' ' || e.code === 'Space') e.preventDefault();
       entrada.tecla(e, true);
     };
     const alSoltar = (e) => entrada.tecla(e, false);

@@ -7,6 +7,17 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Añadido
+
+- **🌵 Obstáculos.** Nivel 8, en la pantalla entera. Tu mascota corre, el suelo
+  pasa por detrás y con la **barra espaciadora** salta lo que venga: cactus
+  bajos, altos y dobles. Y a partir de un rato, gaviotas a la altura de la
+  cabeza, que son las que **no** hay que saltar. Un botón, dos respuestas. Se
+  cuentan los metros y se acaba al primer golpe.
+- Cuanto más mantienes pulsado, más alto salta —hasta un límite—, así que el
+  salto no es siempre el mismo. Y el ritmo se aprieta con los metros: no es sólo
+  que vaya más rápido, es que los huecos se juntan.
+
 ## [0.13.1] - 2026-09-04
 
 ### Añadido

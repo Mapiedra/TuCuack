@@ -10,6 +10,7 @@ abren desde `🎮 Juegos` en el menú del pato.
 | 🃏 Memoria | 4 | solo · red (2) | panel |
 | 🎲 Par o impar | 3 | solo · red (2) | panel |
 | ⭕ Tres en raya | 6 | solo · red (2) | panel |
+| 🌵 Obstáculos | 8 | solo | escenario |
 | 🏓 Malabares | 9 | solo | escenario |
 | 🎯 «Pato Hook» | 12 | solo | escenario |
 | 🕳️ The Hole | 16 | solo | escenario |
@@ -417,7 +418,7 @@ La escalera entera, con lo hecho y lo que falta:
 | 3 | 🎲 Par o impar | hecho |
 | 4 | 🃏 Memoria | hecho |
 | 6 | ⭕ Tres en raya | hecho |
-| 8 | 🌵 Obstáculos | falta |
+| 8 | 🌵 Obstáculos | hecho |
 | 9 | 🏓 Malabares | hecho |
 | 12 | 🎯 «Pato Hook» | hecho |
 | 14 | 🪶 Aleteo | falta |
@@ -453,7 +454,6 @@ para todos: ninguno pide ampliarlo.
 
 | Juego | Nivel | Modos | Superficie | Lo que estrena |
 |---|---|---|---|---|
-| 🌵 Obstáculos | 8 | solo | escenario | correr y saltar con la barra espaciadora |
 | 🪶 Aleteo | 14 | solo | escenario | volar a base de aletazos, entre huecos |
 | 🏓 Pong | 18 | solo | escenario | la mascota ES la pala, y enfrente hay otra |
 | 🧱 Ladrillos | 21 | solo | escenario | un muro que se rompe, sobre el Pong |
@@ -465,27 +465,25 @@ Y tres [por confirmar](#en-el-tintero): derribar estructuras (nivel 40),
 artillería por turnos (nivel 50) y el ranking entre patos, que no es un juego
 sino una decisión de arquitectura.
 
-### 🌵 Obstáculos y 🪶 Aleteo
+### 🪶 Aleteo
 
-Van juntos porque son **el mismo juego con la gravedad cambiada de bando**, y por
-eso salen casi por el precio de uno:
+Es [Obstáculos](../src/core/game/minijuegos/obstaculos.js) **con la gravedad
+cambiada de bando**, y por eso sale casi por el precio del cambio: la mascota cae
+sola y cada espaciazo le da un aletazo hacia arriba; hay que colarse por los
+huecos. El mismo botón, la decisión contraria: cuándo NO dejarla caer.
 
-- **Obstáculos** — el dinosaurio de Chrome. La mascota corre, el suelo pasa, y
-  con la barra espaciadora salta cactus. Un botón, una decisión: cuándo.
-- **Aleteo** — el pájaro ese. La mascota cae sola y cada espaciazo le da un
-  aletazo hacia arriba; hay que colarse por los huecos. El mismo botón, la
-  decisión contraria: cuándo NO dejarla caer.
+De Obstáculos se lleva casi todo hecho: el desfile que entra por la derecha
+acelerando, la separación medida en tiempo y no en píxeles, la colisión de
+círculo contra rectángulo y el marcador. Lo que cambia son los números de
+`conAjustes` y que el impulso va en cada pulsación en vez de sólo desde el suelo.
 
-Los dos son de escenario, los dos usan `fisica.paso` con otros números, los dos
-cuentan lo que aguantas (`marca: {etiqueta:'metros'|'huecos', mejor:'mas'}`) y
-los dos se acaban de un solo golpe. Lo que hay que escribir es el **desfile**:
-una lista de obstáculos que entra por la derecha a velocidad creciente, y una
-colisión de rectángulo contra `pato.cuerpo()`.
+- `marca: { etiqueta: 'huecos', mejor: 'mas' }`.
+- El espacio ya está resuelto: `escenario.js` se lo traga desde Obstáculos.
 
-**Una cosa que arreglar en `escenario.js` antes, y una sola vez:** la barra
-espaciadora **desplaza la página**. Hoy `escucharTeclas` sólo se traga `Escape`;
-estos dos necesitan que también se trague el espacio mientras haya partida. Va
-ahí y no en cada juego, igual que Escape.
+Y una nota de lo aprendido allí: **la separación entre obstáculos tiene que
+apretarse con el avance**, no sólo escalar con la velocidad. Con el hueco fijo en
+tiempo, el juego se ve más rápido pero se juega igual de fácil al minuto que al
+segundo cinco.
 
 ### 🏓 Pong
 

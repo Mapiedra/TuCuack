@@ -114,6 +114,18 @@ export const MINIJUEGOS = [
     cargar: () => import('./tresEnRaya.js')
   },
   {
+    id: 'obstaculos',
+    nombre: 'Obstáculos',
+    icono: '🌵',
+    descripcion: 'Corre y salta con la barra espaciadora. Hasta que falles.',
+    nivel: 8,
+    modos: ['solo'],
+    jugadores: { min: 1, max: 1 },
+    superficie: 'escenario',
+    marca: { etiqueta: 'm', mejor: 'mas' },
+    cargar: () => import('./obstaculos.js')
+  },
+  {
     id: 'paleta',
     // Que es lo que se hace: mantenerla en el aire a base de toques. «Pong» se
     // deja libre a propósito, que va a haber uno de verdad.
