@@ -20,7 +20,7 @@ import { buildSkinsPanel } from './ui/skinsPanel.js';
 import { buildOnlinePanel } from './ui/onlinePanel.js';
 import { Level } from './game/Level.js';
 import { SKINS, skinPorId, estaDesbloqueada, SKIN_POR_DEFECTO } from './game/skins.js';
-import { MINIJUEGOS, minijuegoPorId, nombreDeJuego } from './game/minijuegos/index.js';
+import { MINIJUEGOS, minijuegoPorId, nombreDeJuego, juegosDisponibles } from './game/minijuegos/index.js';
 import { ProgresoJuegos } from './game/minijuegos/progreso.js';
 import { Cartera, pagoDePartida, CUACK } from './game/cuacks.js';
 import { buildJuegosPanel } from './ui/juegosPanel.js';
@@ -199,10 +199,14 @@ export async function arrancarPato(plataforma) {
   // desbloqueado o no existe, se vuelve al de por defecto).
   level = new Level(saved.level);
   juegos = new ProgresoJuegos(saved.minijuegos);
-  // Después de `juegos`, y no es casualidad: si el guardado es anterior a la
-  // moneda, la cartera se estrena con una bienvenida calculada sobre las
-  // partidas que ya hay. Ver `Cartera` en game/cuacks.js.
-  cartera = new Cartera(saved.cuacks, juegos.totales());
+  // Después de `juegos` y de `level`, y no es casualidad: si el guardado es
+  // anterior a la moneda, la cartera se estrena regalando los juegos que el
+  // nivel ya tenía abiertos y con un saldo calculado sobre las partidas que ya
+  // hay. Ver `Cartera` en game/cuacks.js.
+  cartera = new Cartera(saved.cuacks, {
+    partidas: juegos.totales().partidas,
+    yaAbiertos: juegosDisponibles(level.nivel).map((j) => j.id)
+  });
   const skin = skinPorId(settings.skin);
   const skinValida = skin && estaDesbloqueada(skin, level.nivel) ? skin.id : SKIN_POR_DEFECTO;
 
@@ -1278,7 +1282,15 @@ function openSkins(x, y) {
 // que sea— es meterlo en esta lista: el aviso de subida de nivel lo anuncia solo.
 const DESBLOQUEABLES = [
   { lista: SKINS, singular: 'Nuevo diseño', plural: 'Nuevos diseños' },
-  { lista: MINIJUEGOS, singular: 'Nuevo juego', plural: 'Nuevos juegos' }
+  {
+    lista: MINIJUEGOS,
+    singular: 'Nuevo juego',
+    plural: 'Nuevos juegos',
+    // Con el precio detrás si todavía no es suyo. Anunciar «Nuevo juego» y que
+    // al abrir el panel resulte que hay que comprarlo sería prometer de más: el
+    // nivel lo ABRE, y eso es exactamente lo que dice así.
+    apunte: (juego) => (cartera && cartera.tiene(juego) ? '' : ` · ${CUACK} ${juego.precio}`)
+  }
 ];
 
 /**
@@ -1289,11 +1301,12 @@ const DESBLOQUEABLES = [
  * eso ya no es texto propio: un `<` suyo aquí rompería el cartel.
  */
 function novedadesDeNivel(nivel) {
-  return DESBLOQUEABLES.map(({ lista, singular, plural }) => {
+  return DESBLOQUEABLES.map(({ lista, singular, plural, apunte }) => {
     const nuevos = lista.filter((x) => x.nivel === nivel);
     if (!nuevos.length) return '';
     const etiqueta = nuevos.length > 1 ? plural : singular;
-    const nombres = nuevos.map((x) => escaparHtml(nombreDeJuego(x, duckName()))).join(', ');
+    const nombres = nuevos.map((x) => escaparHtml(nombreDeJuego(x, duckName())
+      + (apunte ? apunte(x) : ''))).join(', ');
     return `<br>${etiqueta}: <b>${nombres}</b>`;
   }).join('');
 }

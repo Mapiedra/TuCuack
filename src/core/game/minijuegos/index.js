@@ -28,11 +28,14 @@
  * @property {string} descripcion
  * @property {number} nivel        nivel al que se desbloquea
  * @property {number} precio
- *   Lo que cuesta comprarlo, en cuacks (ver game/cuacks.js). **Cero es cero
- *   para siempre**: los diez juegos que había cuando llegó la moneda valen 0 y
- *   van a seguir valiendo 0, porque quitárselos a quien ya los usaba para
- *   vendérselos después no se hace. Los que vengan llevan precio; para elegirlo,
+ *   Lo que cuesta comprarlo, en cuacks (ver game/cuacks.js). Lo llevan todos
+ *   menos el de nivel 1, que es la puerta: sin un juego con el que empezar a
+ *   ganar no habría forma de comprar el segundo. Para elegirlo,
  *   `precioSugerido(nivel)` en cuacks.js.
+ *
+ *   Que un juego tenga precio **no se lo quita a quien ya lo tenía**: al
+ *   estrenar el monedero se regalan todos los que el nivel ya había abierto
+ *   (ver `Cartera`). El precio sólo lo paga quien todavía no había llegado.
  * @property {Array<'solo'|'turnos'>} modos
  * @property {{min:number, max:number}} jugadores  sólo cuenta en 'turnos'
  * @property {'panel'|'escenario'} superficie
@@ -61,6 +64,8 @@ export const MINIJUEGOS = [
     nombre: 'Piedra, papel o tijera',
     icono: '✌️',
     descripcion: 'Al mejor de tres. Los dos eligen a la vez.',
+    // Gratis, y el único. Es la puerta: sin un juego con el que empezar a
+    // ganar cuacks no habría forma de comprar el segundo.
     nivel: 1,
     precio: 0,
     modos: ['solo', 'turnos'],
@@ -80,7 +85,7 @@ export const MINIJUEGOS = [
     icono: '🔊',
     descripcion: 'Repite la serie sin equivocarte. Cada ronda, una más.',
     nivel: 2,
-    precio: 0,
+    precio: 100,
     modos: ['solo'],
     jugadores: { min: 1, max: 1 },
     superficie: 'panel',
@@ -93,7 +98,7 @@ export const MINIJUEGOS = [
     icono: '🎲',
     descripcion: 'Uno pide par, el otro impar, y la suma decide.',
     nivel: 3,
-    precio: 0,
+    precio: 125,
     modos: ['solo', 'turnos'],
     jugadores: { min: 2, max: 2 },
     superficie: 'panel',
@@ -106,7 +111,7 @@ export const MINIJUEGOS = [
     icono: '🃏',
     descripcion: 'Parejas con tu mascota. Doce cartas, seis poses.',
     nivel: 4,
-    precio: 0,
+    precio: 175,
     modos: ['solo', 'turnos'],
     jugadores: { min: 2, max: 2 },
     superficie: 'panel',
@@ -119,7 +124,7 @@ export const MINIJUEGOS = [
     icono: '⭕',
     descripcion: 'El de siempre. Contra tu mascota o contra otra.',
     nivel: 6,
-    precio: 0,
+    precio: 275,
     modos: ['solo', 'turnos'],
     jugadores: { min: 2, max: 2 },
     superficie: 'panel',
@@ -133,7 +138,7 @@ export const MINIJUEGOS = [
     icono: '🌵',
     descripcion: 'Corre y salta con la barra espaciadora. Hasta que falles.',
     nivel: 8,
-    precio: 0,
+    precio: 350,
     modos: ['solo'],
     jugadores: { min: 1, max: 1 },
     superficie: 'escenario',
@@ -148,7 +153,7 @@ export const MINIJUEGOS = [
     icono: '🎯',
     descripcion: 'Seis disparos, cinco dianas. Apunta y suelta.',
     nivel: 9,
-    precio: 0,
+    precio: 400,
     modos: ['solo'],
     jugadores: { min: 1, max: 1 },
     superficie: 'escenario',
@@ -163,7 +168,7 @@ export const MINIJUEGOS = [
     icono: '🏓',
     descripcion: 'Que no toque el suelo. Se juega en la pantalla entera.',
     nivel: 12,
-    precio: 0,
+    precio: 550,
     modos: ['solo'],
     jugadores: { min: 1, max: 1 },
     superficie: 'escenario',
@@ -176,7 +181,7 @@ export const MINIJUEGOS = [
     icono: '🪶',
     descripcion: 'Aletea con el espacio y cuélate por los huecos.',
     nivel: 14,
-    precio: 0,
+    precio: 625,
     modos: ['solo'],
     jugadores: { min: 1, max: 1 },
     superficie: 'escenario',
@@ -191,7 +196,7 @@ export const MINIJUEGOS = [
     icono: '🕳️',
     descripcion: 'Recoge las que caen. Las que no, se quedan en el suelo.',
     nivel: 16,
-    precio: 0,
+    precio: 725,
     modos: ['solo'],
     jugadores: { min: 1, max: 1 },
     superficie: 'escenario',

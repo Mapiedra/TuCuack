@@ -25,13 +25,20 @@
 // segundo parezca un fallo. La experiencia sí lo lleva, porque ahí no hay nada
 // más que la pare (ver Level.js).
 //
-// ---- Lo que YA se tiene no se cobra ----------------------------------------
+// ---- Lo que YA se tenía no se cobra ---------------------------------------
 //
-// Los diez juegos que había cuando llegó la moneda valen 0 y valdrán 0 siempre.
-// Quitarle a alguien algo que ya usaba para vendérselo después es de las pocas
-// cosas que no se hacen. El precio empieza a contar con los juegos que vengan
-// después, y por eso el precio vive en el descriptor de cada juego (ver
-// minijuegos/index.js) y no en una fórmula que se aplique a todos por igual.
+// Todos los juegos llevan precio menos el de nivel 1 —que es la puerta—, pero
+// **nadie paga por lo que ya había conseguido**: al estrenar el monedero se
+// regalan de golpe todos los juegos que el nivel del pato ya tenía abiertos.
+//
+// Las dos cosas a la vez, y no es contradictorio: quien lleva meses jugando se
+// queda exactamente como estaba, y quien entra hoy se los va comprando. La
+// diferencia no es el juego, es CUÁNDO se abrió: lo que estaba abierto el día
+// que apareció la moneda estaba conseguido, y eso no se quita.
+//
+// Ojo con la consecuencia, que es deliberada: los juegos que aún NO se habían
+// abierto por nivel sí se pagan, también para quien ya venía jugando. Un juego
+// que todavía no tenías no es tuyo, y ahí no se le quita nada a nadie.
 
 /** El símbolo, en un solo sitio: sale en el panel, en el pie y en los carteles. */
 export const CUACK = '🪙';
@@ -119,12 +126,14 @@ export function premioDeLaBroma(nivel) {
 }
 
 /**
- * Lo que se le regala a quien ya venía jugando el día que apareció la moneda.
+ * El saldo con el que arranca quien ya venía jugando.
  *
- * Sin esto, alguien con trescientas partidas encima empezaría a cero igual que
- * quien acaba de instalarlo, y lo primero que vería de los cuacks sería un muro.
- * Se calcula con las partidas que ya están guardadas —dato real, no un número
- * inventado— y se topa, que tampoco es un cheque en blanco.
+ * Los juegos que ya tenía abiertos se le regalan (ver `Cartera`), así que esto
+ * no es por lo de atrás: es para lo de delante. Un pato de nivel 10 va a
+ * encontrarse con que los tres juegos que le quedan por abrir ahora se compran,
+ * y llegar a ese punto sin un cuack sería un cambio de reglas a mitad de
+ * partida. Se calcula con las partidas que ya están guardadas —dato real, no un
+ * número inventado— y se topa, que tampoco es un cheque en blanco.
  *
  * Se paga UNA vez: en cuanto la cartera existe en el disco, esto no se vuelve a
  * mirar nunca.
@@ -157,21 +166,31 @@ function entero(v) {
 export class Cartera {
   /**
    * @param {object} [guardado]  lo que había en `estado.cuacks`
-   * @param {{partidas:number}} [yaJugado]  totales de ProgresoJuegos, sólo para
-   *   estrenar la cartera de quien ya venía jugando. Se ignora si ya existía.
+   * @param {{partidas:number, yaAbiertos:string[]}} [estreno]
+   *   Sólo se mira si la cartera NO existía: `partidas` son las de
+   *   ProgresoJuegos y `yaAbiertos` los ids de los juegos que el nivel de este
+   *   pato ya tenía desbloqueados. Los segundos se regalan; ver arriba.
    */
-  constructor(guardado, yaJugado) {
+  constructor(guardado, estreno) {
     const g = guardado && typeof guardado === 'object' ? guardado : null;
+    const e = estreno && typeof estreno === 'object' ? estreno : {};
 
-    this.saldo = g ? entero(g.saldo) : bienvenida(yaJugado && yaJugado.partidas);
+    this.saldo = g ? entero(g.saldo) : bienvenida(e.partidas);
     this.ganado = g ? entero(g.ganado) : this.saldo;
-    /** Si la cartera se acaba de estrenar, y cuánto se le dio. Para poder decirlo. */
+    /** Si la cartera se acaba de estrenar, y con qué. Para poder decirlo. */
     this.estrenada = !g;
     this.deBienvenida = g ? 0 : this.saldo;
 
     this._comprados = new Set(
-      g && Array.isArray(g.comprados) ? g.comprados.filter((x) => typeof x === 'string') : []
+      g && Array.isArray(g.comprados)
+        ? g.comprados.filter((x) => typeof x === 'string')
+        // El regalo de estreno: lo que el nivel ya había abierto pasa a estar
+        // comprado, y a partir de ahí es una compra más. No hace falta guardar
+        // que fue un regalo —una vez tuyo, da igual cómo llegó—.
+        : (Array.isArray(e.yaAbiertos) ? e.yaAbiertos.filter((x) => typeof x === 'string') : [])
     );
+    /** Cuántos se regalaron al estrenar. Sólo para poder contarlo en el panel. */
+    this.regalados = g ? 0 : this._comprados.size;
     /** Último día que se cobró el peaje del «No tocar». */
     this.diaDeLaBroma = g && typeof g.diaDeLaBroma === 'string' ? g.diaDeLaBroma : '';
   }

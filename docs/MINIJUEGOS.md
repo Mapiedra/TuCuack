@@ -39,7 +39,7 @@ Tres pasos, y ninguno toca `app.js`:
 
 El `precio` sale de `precioSugerido(nivel)` en
 [`cuacks.js`](../src/core/game/cuacks.js) —ver [Los cuacks](#los-cuacks)—. El
-nivel ABRE el juego; el precio lo COMPRA.
+nivel ABRE el juego; el precio lo COMPRA. Lo llevan todos menos el de nivel 1.
 
 ```js
 {
@@ -425,14 +425,31 @@ mecanismo: no hay nada que lo prohíba, simplemente no sale a cuenta.
 
 ### Lo que ya se tenía no se cobra
 
-Los diez juegos que había cuando llegó la moneda valen `precio: 0`, y van a
-seguir valiendo 0. Quitarle a alguien algo que ya usaba para vendérselo después
-no se hace. Por eso el precio vive en el descriptor de cada juego y no en una
-fórmula que se aplique a todos por igual.
+**Todos los juegos llevan precio menos el de nivel 1**, que es la puerta: sin uno
+con el que empezar a ganar no habría forma de comprar el segundo.
 
-Y a quien ya venía jugando se le abonó una bienvenida al estrenar la cartera:
-cinco cuacks por partida jugada, con tope de 500. Sale de las partidas que ya
-estaban guardadas —dato real, no un número inventado— y se paga una sola vez.
+Y a la vez, **nadie paga por lo que ya había conseguido**. Al estrenar el
+monedero se regalan de golpe todos los juegos que el nivel de ese pato ya tenía
+abiertos, y a partir de ahí son compras como cualquier otra. Las dos cosas no se
+contradicen: la diferencia no es el juego, es CUÁNDO se abrió. Lo que estaba
+abierto el día que llegó la moneda estaba conseguido, y eso no se quita.
+
+La consecuencia es deliberada: los juegos que aún **no** se habían abierto por
+nivel sí se pagan, también para quien ya venía jugando. Un juego que todavía no
+tenías no es tuyo, y ahí no se le quita nada a nadie.
+
+| Quién | Se le regalan | Paga |
+|---|---|---|
+| Instala hoy, nivel 1 | sólo el de nivel 1 | los otros nueve |
+| Venía jugando, nivel 10 | siete | Jumping, Flappy y The Hole |
+| Venía jugando, nivel 16+ | los diez | nada |
+
+Y al estrenar la cartera se abona un saldo de arranque: cinco cuacks por partida
+ya jugada, con tope de 500. No es por lo de atrás —eso ya se cubre con el
+regalo—, es para lo de delante: al de nivel 10 le quedan tres juegos que ahora se
+compran, y llegar ahí sin un cuack sería cambiarle las reglas a mitad de partida.
+Se paga una sola vez y sale de las partidas guardadas, no de un número
+inventado.
 
 ### La broma también paga
 
@@ -501,15 +518,15 @@ que son una línea en un array.
 | # | Nivel | Juego | Qué pide | Días | Precio |
 |---|---|---|---|---|---|
 | 1 | 1 | ✌️ Piedra, papel o tijera | suerte | 0 | gratis |
-| 2 | 2 | 🔊 «Pato dice» | memoria corta | 0 | gratis |
-| 3 | 3 | 🎲 Par o impar | suerte y una apuesta | 0 | gratis |
-| 4 | 4 | 🃏 Memoria | memoria espacial | 1 | gratis |
-| 5 | 6 | ⭕ Tres en raya | pensar | 1 | gratis |
-| 6 | 8 | 🌵 «Pato Runner» | reflejos, un botón | 2 | gratis |
-| 7 | 9 | 🎯 «Pato Hook» | puntería, sin prisa | 3 | gratis |
-| 8 | 12 | 🏓 «Pato Jumping» | reflejos y ratón continuo | 4 | gratis |
-| 9 | 14 | 🪶 «Flappy Pato» | reflejos finos, castiga | 5 | gratis |
-| 10 | 16 | 🕳️ The Hole | varias cosas a la vez | 6 | gratis |
+| 2 | 2 | 🔊 «Pato dice» | memoria corta | 0 | 100 |
+| 3 | 3 | 🎲 Par o impar | suerte y una apuesta | 0 | 125 |
+| 4 | 4 | 🃏 Memoria | memoria espacial | 1 | 175 |
+| 5 | 6 | ⭕ Tres en raya | pensar | 1 | 275 |
+| 6 | 8 | 🌵 «Pato Runner» | reflejos, un botón | 2 | 350 |
+| 7 | 9 | 🎯 «Pato Hook» | puntería, sin prisa | 3 | 400 |
+| 8 | 12 | 🏓 «Pato Jumping» | reflejos y ratón continuo | 4 | 550 |
+| 9 | 14 | 🪶 «Flappy Pato» | reflejos finos, castiga | 5 | 625 |
+| 10 | 16 | 🕳️ The Hole | varias cosas a la vez | 6 | 725 |
 | 11 | 20 | ⛳ Minigolf | puntería fina, sin prisa | 8 | 900 |
 | 12 | 24 | 🏓 Pong | reflejos contra un rival | 11 | 1075 |
 | 13 | 28 | 🧱 Ladrillos | Pong con puntería | 14 | 1250 |
@@ -522,9 +539,11 @@ que son una línea en un array.
 | 20 | 68 | 💥 Artillería | todo junto | 49 | 3050 |
 
 Los días son de uso normal —unas 736 XP diarias entre convivencia, cuidados,
-racha, chat y el tope de partidas—. Los diez primeros están **hechos** y son
-**gratis para siempre**; del 11 en adelante, [por hacer](#los-que-faltan), y con
-precio: el nivel los abre y los cuacks los compran.
+racha, chat y el tope de partidas—. Los diez primeros están **hechos**; del 11 en
+adelante, [por hacer](#los-que-faltan).
+
+El nivel ABRE un juego y el precio lo COMPRA. Quien ya lo tuviera abierto el día
+que llegó la moneda no paga por él —ver [Los cuacks](#los-cuacks)—.
 
 ### Ordenados por dificultad, no por antigüedad
 

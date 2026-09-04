@@ -92,6 +92,8 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
 
   function pintarRejilla() {
     cuerpo.appendChild(tiraDelSaldo());
+    const estreno = notaDeEstreno();
+    if (estreno) cuerpo.appendChild(estreno);
 
     const grid = document.createElement('div');
     grid.className = 'juegos-grid';
@@ -185,13 +187,7 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
     cuerpo.appendChild(bloqueCuacks());
   }
 
-  /**
-   * El saldo, arriba del todo.
-   *
-   * Con la bienvenida dicha cuando toca: a quien ya venía jugando se le abonó
-   * algo por lo jugado el día que apareció la moneda, y un saldo que aparece de
-   * la nada sin explicación se lee como un fallo, no como un regalo.
-   */
+  /** El saldo, arriba del todo y a la derecha. */
   function tiraDelSaldo() {
     const caja = document.createElement('div');
     caja.className = 'cuacks-tira';
@@ -200,14 +196,37 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
     saldo.textContent = `${CUACK} ${cartera.saldo}`;
     saldo.title = 'Cuacks. Se ganan jugando y se gastan en comprar juegos.';
     caja.appendChild(saldo);
-
-    if (cartera.estrenada && cartera.deBienvenida > 0) {
-      const nota = document.createElement('span');
-      nota.className = 'muted';
-      nota.textContent = `+${cartera.deBienvenida} por lo que ya llevabas jugado`;
-      caja.appendChild(nota);
-    }
     return caja;
+  }
+
+  /**
+   * Qué pasó al estrenar el monedero, si es que se acaba de estrenar.
+   *
+   * Hace falta decirlo: de un día para otro los juegos tienen precio, y quien
+   * abra esta pantalla sin explicación va a pensar que le han quitado algo. Lo
+   * que se dice es exactamente lo que ha pasado —sigues teniendo lo que tenías—
+   * y no una felicitación vacía.
+   */
+  function notaDeEstreno() {
+    if (!cartera.estrenada) return null;
+    const trozos = [];
+    // Más de uno, no más de cero: el de nivel 1 lo tiene todo el mundo desde el
+    // principio, y decirle a quien acaba de instalarlo que «el juego que ya
+    // tenías sigue siendo tuyo» es hablarle de un pasado que no existe.
+    if (cartera.regalados > 1) {
+      trozos.push(cartera.regalados === 1
+        ? 'El juego que ya tenías sigue siendo tuyo.'
+        : `Los ${cartera.regalados} juegos que ya tenías siguen siendo tuyos.`);
+    }
+    if (cartera.deBienvenida > 0) {
+      trozos.push(`Y ahí van ${cartera.deBienvenida} cuacks por lo que llevabas jugado.`);
+    }
+    if (!trozos.length) return null;
+
+    const p = document.createElement('p');
+    p.className = 'muted';
+    p.textContent = trozos.join(' ');
+    return p;
   }
 
   // ---- La tienda -----------------------------------------------------------
@@ -261,7 +280,7 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
     nota.className = 'muted';
     nota.textContent = falta > 0
       ? 'Los cuacks se ganan jugando: cuanto más alto es el juego, más paga.'
-      : 'Una vez comprado es tuyo para siempre, también si algún día te baja el nivel.';
+      : 'Una vez comprado es tuyo para siempre, y no se vuelve a pagar.';
     cuerpo.appendChild(nota);
   }
 
@@ -576,8 +595,9 @@ function bloqueCuacks() {
   nota.className = 'muted';
   nota.textContent = 'Cuanto más alto es el juego, más paga: así no sale a cuenta '
     + 'comprar el más caro machacando el más tonto. No hay tope diario —el tope '
-    + 'ya lo pone el cansancio de tu mascota—. Y los juegos que ya tienes '
-    + 'siguen siendo gratis: los cuacks son para los que vengan.';
+    + 'ya lo pone el cansancio de tu mascota—. El nivel abre un juego y los cuacks '
+    + 'lo compran; el primero es gratis, y los que ya tenías abiertos se quedaron '
+    + 'tuyos el día que llegó la moneda.';
   det.appendChild(nota);
 
   return det;
