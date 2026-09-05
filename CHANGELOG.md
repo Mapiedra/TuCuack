@@ -7,6 +7,24 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.22.0] - 2026-09-04
+
+### Añadido
+
+- **🏓 Pong.** Nivel 24, 1075 cuacks, en la pantalla entera. Tu mascota es la
+  pala de la izquierda y sigue al ratón —pero no al instante: tiene su
+  velocidad, y llegar a tiempo es medio juego—. Enfrente, la máquina. Gana quien
+  llegue a **siete**.
+
+  Es el primero donde **ganar y batir el récord son dos cosas distintas**: lo que
+  se guarda como marca es el **peloteo más largo**, no el resultado. Se puede
+  perder 7-3 y firmar la mejor marca de tu vida.
+
+  La máquina aprende con tu nivel: en el 24 falla una de cada tres y en el 40 no
+  falla casi nunca —hasta que la pelota se pone seria—. Porque la pelota acelera
+  con cada golpe, y llega un momento en que va demasiado deprisa para leerla:
+  ahí es donde se acaban los puntos, como en el Pong de siempre.
+
 ## [0.21.0] - 2026-09-04
 
 ### Cambiado
