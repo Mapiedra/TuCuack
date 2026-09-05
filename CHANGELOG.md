@@ -7,6 +7,44 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.21.0] - 2026-09-04
+
+### Cambiado
+
+- **El ⛳ Minigolf pasa de cinco hoyos a diez, y deja de ser siempre el mismo.**
+  Antes cambiaban los números pero no la forma: muros verticales en columnas,
+  salida a la izquierda, hoyo a la derecha, hoyo tras hoyo. Ahora el recorrido
+  entero se sortea en cada partida —hasta el lado al que se juega— y va creciendo:
+  **el hoyo 1 está vacío y el 10 tiene nueve cosas por medio**.
+
+  Y no sólo más cosas: cosas distintas, que van entrando poco a poco para que
+  cada una se aprenda sola.
+
+  | Desde el hoyo | Aparece | Qué hace |
+  |---|---|---|
+  | 1 | muro vertical | con hueco arriba o abajo |
+  | 3 | muro horizontal | corto: se rodea por un lado |
+  | 4 | bloque suelto | en cualquier sitio |
+  | 5 | 🏖 arena | frena cuatro veces más que el césped |
+  | 7 | 💧 agua | un golpe de más, y a repetir desde donde saliste |
+  | 8 | 🟡 tope | te devuelve con más fuerza de la que llevabas |
+
+  El par de la vuelta es 38.
+
+- **Si tardas, el juego cierra la ronda él.** A los ocho minutos y medio da por
+  perdidos los hoyos que falten y apunta la marca. Antes, una ronda muy larga se
+  comía el límite del escenario y se perdía entera, sin resultado: perder por
+  lento es una derrota, perderlo todo era un fallo.
+
+### Corregido
+
+- **Una marca de otras reglas ya no se queda ahí para siempre.** Los 24 golpes
+  que se podían hacer en el recorrido de cinco hoyos son imposibles en el de
+  diez, así que ese récord no lo iba a batir nadie nunca. Ahora, cuando un juego
+  cambia cómo puntúa, **su récord se borra** —y sólo el récord: las partidas y
+  las victorias siguen contadas, que ésas se jugaron de verdad—. Le pasará a
+  cualquier juego que se retoque, así que el arreglo vale para todos.
+
 ## [0.20.0] - 2026-09-04
 
 ### Añadido
