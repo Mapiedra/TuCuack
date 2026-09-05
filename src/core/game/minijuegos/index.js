@@ -227,6 +227,21 @@ export const MINIJUEGOS = [
     // el principio y no la había estrenado nadie.
     marca: { etiqueta: 'golpes', mejor: 'menos' },
     cargar: () => import('./minigolf.js')
+  },
+  {
+    id: 'pong',
+    nombre: 'Pong',
+    icono: '🏓',
+    descripcion: 'Tu mascota de pala contra la máquina. Gana quien llegue a siete.',
+    nivel: 24,
+    precio: 1075,
+    modos: ['solo'],
+    jugadores: { min: 1, max: 1 },
+    superficie: 'escenario',
+    // Ojo, que aquí la marca NO es el resultado: se gana el partido y se guarda
+    // el peloteo más largo. Es el primero donde son dos cosas distintas.
+    marca: { etiqueta: 'peloteo', mejor: 'mas' },
+    cargar: () => import('./pong.js')
   }
 ];
 

@@ -16,6 +16,7 @@ abren desde `🎮 Juegos` en el menú del pato.
 | 🪶 «Flappy Pato» | 14 | solo | escenario |
 | 🕳️ The Hole | 16 | solo | escenario |
 | ⛳ Minigolf | 20 | solo | escenario |
+| 🏓 Pong | 24 | solo | escenario |
 
 La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
 segundo, después los de pensar, y al final los que piden pulso. Los huecos están
@@ -29,6 +30,13 @@ El ⛳ Minigolf es el primero que hay que **comprar** —900 cuacks, ver [Los
 cuacks](#los-cuacks)— y el primero que puntúa **a menos**: gana quien acabe los
 diez hoyos con menos golpes. El recorrido se sortea entero en cada partida —ver
 [cómo se genera](#el-recorrido-del-minigolf)—.
+
+El 🏓 Pong es el primero con un **rival de verdad** en un juego de escenario, y
+el primero donde **ganar y batir el récord son dos cosas distintas**: se gana el
+partido —a siete— y lo que se guarda como marca es el peloteo más largo. Se puede
+perder 7-3 y firmar la mejor marca de tu vida. Lo que cobra la partida es el
+RESULTADO (ver [Los cuacks](#los-cuacks)); lo que sube al marcador global es la
+MARCA. En los juegos anteriores coincidían porque no había a quién ganar.
 
 ---
 
@@ -542,6 +550,52 @@ lento es una derrota; perderlo todo, un fallo.
 
 ---
 
+## El rival del Pong
+
+Persigue la pelota; **no la predice**. Es lo más tonto que puede hacer una
+máquina de Pong, y a propósito: con la pelota rebotando entre las bandas, quien
+persigue la posición de ahora llega siempre un poco tarde y se queda del lado
+equivocado del bote. Predecir el punto de llegada —que son cuatro líneas— la
+volvería infalible de golpe.
+
+Encima de eso, dos limitaciones:
+
+- **Velocidad**, de 560 px/s en el nivel 24 a 1020 en el 40. Tu pala va a 1150,
+  así que siempre eres más rápido.
+- **Error de puntería**, que es donde vive de verdad la dificultad. Un rival
+  lento no falla: sencillamente no llega, y eso se ve y no tiene gracia.
+
+### El error tiene dos sumandos, y el segundo es el que importa
+
+```
+error = alto de pala × (0,50 − maña × 0,46 + rapidez de la pelota × 0,60)
+```
+
+El primer sumando es la dificultad según tu nivel. El segundo es **lo que hace
+que un punto termine**, y sin él esto no funcionaba: a partir del nivel 32 el
+error caía por debajo de media pala —o sea, la máquina no fallaba nunca— y como
+además llegaba siempre a tiempo, el peloteo no se acababa. Medido antes de
+arreglarlo: **0-0 con sesenta y dos golpes y subiendo**, hasta que cortó el reloj.
+
+Con el segundo sumando, la pelota acelera 22 px/s por golpe y hasta el rival más
+fino falla una de cada cinco cuando llega arriba. El punto se acaba porque la
+pelota va demasiado deprisa para leerla, que es como se acaban los puntos en un
+Pong.
+
+| Tu nivel | Falla al sacar | A media velocidad | Con la pelota al tope |
+|---|---|---|---|
+| 24 | 36 % | 47 % | 55 % |
+| 32 | 10 % | 30 % | 43 % |
+| 40 | 0 % | 0 % | 22 % |
+
+Probado con dos bots que leen el lienzo para localizar la pelota. Uno perfecto
+—mueve el ratón a la pelota cada fotograma— gana 7-0 a cualquier nivel, y eso no
+dice nada: un rastreador perfecto gana siempre a cualquier Pong. El que sí dice
+algo es el otro, con 180 ms de reacción y ±34 px de error, que en el nivel 25
+acabó **6-5**.
+
+---
+
 ## Cómo se prueba
 
 ```bash
@@ -617,7 +671,7 @@ que son una línea en un array.
 | 20 | 68 | 💥 Artillería | todo junto | 49 | 3050 |
 
 Los días son de uso normal —unas 736 XP diarias entre convivencia, cuidados,
-racha, chat y el tope de partidas—. Los once primeros están **hechos**; del 12 en
+racha, chat y el tope de partidas—. Los doce primeros están **hechos**; del 13 en
 adelante, [por hacer](#los-que-faltan).
 
 El nivel ABRE un juego y el precio lo COMPRA. Quien ya lo tuviera abierto el día
@@ -642,7 +696,6 @@ para todos: ninguno pide ampliarlo.
 
 | Juego | Nivel | Modos | Superficie | Lo que estrena |
 |---|---|---|---|---|
-| 🏓 Pong | 24 | solo | escenario | la mascota ES la pala, y enfrente hay otra |
 | 🧱 Ladrillos | 28 | solo | escenario | un muro que se rompe, sobre el Pong |
 | 🌋 El suelo es lava | 33 | solo | escenario | plataformas que se mueven y se hunden |
 | 👾 Invasores | 38 | solo | escenario | disparar hacia arriba, y algo que baja |
