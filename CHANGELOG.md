@@ -7,6 +7,29 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.20.0] - 2026-09-04
+
+### Añadido
+
+- **⛳ Minigolf.** Nivel 20, en la pantalla entera, y **el primero que hay que
+  comprar**: 900 cuacks. Cinco hoyos vistos desde arriba, con muros de madera en
+  medio y la bandera al fondo. Se apunta como en «Pato Hook» —hacia el cursor, y
+  la fuerza sale de lo lejos que esté— pero lo que sale rodando es una bola por
+  el césped. Tu mascota se queda abajo, fuera del campo, mirando.
+
+  Es también **el primero que puntúa a menos**: el récord se bate bajando, no
+  subiendo. Gana quien acabe los cinco hoyos con menos golpes.
+
+  Tres cosas que conviene saber antes del primer tiro:
+
+  - **Deprisa se pasa de largo.** Si la bola llega lanzada, se lleva el hoyo por
+    delante. Medir la fuerza importa tanto como apuntar.
+  - **Las bandas devuelven**, y bastante: los muros nunca cruzan el campo entero,
+    así que siempre hay hueco por arriba o por abajo— pero el camino corto suele
+    ser el de banda.
+  - **Ocho golpes por hoyo y se pasa al siguiente**, con los ocho apuntados. Una
+    bola atascada no puede dejarte la partida colgada.
+
 ## [0.19.0] - 2026-09-04
 
 ### Cambiado
