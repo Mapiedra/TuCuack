@@ -27,7 +27,8 @@ conectado**, retándole desde el propio panel.
 
 El ⛳ Minigolf es el primero que hay que **comprar** —900 cuacks, ver [Los
 cuacks](#los-cuacks)— y el primero que puntúa **a menos**: gana quien acabe los
-cinco hoyos con menos golpes.
+diez hoyos con menos golpes. El recorrido se sortea entero en cada partida —ver
+[cómo se genera](#el-recorrido-del-minigolf)—.
 
 ---
 
@@ -54,6 +55,7 @@ nivel ABRE el juego; el precio lo COMPRA. Lo llevan todos menos el de nivel 1.
   descripcion: 'Uno piensa la palabra y los demás la adivinan.',
   nivel: 4,                    // a qué nivel se desbloquea
   precio: 175,                 // y lo que cuesta comprarlo, en cuacks
+  formato: 1,                  // sube esto si cambias cómo se puntúa (ver abajo)
   modos: ['turnos'],           // 'solo' | 'turnos'
   jugadores: { min: 2, max: 4 },
   superficie: 'panel',         // 'panel' | 'escenario'
@@ -466,6 +468,77 @@ paciencia, y entonces la broma sería una máquina de hacer cuacks.
 La cifra se dice en Ajustes **antes** de que nadie lo pulse, porque es la mitad
 del trato y esconderla sería hacer trampa. Lo que no se adorna es la otra mitad,
 así que el consejo se mantiene tal cual: no lo pulses.
+
+---
+
+## El recorrido del minigolf
+
+Diez hoyos, y **ninguno se repite**: el recorrido entero sale de `ctx.semilla`,
+que es distinta en cada partida. Lo que está fijado es la cuesta, no el trazado.
+
+### La cuesta
+
+El número de piezas es literal: **el hoyo `n` lleva `n-1`**. El primero es una
+recta para entender el golpe; el décimo tiene nueve cosas por medio. Un hoyo que
+crece de uno en uno se nota mientras juegas, y sale más barato que inventarse una
+curva de dificultad aparte.
+
+Lo que cambia no es sólo cuántas piezas, es **cuáles**, y van entrando
+escalonadas para que cada una se aprenda sola:
+
+| Desde el hoyo | Aparece | Qué hace |
+|---|---|---|
+| 1 | muro vertical | cruza casi el campo, con hueco arriba o abajo |
+| 3 | muro horizontal | corto: se rodea por un lado o por el otro |
+| 4 | bloque suelto | rectángulo pequeño, en cualquier sitio |
+| 5 | arena | no bloquea, pero frena cuatro veces más que el césped |
+| 7 | agua | un golpe de penalización y a repetir desde donde saliste |
+| 8 | tope | devuelve **más** de lo que recibe, y nunca deja la bola muerta |
+
+Cada pieza sale con su sitio y su tamaño sorteados, y **hasta el lado al que se
+juega**: la salida cae a la izquierda o a la derecha al cincuenta por ciento.
+Jugar hacia el otro lado no es el mismo hoyo espejado, porque el brazo con el que
+apuntas no es simétrico.
+
+### Las tres reglas que lo mantienen sano
+
+1. **Ninguna pieza sólida cruza el campo entero.** Los muros dejan siempre hueco
+   a un lado y los bloques son pequeños, así que el hoyo se alcanza siempre sin
+   tener que comprobarlo con un buscador de caminos —que para nueve rectángulos
+   sería matar moscas a cañonazos—.
+2. **Nada cae encima de la salida ni del hoyo.** Cuando el sorteo lo pone ahí, la
+   pieza se descarta en vez de recolocarse: mover una para que no estorbe es como
+   acaban amontonándose todas en el mismo sitio, y ese hoyo lleva una menos y ya.
+3. **Cupo por tipo y por hoyo**: dos aguas, tres arenas, tres topes. Sin cupo, el
+   sorteo puede sacar cinco charcos seguidos, y entonces el hoyo deja de ser
+   difícil para ser un peaje —cada agua cuesta un golpe—. Los muros no llevan
+   cupo, y por eso son también el recambio cuando otro se agota.
+
+### Cambiar las reglas borra el récord
+
+El paso de cinco hoyos a diez dejó las marcas viejas sin sentido: 24 golpes en
+cinco hoyos no se comparan con nada de un recorrido de diez, y sobre todo **no se
+pueden batir**, así que el juego se estropea para quien ya lo había jugado.
+
+Para eso está `formato` en el descriptor. Al subirlo, `ProgresoJuegos` borra la
+MARCA de ese juego la próxima vez que se carga el guardado —y sólo la marca: las
+partidas y las victorias se jugaron de verdad—.
+
+Eso arregla media casa. La fila que ya subió al marcador global sigue allí, y el
+servidor sólo acepta mejoras, así que **hay que borrarla a mano** desde el panel
+de Supabase antes de publicar:
+
+```sql
+delete from public.records where juego = 'minigolf';
+```
+
+### El reloj
+
+El préstamo del escenario corta a los diez minutos y lo hace **sin resultado**
+(`TOPE_PARTIDA_MS`), así que una ronda de diez hoyos podía acabar tirando la
+partida entera. El juego se da a sí mismo **ocho minutos y medio**: al llegar,
+cierra él, da por perdidos los hoyos que falten y apunta la marca. Perder por
+lento es una derrota; perderlo todo, un fallo.
 
 ---
 

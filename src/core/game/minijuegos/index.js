@@ -41,6 +41,13 @@
  * @property {'panel'|'escenario'} superficie
  *   'panel'     → se juega dentro de un panel, como el resto de la interfaz.
  *   'escenario' → toma la pantalla entera y pilota al pato (paleta, puntería).
+ * @property {number} [formato]
+ *   La versión de las REGLAS con las que se puntúa. Se sube cuando un cambio
+ *   deja las marcas viejas sin sentido —más hoyos, otro sistema de puntos—, y al
+ *   subirla el récord guardado de ese juego se borra: comparar 24 golpes de un
+ *   recorrido de cinco hoyos con los de uno de diez no es comparar nada, y
+ *   además deja una marca imposible de batir para siempre. Las partidas y las
+ *   victorias NO se tocan: esas se jugaron de verdad. Sin poner, vale 1.
  * @property {{etiqueta:string, mejor:'mas'|'menos'}|null} marca
  *   Qué se guarda como récord y en qué dirección es "mejor". `null` si el juego
  *   sólo se gana o se pierde (tres en raya, hundir la flota).
@@ -207,12 +214,15 @@ export const MINIJUEGOS = [
     id: 'minigolf',
     nombre: 'Minigolf',
     icono: '⛳',
-    descripcion: 'Cinco hoyos vistos desde arriba. Apunta, mide la fuerza y cuenta los golpes.',
+    descripcion: 'Diez hoyos vistos desde arriba. Apunta, mide la fuerza y cuenta los golpes.',
     nivel: 20,
     precio: 900,
     modos: ['solo'],
     jugadores: { min: 1, max: 1 },
     superficie: 'escenario',
+    // Del recorrido de cinco hoyos al de diez. Las marcas de la 0.20.0 no se
+    // pueden comparar con éstas —ni batir—, así que se borran.
+    formato: 2,
     // El primero que puntúa a MENOS. La dirección estaba en el contrato desde
     // el principio y no la había estrenado nadie.
     marca: { etiqueta: 'golpes', mejor: 'menos' },

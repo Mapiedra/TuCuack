@@ -211,3 +211,24 @@ $$;
 revoke all on function public.guardar_record(text, text, text, integer, text) from public;
 grant execute on function public.guardar_record(text, text, text, integer, text)
   to anon, authenticated;
+
+
+-- ---------------------------------------------------------------------------
+-- Cuando un juego cambia de formato
+-- ---------------------------------------------------------------------------
+--
+-- `guardar_record` sólo acepta MEJORAS. Eso está bien mientras las reglas no
+-- cambien, y es un problema el día que cambian: el minigolf pasó de cinco hoyos
+-- a diez, y una marca de 24 golpes conseguida con cinco se queda ahí arriba
+-- para siempre, porque ninguna partida de diez hoyos va a bajar de eso.
+--
+-- El lado del pato ya se apaña solo: el descriptor lleva un `formato` y al
+-- subirlo se borra la marca guardada de ese juego (ver
+-- core/game/minijuegos/progreso.js). Pero la fila que ya subió al marcador NO se
+-- puede tocar desde la app —con la clave publicable no se borra nada, ni lo
+-- propio, que es justo el diseño—, así que hay que venir aquí y borrarla a mano:
+--
+--   delete from public.records where juego = '<id del juego>';
+--
+-- Se hace ANTES de publicar la versión con el formato nuevo, o durante un rato
+-- convivirán marcas de dos juegos distintos con el mismo nombre.

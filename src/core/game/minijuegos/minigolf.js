@@ -1,4 +1,4 @@
-// Minigolf: cinco hoyos, y que no se te vayan los golpes.
+// Minigolf: diez hoyos, y que no se te vayan los golpes.
 //
 // Es el primero que **puntúa a menos** —`marca: {mejor:'menos'}`—, una dirección
 // que estaba en el contrato desde el principio y que no había usado nadie. Y es
@@ -12,33 +12,41 @@
 // habría sido pelearse con un módulo que sabe de suelos, techos e inclinación
 // —cosas que aquí no significan nada— para acabar necesitando igualmente lo
 // único que no trae: círculo contra rectángulo. Así que la bola lleva sus
-// veinte líneas de integración propias y la mascota se queda mirando desde
-// abajo, que es su papel en este.
+// líneas de integración propias y la mascota se queda mirando desde abajo, que
+// es su papel en este.
 //
 // Lo que sí se calca de «Pato Hook» es APUNTAR: se apunta hacia el cursor y la
 // fuerza sale de lo lejos que esté, medida contra el ancho de la pantalla. Quien
 // sepa jugar a uno sabe jugar al otro.
+//
+// ---- El recorrido ----------------------------------------------------------
+//
+// Diez hoyos que van creciendo: el primero es una recta para entender el golpe y
+// el décimo tiene nueve piezas por medio. Lo que cambia no es sólo cuántas, es
+// QUÉ: los muros aparecen desde el principio, la arena a partir del quinto, el
+// agua en el séptimo y los topes en el octavo. Cada pieza sale con su sitio y su
+// tamaño al azar, y hasta el lado al que se juega se sortea.
+//
+// La regla que lo mantiene sano: **ninguna pieza sólida cruza el campo entero**.
+// Cada muro deja hueco a un lado, y los bloques sueltos son pequeños. Con eso el
+// hoyo siempre se puede alcanzar sin tener que comprobarlo con un buscador de
+// caminos, que para nueve rectángulos sería matar moscas a cañonazos.
 
 import { sembrar } from './azar.js';
 
-const HOYOS = 5;
-
-/**
- * Golpes por hoyo antes de darlo por perdido.
- *
- * Sin tope, una bola atascada detrás de un muro es una partida que no termina
- * nunca, y con `mejor: 'menos'` eso además envenena el récord: bastaría con
- * abandonar a mitad para no empeorar la marca. Al llegar al tope el hoyo se da
- * por jugado con los ocho golpes puestos y se pasa al siguiente.
- */
-const TOPE_GOLPES = 8;
+const HOYOS = 10;
 
 /** Rozamiento del césped, exponencial y por segundo. */
 const ROZAMIENTO = 1.5;
+/** El de la arena. Frena tanto que cruzarla de largo no es una opción. */
+const ROZAMIENTO_ARENA = 6.5;
 /** Por debajo de esto la bola se considera parada y se puede volver a golpear. */
 const PARADA = 26;
 /** Lo que devuelven las bandas y los muros. */
 const REBOTE = 0.74;
+/** Y los topes, que devuelven MÁS de lo que reciben: para eso están. */
+const REBOTE_TOPE = 1.12;
+const TOPE_MINIMO = 260;
 
 /** El golpe más fuerte, en píxeles por segundo. */
 const FUERZA_MAX = 1250;
@@ -59,6 +67,30 @@ const PREVIO_S = 0.42;
 const PASO_MAX = 4;
 
 /**
+ * Golpes de más antes de dar un hoyo por perdido.
+ *
+ * Va sobre el par y no fijo, que un hoyo de par 5 con nueve piezas no se puede
+ * medir con la misma vara que la recta del primero. Y tiene que existir: con
+ * `mejor: 'menos'`, una bola atascada detrás de un muro no sólo dejaría la
+ * partida colgada, además envenenaría el récord, porque bastaría con abandonar
+ * para no empeorar nunca la marca.
+ */
+const MARGEN_TOPE = 3;
+
+/**
+ * Lo que el juego se da a sí mismo antes de cerrar la ronda.
+ *
+ * El préstamo del escenario corta a los diez minutos y lo hace SIN resultado
+ * —ver `TOPE_PARTIDA_MS` en escenario.js—, así que una ronda larga de diez hoyos
+ * podría acabar tirando la partida entera a la basura. Con esto el juego llega
+ * antes y cierra él: los hoyos que falten se dan por perdidos y la marca se
+ * apunta. Perder por lento es una derrota; perderlo todo, un fallo.
+ */
+const PRESUPUESTO_MS = 8.5 * 60 * 1000;
+/** A partir de aquí el marcador avisa de que queda poco. */
+const AVISO_MS = 60 * 1000;
+
+/**
  * @param {import('./index.js').ContextoPartida} ctx
  * @returns {import('./index.js').Partida}
  */
@@ -68,8 +100,9 @@ export function crearPartida(ctx) {
 
   const mejorPrevio = typeof ctx.marcas.mejor === 'number' ? ctx.marcas.mejor : null;
 
-  /** El campo en proporciones, para que un cambio de tamaño no rehaga el hoyo. */
+  /** El recorrido en proporciones, para que un cambio de tamaño no lo rehaga. */
   const disenos = disenarRecorrido(ctx.semilla);
+  const parTotal = disenos.reduce((s, d) => s + d.par, 0);
 
   /** 'apuntando' | 'rodando' | 'celebrando' | 'fin' */
   let fase = 'apuntando';
@@ -79,10 +112,13 @@ export function crearPartida(ctx) {
   let terminada = false;
   let pulsadoAntes = false;
   let celebracion = 0;
+  let transcurrido = 0;
+  /** Dónde estaba la bola al empezar el golpe, para devolverla si cae al agua. */
+  let antesDelGolpe = { x: 0, y: 0 };
 
   let campo = medirCampo(pista.medidas, pista.aPantalla);
   const bola = { x: 0, y: 0, vx: 0, vy: 0, radio: 8 };
-  /** El hoyo y los muros de ESTE hoyo, ya en píxeles. */
+  /** El hoyo, las piezas y la salida de ESTE hoyo, ya en píxeles. */
   let mapa = null;
 
   pista.cursor('crosshair');
@@ -98,6 +134,15 @@ export function crearPartida(ctx) {
   function actualizar(dt, p) {
     if (terminada) return;
     sincronizarCampo(p.medidas, p.aPantalla);
+
+    const antes = transcurrido;
+    transcurrido += dt * 1000;
+    if (transcurrido >= PRESUPUESTO_MS) { cerrarPorTiempo(); return; }
+    // La cuenta atrás del final se repinta sola, pero sólo al cambiar de
+    // segundo: el marcador es DOM y no hace falta tocarlo sesenta veces por
+    // segundo para enseñar un número que cambia una.
+    if (PRESUPUESTO_MS - transcurrido < AVISO_MS
+      && Math.ceil(antes / 1000) !== Math.ceil(transcurrido / 1000)) marcar();
 
     if (fase === 'celebrando') {
       celebracion -= dt;
@@ -142,6 +187,7 @@ export function crearPartida(ctx) {
 
   function golpear(golpe) {
     if (golpe.fuerza < 40) return;   // un clic encima de la bola no es un golpe
+    antesDelGolpe = { x: bola.x, y: bola.y };
     golpesAqui++;
     golpesTotal++;
     bola.vx = golpe.vx;
@@ -162,27 +208,40 @@ export function crearPartida(ctx) {
 
     for (let i = 0; i < pasos; i++) {
       // El rozamiento va exponencial: frena mucho al principio y se va
-      // acabando, que es como rueda una bola de verdad.
-      const freno = Math.exp(-ROZAMIENTO * paso);
+      // acabando, que es como rueda una bola de verdad. En la arena, el mismo
+      // cálculo con otro número.
+      const roce = enAlgo('arena') ? ROZAMIENTO_ARENA : ROZAMIENTO;
+      const freno = Math.exp(-roce * paso);
       bola.vx *= freno;
       bola.vy *= freno;
       bola.x += bola.vx * paso;
       bola.y += bola.vy * paso;
 
       for (const m of mapa.muros) chocarConMuro(m);
+      for (const t of mapa.topes) chocarConTope(t);
       chocarConLasBandas();
 
+      if (enAlgo('agua')) { alAgua(); return; }
       if (entraEnElHoyo()) { embocar(); return; }
     }
 
     if (Math.hypot(bola.vx, bola.vy) < PARADA) {
       bola.vx = 0;
       bola.vy = 0;
-      if (golpesAqui >= TOPE_GOLPES) { rendirElHoyo(); return; }
+      if (golpesAqui >= mapa.tope) { rendirElHoyo(); return; }
       fase = 'apuntando';
       // No dispara solo si se llegó aquí con el botón pulsado.
       pulsadoAntes = entrada.pulsado;
     }
+  }
+
+  /** Si el centro de la bola está dentro de alguna zona de ese tipo. */
+  function enAlgo(tipo) {
+    for (const z of mapa.zonas) {
+      if (z.tipo !== tipo) continue;
+      if (bola.x >= z.x && bola.x <= z.x + z.w && bola.y >= z.y && bola.y <= z.y + z.h) return true;
+    }
+    return false;
   }
 
   /**
@@ -216,12 +275,45 @@ export function crearPartida(ctx) {
     const ny = dy / d;
     bola.x = px + nx * bola.radio;
     bola.y = py + ny * bola.radio;
+    reflejar(nx, ny, REBOTE);
+  }
 
+  /**
+   * Los topes devuelven más de lo que reciben.
+   *
+   * Y con un mínimo: un roce suave contra un tope tiene que salir despedido
+   * igual, o el tope se convierte en un sitio donde la bola se queda muerta,
+   * que es justo lo contrario de lo que promete su pinta.
+   */
+  function chocarConTope(t) {
+    const dx = bola.x - t.x;
+    const dy = bola.y - t.y;
+    const d = Math.hypot(dx, dy) || 0.0001;
+    const juntos = t.r + bola.radio;
+    if (d >= juntos) return;
+
+    const nx = dx / d;
+    const ny = dy / d;
+    bola.x = t.x + nx * juntos;
+    bola.y = t.y + ny * juntos;
+    if (!reflejar(nx, ny, REBOTE_TOPE)) return;
+
+    const v = Math.hypot(bola.vx, bola.vy);
+    if (v < TOPE_MINIMO) {
+      bola.vx = nx * TOPE_MINIMO;
+      bola.vy = ny * TOPE_MINIMO;
+    }
+    ctx.sonido.nota(660, 0.07);
+  }
+
+  /** Refleja la velocidad contra una normal. Devuelve si de verdad chocaba. */
+  function reflejar(nx, ny, devuelve) {
     const vn = bola.vx * nx + bola.vy * ny;
-    if (vn >= 0) return;                  // ya se estaba alejando
-    bola.vx -= (1 + REBOTE) * vn * nx;
-    bola.vy -= (1 + REBOTE) * vn * ny;
+    if (vn >= 0) return false;              // ya se estaba alejando
+    bola.vx -= (1 + devuelve) * vn * nx;
+    bola.vy -= (1 + devuelve) * vn * ny;
     sonarChoque(-vn);
+    return true;
   }
 
   function chocarConLasBandas() {
@@ -241,6 +333,28 @@ export function crearPartida(ctx) {
   function sonarChoque(velocidad) {
     if (velocidad < 120) return;   // los roces no suenan
     ctx.sonido.boing(Math.min(0.45, velocidad / 2400));
+  }
+
+  /**
+   * Al agua: un golpe de penalización y a repetir desde donde salió.
+   *
+   * Desde donde salió y no desde la salida del hoyo, que es la regla de verdad
+   * del golf y además la única sensata aquí: mandar la bola al principio después
+   * de cinco golpes de acercamiento no es un castigo, es una encerrona.
+   */
+  function alAgua() {
+    golpesTotal++;
+    golpesAqui++;
+    bola.x = antesDelGolpe.x;
+    bola.y = antesDelGolpe.y;
+    bola.vx = 0;
+    bola.vy = 0;
+    ctx.sonido.nota(180, 0.22);
+    ctx.decir('Al agua. Un golpe de penalización.');
+    if (golpesAqui >= mapa.tope) { rendirElHoyo(); return; }
+    fase = 'apuntando';
+    pulsadoAntes = entrada.pulsado;
+    marcar();
   }
 
   /**
@@ -265,6 +379,7 @@ export function crearPartida(ctx) {
     bola.y = mapa.salida.y;
     bola.vx = 0;
     bola.vy = 0;
+    antesDelGolpe = { x: bola.x, y: bola.y };
     golpesAqui = 0;
     fase = 'apuntando';
     pulsadoAntes = entrada.pulsado;
@@ -277,19 +392,21 @@ export function crearPartida(ctx) {
     bola.x = mapa.hoyo.x;
     bola.y = mapa.hoyo.y;
     fase = 'celebrando';
-    celebracion = 0.9;
+    celebracion = 0.8;
     pato.setState('happy');
     ctx.sonido.nota(880, 0.1);
     ctx.sonido.nota(1174, 0.14);
+    const par = disenos[hoyo].par;
+    if (golpesAqui < par) ctx.decir(golpesAqui === 1 ? '¡De un golpe!' : `${par - golpesAqui} bajo par.`);
     marcar();
   }
 
-  /** El hoyo se da por jugado con el tope puesto. Ver `TOPE_GOLPES`. */
+  /** El hoyo se da por jugado con el tope puesto. Ver `MARGEN_TOPE`. */
   function rendirElHoyo() {
     fase = 'celebrando';
-    celebracion = 0.7;
+    celebracion = 0.6;
     ctx.sonido.nota(220, 0.18);
-    ctx.decir(`Ese hoyo, por imposible: ${TOPE_GOLPES} golpes.`);
+    ctx.decir(`Ese hoyo, por imposible: ${mapa.tope} golpes.`);
     marcar();
   }
 
@@ -302,6 +419,16 @@ export function crearPartida(ctx) {
 
   // ---- Final -------------------------------------------------------------
 
+  /** Se acabó el tiempo: lo que falte se da por perdido y la marca se apunta. */
+  function cerrarPorTiempo() {
+    for (let i = hoyo; i < HOYOS; i++) {
+      const tope = disenos[i].par + MARGEN_TOPE;
+      golpesTotal += i === hoyo ? Math.max(0, tope - golpesAqui) : tope;
+    }
+    ctx.decir('Se acabó el tiempo. Los hoyos que faltaban, por perdidos.');
+    acabar();
+  }
+
   function acabar() {
     if (terminada) return;
     terminada = true;
@@ -309,20 +436,19 @@ export function crearPartida(ctx) {
 
     // A menos es mejor, así que aquí un récord es bajar, no subir.
     const esRecord = mejorPrevio === null || golpesTotal < mejorPrevio;
-    const par = disenos.reduce((s, d) => s + d.par, 0);
 
     ctx.sonido[esRecord ? 'victoria' : 'derrota']();
     ctx.alTerminar({
       resultado: esRecord ? 'victoria' : 'derrota',
       puntos: golpesTotal,
-      detalle: detalleFinal(golpesTotal, par, esRecord)
+      detalle: detalleFinal(golpesTotal, esRecord)
     });
   }
 
-  function detalleFinal(total, par, esRecord) {
-    const contra = total === par ? 'justo el par'
-      : total < par ? `${par - total} bajo par`
-        : `${total - par} sobre par`;
+  function detalleFinal(total, esRecord) {
+    const contra = total === parTotal ? 'justo el par'
+      : total < parTotal ? `${parTotal - total} bajo par`
+        : `${total - parTotal} sobre par`;
     const cola = esRecord
       ? (mejorPrevio === null ? ' A ver quién baja de ahí.' : ` Récord nuevo: antes eran ${mejorPrevio}.`)
       : ` Tu récord sigue en ${mejorPrevio}.`;
@@ -330,10 +456,13 @@ export function crearPartida(ctx) {
   }
 
   function marcar() {
-    const par = disenos[Math.min(hoyo, HOYOS - 1)].par;
-    const base = `Hoyo ${Math.min(hoyo + 1, HOYOS)}/${HOYOS}  ·  ${golpesAqui} de par ${par}`
-      + `  ·  ${golpesTotal} en total`;
-    pista.marcador(mejorPrevio === null ? base : `${base}  ·  récord ${mejorPrevio}`);
+    const d = disenos[Math.min(hoyo, HOYOS - 1)];
+    const base = `Hoyo ${Math.min(hoyo + 1, HOYOS)}/${HOYOS}  ·  ${golpesAqui} de par ${d.par}`
+      + `  ·  ${golpesTotal} de ${parTotal}`;
+    const record = mejorPrevio === null ? '' : `  ·  récord ${mejorPrevio}`;
+    const queda = PRESUPUESTO_MS - transcurrido;
+    const prisa = queda < AVISO_MS ? `  ·  ¡${Math.max(0, Math.ceil(queda / 1000))} s!` : '';
+    pista.marcador(base + record + prisa);
   }
 
   // ---- Medidas -----------------------------------------------------------
@@ -350,10 +479,16 @@ export function crearPartida(ctx) {
 
     const fx = nuevo.ancho / campo.ancho;
     const fy = nuevo.alto / campo.alto;
-    bola.x = nuevo.x0 + (bola.x - campo.x0) * fx;
-    bola.y = nuevo.y0 + (bola.y - campo.y0) * fy;
+    const mover = (p) => ({
+      x: nuevo.x0 + (p.x - campo.x0) * fx,
+      y: nuevo.y0 + (p.y - campo.y0) * fy
+    });
+    const b = mover(bola);
+    bola.x = b.x;
+    bola.y = b.y;
     bola.vx *= fx;
     bola.vy *= fy;
+    antesDelGolpe = mover(antesDelGolpe);
     campo = nuevo;
     mapa = aPixeles(disenos[Math.min(hoyo, HOYOS - 1)], campo);
     bola.radio = mapa.bolaRadio;
@@ -372,7 +507,11 @@ export function crearPartida(ctx) {
 
   function pintar(g, medidas) {
     dibujarCampo(g);
+    // Las zonas primero: son suelo, y todo lo demás va encima.
+    for (const z of mapa.zonas) dibujarZona(g, z);
     for (const m of mapa.muros) dibujarMuro(g, m);
+    for (const t of mapa.topes) dibujarTope(g, t);
+    dibujarSalida(g);
     dibujarHoyo(g);
     dibujarBola(g);
     if (fase === 'apuntando') dibujarPrevia(g, medidas);
@@ -390,6 +529,18 @@ export function crearPartida(ctx) {
     g.restore();
   }
 
+  function dibujarZona(g, z) {
+    g.save();
+    g.fillStyle = z.tipo === 'arena' ? 'rgba(232, 213, 166, 0.92)' : 'rgba(47, 111, 176, 0.92)';
+    g.beginPath();
+    g.rect(z.x, z.y, z.w, z.h);
+    g.fill();
+    g.lineWidth = 2;
+    g.strokeStyle = z.tipo === 'arena' ? '#b99e5e' : '#1c4a78';
+    g.stroke();
+    g.restore();
+  }
+
   function dibujarMuro(g, m) {
     g.save();
     g.fillStyle = '#8a5a3b';
@@ -397,6 +548,33 @@ export function crearPartida(ctx) {
     g.lineWidth = 3;
     g.strokeStyle = '#2b2b3a';
     g.strokeRect(m.x, m.y, m.w, m.h);
+    g.restore();
+  }
+
+  function dibujarTope(g, t) {
+    g.save();
+    g.beginPath();
+    g.arc(t.x, t.y, t.r, 0, Math.PI * 2);
+    g.fillStyle = '#ffb703';
+    g.fill();
+    g.lineWidth = 3;
+    g.strokeStyle = '#2b2b3a';
+    g.stroke();
+    g.beginPath();
+    g.arc(t.x, t.y, t.r * 0.42, 0, Math.PI * 2);
+    g.fillStyle = '#fb8500';
+    g.fill();
+    g.restore();
+  }
+
+  /** De dónde salió la bola. Sin esto no se ve cuánto llevas avanzado. */
+  function dibujarSalida(g) {
+    g.save();
+    g.beginPath();
+    g.arc(mapa.salida.x, mapa.salida.y, bola.radio * 0.7, 0, Math.PI * 2);
+    g.lineWidth = 2;
+    g.strokeStyle = 'rgba(255, 253, 247, 0.5)';
+    g.stroke();
     g.restore();
   }
 
@@ -478,7 +656,46 @@ export function crearPartida(ctx) {
 // ---- El recorrido --------------------------------------------------------
 
 /**
- * Los cinco hoyos, en proporciones de 0 a 1.
+ * Cuántas piezas lleva cada hoyo: el primero ninguna, el décimo nueve.
+ *
+ * Literal a propósito. Un hoyo que crece de uno en uno se nota mientras juegas,
+ * y es la forma más barata de que la ronda tenga una cuesta sin tener que
+ * inventarse una curva de dificultad aparte.
+ */
+function piezasDelHoyo(i) {
+  return i;
+}
+
+/**
+ * Qué tipos de pieza pueden salir en el hoyo `i`.
+ *
+ * Escalonado para que cada elemento se aprenda solo: primero muros, y cuando ya
+ * sabes rodearlos aparece la arena; cuando ya la esquivas, el agua; y al final
+ * los topes, que son los únicos que devuelven MÁS de lo que reciben y por eso
+ * conviene descubrirlos con el resto ya sabido.
+ */
+/**
+ * Cuántas piezas de cada tipo caben en UN hoyo.
+ *
+ * Sin esto, el sorteo puede sacar cinco charcos seguidos y entonces el hoyo deja
+ * de ser un hoyo difícil para ser un peaje: cada agua cuesta un golpe, y cinco se
+ * comen el tope entero antes de llegar. Los muros no llevan cupo —de esos, todos
+ * los que quiera—, y por eso son también el recambio cuando otro se agota.
+ */
+const CUPO = { agua: 2, arena: 3, tope: 3 };
+
+function repertorio(i) {
+  const tipos = ['muroV'];
+  if (i >= 2) tipos.push('muroH');
+  if (i >= 3) tipos.push('bloque');
+  if (i >= 4) tipos.push('arena');
+  if (i >= 6) tipos.push('agua');
+  if (i >= 7) tipos.push('tope');
+  return tipos;
+}
+
+/**
+ * Los diez hoyos, en proporciones de 0 a 1.
  *
  * En proporciones y no en píxeles porque la ventana puede cambiar de tamaño a
  * mitad de la partida, y un hoyo que se rehace cuando alguien mueve la ventana
@@ -493,36 +710,145 @@ export function disenarRecorrido(semilla) {
 }
 
 /**
- * Un hoyo: salida a la izquierda, hoyo a la derecha y muros verticales en medio.
+ * Un hoyo.
  *
- * Los muros son verticales y **nunca cruzan el campo entero**: cada uno deja un
- * hueco arriba o abajo. Con eso el hoyo siempre se puede alcanzar sin tener que
- * comprobarlo con un buscador de caminos, que para tres rectángulos sería
- * matar moscas a cañonazos. Y de paso es lo que hace que el recorrido se lea de
- * un vistazo: se ve por dónde hay que pasar.
+ * La salida va en un extremo y el hoyo en el otro, y **de qué lado se juega se
+ * sortea**: jugar hacia la izquierda no es lo mismo que jugar hacia la derecha
+ * aunque el recorrido sea el espejo, porque el brazo con el que apuntas no lo
+ * es. Las piezas se reparten por el pasillo, una por tramo, para que no se
+ * amontonen en un rincón dejando media pantalla vacía.
+ *
+ * @param {number} i     el hoyo, de 0 a 9
+ * @param {() => number} azar
  */
 function disenarHoyo(i, azar) {
-  // Más muros según se avanza: el primero es una recta para entender el golpe.
-  const muros = Math.min(4, i);
-  const lista = [];
-  for (let c = 0; c < muros; c++) {
-    const x = 0.24 + (0.54 / muros) * (c + 0.5);
+  const cuantas = piezasDelHoyo(i);
+  const tipos = repertorio(i);
+  const alaDerecha = azar() < 0.5;
+
+  // `t` es el avance de salida a hoyo, de 0 a 1. Se convierte a `x` al final, y
+  // ahí es donde se aplica el espejo: así el generador no tiene que pensarlo.
+  const enX = (t) => (alaDerecha ? 0.08 + t * 0.82 : 0.9 - t * 0.82);
+
+  const salida = { x: enX(0), y: 0.18 + azar() * 0.64 };
+  const hoyo = { x: enX(1), y: 0.18 + azar() * 0.64 };
+
+  const muros = [];
+  const zonas = [];
+  const topes = [];
+
+  const puestas = {};
+  for (let n = 0; n < cuantas; n++) {
+    // Un tramo por pieza, con holgura dentro del tramo: repartidas pero no
+    // alineadas, que es lo que las hace parecer puestas a mano.
+    const tramo = 0.72 / cuantas;
+    const t = 0.14 + tramo * (n + 0.2 + azar() * 0.6);
+
+    let tipo = tipos[Math.floor(azar() * tipos.length)];
+    // Si ese tipo ya ha llenado su cupo en este hoyo, se pone un muro y ya
+    // está. Volver a sortear hasta acertar daría vueltas de más para acabar
+    // casi siempre en lo mismo.
+    if (CUPO[tipo] != null && (puestas[tipo] || 0) >= CUPO[tipo]) tipo = 'muroV';
+    puestas[tipo] = (puestas[tipo] || 0) + 1;
+
+    ponerPieza(tipo, enX(t), azar, { muros, zonas, topes }, salida, hoyo);
+  }
+
+  return {
+    salida,
+    hoyo,
+    muros,
+    zonas,
+    topes,
+    // Un golpe para salir y uno más por cada tres piezas que sortear. Topado en
+    // cinco: un par de seis ya no es un hoyo, es un recado.
+    par: Math.min(5, 2 + Math.ceil(cuantas / 3))
+  };
+}
+
+/**
+ * Coloca una pieza en la columna `x`.
+ *
+ * La regla que sostiene todo el generador: **ninguna pieza sólida cruza el campo
+ * entero**. Los muros dejan siempre un hueco a un lado y los bloques son
+ * pequeños, así que el hoyo se alcanza siempre sin tener que comprobarlo con un
+ * buscador de caminos.
+ */
+function ponerPieza(tipo, x, azar, destino, salida, hoyo) {
+  const rect = fabricar(tipo, x, azar);
+
+  // Ni encima de la salida ni encima del hoyo, y esto vale para TODAS. Empezar
+  // encajonado detrás de un bloque, o tener que embocar desde la arena, no son
+  // dificultades: son fallos del generador. Cuando cae ahí, la pieza no se
+  // recoloca, se descarta —mover una para que no estorbe es como acaban
+  // amontonándose todas en el mismo sitio—, y ese hoyo lleva una menos.
+  if (pisa(rect, salida) || pisa(rect, hoyo)) return;
+
+  if (tipo === 'tope') destino.topes.push(rect);
+  else if (tipo === 'arena' || tipo === 'agua') destino.zonas.push(rect);
+  else destino.muros.push(rect);
+}
+
+function fabricar(tipo, x, azar) {
+  if (tipo === 'muroV') {
     const hueco = 0.24 + azar() * 0.12;
     const arriba = azar() < 0.5;
-    lista.push({
-      x: x - 0.011,
-      y: arriba ? 0 : hueco,
-      w: 0.022,
-      h: 1 - hueco
-    });
+    const ancho = 0.014 + azar() * 0.016;
+    return { x: x - ancho / 2, y: arriba ? 0 : hueco, w: ancho, h: 1 - hueco };
   }
+
+  if (tipo === 'muroH') {
+    // Horizontal y corto: nunca llega a las dos bandas, así que siempre se
+    // puede rodear por un lado o por el otro.
+    const largo = 0.10 + azar() * 0.14;
+    const alto = 0.02 + azar() * 0.025;
+    return {
+      x: Math.max(0, Math.min(1 - largo, x - largo / 2)),
+      y: 0.10 + azar() * 0.74,
+      w: largo,
+      h: alto
+    };
+  }
+
+  if (tipo === 'bloque') {
+    const w = 0.035 + azar() * 0.05;
+    const h = 0.10 + azar() * 0.18;
+    return {
+      x: Math.max(0, Math.min(1 - w, x - w / 2)),
+      y: azar() * (1 - h),
+      w,
+      h
+    };
+  }
+
+  if (tipo === 'tope') {
+    const r = 0.018 + azar() * 0.016;
+    return { x, y: 0.14 + azar() * 0.72, r };
+  }
+
+  // Arena y agua: no bloquean, así que pueden ser grandes. El agua se queda algo
+  // más pequeña porque cuesta un golpe y una que ocupe medio pasillo no es un
+  // obstáculo, es un peaje.
+  const grande = tipo === 'arena';
+  const w = (grande ? 0.06 : 0.04) + azar() * (grande ? 0.09 : 0.06);
+  const h = (grande ? 0.16 : 0.12) + azar() * (grande ? 0.24 : 0.18);
   return {
-    salida: { x: 0.08, y: 0.18 + azar() * 0.64 },
-    hoyo: { x: 0.9, y: 0.18 + azar() * 0.64 },
-    muros: lista,
-    // Un golpe para salir, uno por muro que sortear y uno de propina.
-    par: 2 + Math.ceil(muros / 2)
+    tipo,
+    x: Math.max(0, Math.min(1 - w, x - w / 2)),
+    y: azar() * (1 - h),
+    w,
+    h
   };
+}
+
+/** Si una pieza —rectángulo o círculo— le cae encima a un punto, con holgura. */
+function pisa(pieza, p) {
+  const margen = 0.035;
+  if (pieza.r != null) {
+    return Math.hypot(p.x - pieza.x, p.y - pieza.y) < pieza.r + margen;
+  }
+  return p.x >= pieza.x - margen && p.x <= pieza.x + pieza.w + margen
+    && p.y >= pieza.y - margen && p.y <= pieza.y + pieza.h + margen;
 }
 
 /** El campo en píxeles: la pantalla menos los márgenes y menos la mascota. */
@@ -541,24 +867,35 @@ export function medirCampo(medidas, aPantalla) {
 /** Pasa un diseño en proporciones al campo que hay ahora. */
 export function aPixeles(diseno, campo) {
   const bolaRadio = Math.max(6, Math.min(11, campo.alto * 0.016));
+  const enX = (v) => campo.x0 + v * campo.ancho;
+  const enY = (v) => campo.y0 + v * campo.alto;
+
   return {
     bolaRadio,
-    salida: {
-      x: campo.x0 + diseno.salida.x * campo.ancho,
-      y: campo.y0 + diseno.salida.y * campo.alto
-    },
-    hoyo: {
-      x: campo.x0 + diseno.hoyo.x * campo.ancho,
-      y: campo.y0 + diseno.hoyo.y * campo.alto,
-      radio: bolaRadio * 2.1
-    },
+    tope: diseno.par + MARGEN_TOPE,
+    salida: { x: enX(diseno.salida.x), y: enY(diseno.salida.y) },
+    hoyo: { x: enX(diseno.hoyo.x), y: enY(diseno.hoyo.y), radio: bolaRadio * 2.1 },
     muros: diseno.muros.map((m) => ({
-      x: campo.x0 + m.x * campo.ancho,
-      // Los muros se miden con un ancho MÍNIMO en píxeles: un 2,2 % de un panel
-      // lateral son cuatro píxeles, y una bola de seis los cruza de un bote.
-      y: campo.y0 + m.y * campo.alto,
+      x: enX(m.x),
+      y: enY(m.y),
+      // Con un mínimo en píxeles: un dos por ciento de un panel lateral son
+      // cuatro píxeles, y una bola de seis los cruza de un bote.
       w: Math.max(10, m.w * campo.ancho),
-      h: m.h * campo.alto
+      h: Math.max(10, m.h * campo.alto)
+    })),
+    zonas: diseno.zonas.map((z) => ({
+      tipo: z.tipo,
+      x: enX(z.x),
+      y: enY(z.y),
+      w: z.w * campo.ancho,
+      h: z.h * campo.alto
+    })),
+    topes: diseno.topes.map((t) => ({
+      x: enX(t.x),
+      y: enY(t.y),
+      // Contra el ALTO y no contra el ancho: en una pantalla panorámica, un
+      // tope medido en partes del ancho sale del tamaño de un plato.
+      r: Math.max(9, t.r * campo.alto)
     }))
   };
 }

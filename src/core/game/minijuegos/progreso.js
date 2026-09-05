@@ -10,8 +10,35 @@ import { minijuegoPorId } from './index.js';
 const VACIO = {
   partidas: 0, victorias: 0, derrotas: 0, empates: 0,
   mejor: null,     // la marca del juego, si tiene (ver `marca` en index.js)
-  ultima: 0        // cuándo se jugó por última vez (ms)
+  ultima: 0,       // cuándo se jugó por última vez (ms)
+  formato: 1       // con qué reglas se consiguió esa marca (ver `formato`)
 };
+
+/** Las reglas con las que puntúa hoy un juego. */
+function formatoDe(id) {
+  const juego = minijuegoPorId(id);
+  return (juego && Number(juego.formato)) || 1;
+}
+
+/**
+ * Una marca conseguida con otras reglas no vale.
+ *
+ * Cuando un juego cambia lo que mide —el minigolf pasó de cinco hoyos a diez—,
+ * el récord viejo no sólo no es comparable: es que se queda ahí puesto y no hay
+ * forma humana de batirlo, así que el juego se estropea para quien ya lo había
+ * jugado. Se borra la MARCA y nada más: las partidas y las victorias se jugaron
+ * de verdad, y esas no las cambia ninguna regla.
+ *
+ * Ojo, porque esto sólo arregla la mitad de casa: la marca que ya se subió al
+ * marcador global sigue allí, y el servidor sólo acepta mejoras. Cuando se
+ * cambia un formato hay que borrar también las filas de ese juego a mano (ver
+ * supabase/records.sql).
+ */
+function alDia(id, m) {
+  const ahora = formatoDe(id);
+  if ((Number(m.formato) || 1) === ahora) return m;
+  return { ...m, mejor: null, formato: ahora };
+}
 
 export class ProgresoJuegos {
   /** @param {Record<string, object>} [guardado] lo que había en estado.minijuegos */
@@ -20,7 +47,7 @@ export class ProgresoJuegos {
     this._datos = {};
     if (guardado && typeof guardado === 'object') {
       for (const [id, v] of Object.entries(guardado)) {
-        if (v && typeof v === 'object') this._datos[id] = { ...VACIO, ...v };
+        if (v && typeof v === 'object') this._datos[id] = alDia(id, { ...VACIO, ...v });
       }
     }
   }
@@ -62,7 +89,8 @@ export class ProgresoJuegos {
       derrotas: antes.derrotas + (r.resultado === 'derrota' ? 1 : 0),
       empates: antes.empates + (r.resultado === 'empate' ? 1 : 0),
       mejor,
-      ultima: Date.now()
+      ultima: Date.now(),
+      formato: formatoDe(id)
     };
   }
 
