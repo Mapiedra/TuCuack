@@ -15,6 +15,7 @@ abren desde `🎮 Juegos` en el menú del pato.
 | 🏓 «Pato Jumping» | 12 | solo | escenario |
 | 🪶 «Flappy Pato» | 14 | solo | escenario |
 | 🕳️ The Hole | 16 | solo | escenario |
+| ⛳ Minigolf | 20 | solo | escenario |
 
 La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
 segundo, después los de pensar, y al final los que piden pulso. Los huecos están
@@ -23,6 +24,10 @@ escalera](#la-escalera).
 
 Se puede jugar **solo**, contra el pato, o **por turnos contra otro pato
 conectado**, retándole desde el propio panel.
+
+El ⛳ Minigolf es el primero que hay que **comprar** —900 cuacks, ver [Los
+cuacks](#los-cuacks)— y el primero que puntúa **a menos**: gana quien acabe los
+cinco hoyos con menos golpes.
 
 ---
 
@@ -527,7 +532,7 @@ que son una línea en un array.
 | 8 | 12 | 🏓 «Pato Jumping» | reflejos y ratón continuo | 4 | 550 |
 | 9 | 14 | 🪶 «Flappy Pato» | reflejos finos, castiga | 5 | 625 |
 | 10 | 16 | 🕳️ The Hole | varias cosas a la vez | 6 | 725 |
-| 11 | 20 | ⛳ Minigolf | puntería fina, sin prisa | 8 | 900 |
+| 11 | 20 | ⛳ Minigolf | puntería fina y medir la fuerza | 8 | 900 |
 | 12 | 24 | 🏓 Pong | reflejos contra un rival | 11 | 1075 |
 | 13 | 28 | 🧱 Ladrillos | Pong con puntería | 14 | 1250 |
 | 14 | 33 | 🌋 El suelo es lava | dos ejes y ritmo | 17 | 1475 |
@@ -539,7 +544,7 @@ que son una línea en un array.
 | 20 | 68 | 💥 Artillería | todo junto | 49 | 3050 |
 
 Los días son de uso normal —unas 736 XP diarias entre convivencia, cuidados,
-racha, chat y el tope de partidas—. Los diez primeros están **hechos**; del 11 en
+racha, chat y el tope de partidas—. Los once primeros están **hechos**; del 12 en
 adelante, [por hacer](#los-que-faltan).
 
 El nivel ABRE un juego y el precio lo COMPRA. Quien ya lo tuviera abierto el día
@@ -564,7 +569,6 @@ para todos: ninguno pide ampliarlo.
 
 | Juego | Nivel | Modos | Superficie | Lo que estrena |
 |---|---|---|---|---|
-| ⛳ Minigolf | 20 | solo | escenario | el primero que puntúa a MENOS |
 | 🏓 Pong | 24 | solo | escenario | la mascota ES la pala, y enfrente hay otra |
 | 🧱 Ladrillos | 28 | solo | escenario | un muro que se rompe, sobre el Pong |
 | 🌋 El suelo es lava | 33 | solo | escenario | plataformas que se mueven y se hunden |
@@ -634,21 +638,6 @@ saberlo antes de empezar:
   desde el bloque en vez de desde el suelo.
 
 `marca: { etiqueta: 'segundos', mejor: 'mas' }`.
-
-### ⛳ Minigolf
-
-Un hoyo, unos obstáculos y los golpes contados. Apuntas y das fuerza igual que en
-[«Pato Hook»](../src/core/game/minijuegos/punteria.js) —de hecho, ahí está toda
-la interfaz de apuntar hecha, con su previa de trayectoria—, pero lo que sale
-rodando es una bola por el suelo y no la mascota por el aire.
-
-Es el primero que **puntúa a menos**: `marca: { etiqueta: 'golpes', mejor:
-'menos' }`. Esa dirección está en el contrato desde el principio y no la ha usado
-nadie todavía, así que de paso la estrena.
-
-Técnicamente es lo más barato de los tres: la bola es un `vuelo` sin gravedad y
-con mucho rozamiento, los obstáculos son rectángulos y el hoyo es un círculo. La
-mascota mira y celebra.
 
 ### 🎱 8 Pool
 

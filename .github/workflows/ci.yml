@@ -48,6 +48,7 @@ jobs:
                    core/game/minijuegos/flappy.js \
                    core/game/minijuegos/punteria.js \
                    core/game/minijuegos/agujero.js \
+                   core/game/minijuegos/minigolf.js \
                    core/game/minijuegos/escenario.js \
                    core/game/salas.js core/game/protocolo.js \
                    core/game/broma.js \

@@ -202,6 +202,21 @@ export const MINIJUEGOS = [
     superficie: 'escenario',
     marca: { etiqueta: 'calibre', mejor: 'mas' },
     cargar: () => import('./agujero.js')
+  },
+  {
+    id: 'minigolf',
+    nombre: 'Minigolf',
+    icono: '⛳',
+    descripcion: 'Cinco hoyos vistos desde arriba. Apunta, mide la fuerza y cuenta los golpes.',
+    nivel: 20,
+    precio: 900,
+    modos: ['solo'],
+    jugadores: { min: 1, max: 1 },
+    superficie: 'escenario',
+    // El primero que puntúa a MENOS. La dirección estaba en el contrato desde
+    // el principio y no la había estrenado nadie.
+    marca: { etiqueta: 'golpes', mejor: 'menos' },
+    cargar: () => import('./minigolf.js')
   }
 ];
 
