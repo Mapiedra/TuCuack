@@ -7,6 +7,28 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.23.0] - 2026-09-04
+
+### Añadido
+
+- **🧱 Ladrillos.** Nivel 28, 1250 cuacks, en la pantalla entera. Tu mascota
+  hace de pala abajo del todo y se mueve a izquierda y derecha con el ratón;
+  arriba, un muro de ladrillos que hay que tirar. **Tres vidas.**
+
+  Cada muro que limpias trae otro con una fila más y la pelota más rápida, y a
+  partir del tercero aparecen ladrillos que aguantan dos golpes —y tres desde el
+  sexto—. Los duros van arriba a propósito: obligan a abrirse un hueco y colar la
+  pelota por él en vez de barrer de abajo a arriba.
+
+  Se guarda como marca el total de **ladrillos rotos**, no el muro al que
+  llegaste: los muros se cuentan con los dedos de una mano y un marcador donde
+  todo el mundo empata en «4» no compara nada.
+
+  Con éste son tres juegos de mantener la pelota en el aire, y hacía falta que se
+  notaran distintos: en «{mascota} Jumping» la mascota **es** la pelota, en el
+  Pong es una pala **vertical** contra un rival, y aquí una pala **horizontal**
+  contra un muro. El Pong es defenderse; esto es apuntar.
+
 ## [0.22.0] - 2026-09-04
 
 ### Añadido
