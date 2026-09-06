@@ -7,6 +7,27 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.23.1] - 2026-09-04
+
+### Cambiado
+
+- **Los 🧱 Ladrillos ya no se quedan sin cuesta.** Tenían tres escalones de
+  dureza puestos a mano y ahí se acababan: pasado el muro 12 el juego no se
+  ponía más difícil. Ahora la dureza sube sola y **sin techo**.
+
+  Se van convirtiendo filas de arriba abajo al siguiente número de golpes, y
+  cuando el muro entero está en ese número, empieza otra vuelta con el
+  siguiente: todo de un golpe hasta el segundo muro, **todo de dos en el sexto**,
+  **todo de tres en el décimo**, de cuatro en el catorce… En el muro 26 hacen
+  falta siete golpes por ladrillo.
+
+  Los duros siguen yendo arriba, que es lo que obliga a abrirse un hueco y colar
+  la pelota por él en vez de barrer de abajo a arriba.
+
+- **Y pagan más.** Los puntos por ladrillo pasan a 10, 30, 60, 100, 150… según
+  lo que costara tirarlo. Suben más deprisa que el esfuerzo, a propósito: así
+  compensa meterse con las filas de arriba.
+
 ## [0.23.0] - 2026-09-04
 
 ### Añadido
