@@ -63,9 +63,6 @@ const PASO_MAX = 5;
 /** Lo que se espera antes de sacar, para colocarse. */
 const RESPIRO_S = 0.9;
 
-/** Puntos por ladrillo, según lo que costaba tirarlo. */
-const PUNTOS_POR_DUREZA = [0, 10, 25, 45];
-
 /**
  * Lo que el juego se da antes de cerrar.
  *
@@ -288,7 +285,7 @@ export function crearPartida(ctx) {
 
       ladrillos.splice(i, 1);
       rotos++;
-      puntos += PUNTOS_POR_DUREZA[Math.min(l.original, PUNTOS_POR_DUREZA.length - 1)];
+      puntos += puntosDe(l.original);
       ctx.sonido.nota(880 + l.fila * 60, 0.05);
       marcar();
       return;
@@ -341,13 +338,19 @@ export function crearPartida(ctx) {
     // escritorio ese hueco es enorme.
     const arriba = campo.y0 + Math.max(24, campo.alto * 0.16);
 
+    // Las filas de arriba son las duras, y no es capricho: si estuvieran abajo,
+    // el muro se limpiaría de abajo a arriba de una pasada y nunca habría que
+    // apuntar. Arriba obligan a abrirse un hueco y colar la pelota por él.
+    const plan = planDelMuro(muro);
+    const durasArriba = Math.round(filas * plan.parte);
+
     ladrillos = [];
     for (let f = 0; f < filas; f++) {
       for (let c = 0; c < columnas; c++) {
-        // Las filas de arriba son las duras: obligan a abrirse camino en vez de
-        // barrer de abajo a arriba.
-        const dureza = durezaDe(f, filas, muro, azar);
-        if (!dureza) continue;
+        // Claros al azar desde el cuarto muro: uno con agujeros se lee mucho
+        // mejor que uno macizo, y abre caminos por los que colarse.
+        if (muro >= 4 && azar() < 0.10) continue;
+        const dureza = f < durasArriba ? plan.base + 1 : plan.base;
         ladrillos.push({
           x: campo.x0 + hueco + c * (ancho + hueco),
           y: arriba + f * (alto + hueco),
@@ -511,23 +514,50 @@ export function crearPartida(ctx) {
 const COLORES = ['#c1121f', '#fb8500', '#ffb703', '#8ecae6', '#219ebc', '#35a34a', '#a06cd5', '#e0e0e8'];
 
 /**
- * Cuántos golpes aguanta un ladrillo de la fila `f`.
+ * La dureza del muro `m`: una cuesta que NO se acaba.
  *
- * Los duros van arriba a propósito: si estuvieran abajo, el muro se limpiaría de
- * abajo a arriba en una pasada y nunca habría que apuntar. Arriba obligan a
- * abrirse un hueco y colar la pelota por él, que es la jugada del juego.
+ * La primera versión tenía tres escalones a mano —dos golpes desde el muro 3,
+ * tres desde el 6— y ahí se quedaba. Como las filas también topan en ocho, del
+ * muro 7 en adelante lo único que subía era la velocidad de la pelota, que topa
+ * en el 12. **Del 12 en adelante el juego no se ponía más difícil.**
  *
- * Devuelve 0 cuando el ladrillo no existe: a partir del cuarto muro se abren
- * claros al azar, y un muro con agujeros se lee mucho mejor que uno macizo.
+ * Ahora la cuesta es una sola regla que se repite para siempre: se van
+ * convirtiendo filas de arriba abajo al siguiente número de golpes, y **cuando
+ * el muro entero está en ese número, empieza otra vuelta con el siguiente**.
+ * Cuatro muros por vuelta.
+ *
+ *   muro 2 → todo de 1        muro 6  → todo de 2      muro 10 → todo de 3
+ *   muro 3 → el cuarto de arriba de 2   muro 7 → el cuarto de arriba de 3
+ *   muro 4 → la mitad de arriba de 2    muro 8 → la mitad de arriba de 3
+ *   muro 5 → tres cuartos de 2          muro 9 → tres cuartos de 3
+ *
+ * Y de ahí a los de cuatro golpes, y a los de cinco, sin techo.
+ *
+ * @param {number} muro
+ * @returns {{base:number, parte:number}} el suelo de dureza del muro, y qué
+ *   proporción de las filas de ARRIBA lleva ya un golpe más.
  */
-export function durezaDe(fila, filas, muro, azar) {
-  if (muro >= 4 && azar() < 0.10) return 0;
+export function planDelMuro(muro) {
+  const avance = Math.max(0, (Number(muro) || 1) - INICIO_DUREZA);
+  return {
+    base: 1 + Math.floor(avance / PASOS_POR_DUREZA),
+    parte: (avance % PASOS_POR_DUREZA) / PASOS_POR_DUREZA
+  };
+}
 
-  const arriba = fila < Math.ceil(filas / 3);
-  const medio = fila < Math.ceil((filas * 2) / 3);
+/** Desde qué muro empieza a endurecerse. Antes de él, todo de un golpe. */
+const INICIO_DUREZA = 2;
+/** Cuántos muros cuesta convertir uno entero al siguiente número de golpes. */
+const PASOS_POR_DUREZA = 4;
 
-  if (muro >= 6 && arriba) return 3;
-  if (muro >= 3 && arriba) return 2;
-  if (muro >= 5 && medio) return 2;
-  return 1;
+/**
+ * Lo que vale un ladrillo, según lo que costaba tirarlo.
+ *
+ * Fórmula y no tabla, porque la dureza ya no tiene techo. Da 10, 30, 60, 100,
+ * 150…: crece más deprisa que el esfuerzo, que es lo que hace que valga la pena
+ * meterse con las filas de arriba en vez de barrer las de abajo.
+ */
+export function puntosDe(dureza) {
+  const d = Math.max(1, Math.round(dureza) || 1);
+  return 5 * d * (d + 1);
 }

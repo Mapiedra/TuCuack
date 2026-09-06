@@ -529,7 +529,7 @@ conciencia al escribir uno nuevo:
 | Eje | Quién lo usa | Qué se siente |
 |---|---|---|
 | **Dentro de la partida, con final** | ⛳ Minigolf (diez hoyos) | un recorrido con principio y fin |
-| **Dentro de la partida, sin final** | 🧱 Ladrillos (muros), The Hole, Runner, Flappy | aguantar hasta que fallas |
+| **Dentro de la partida, sin final** | 🧱 Ladrillos (muros, sin techo), The Hole, Runner, Flappy | aguantar hasta que fallas |
 | **Con TU nivel** | 🏓 Pong, ⭕ Tres en raya | el rival aprende contigo |
 
 El tercero es el delicado: el récord de un juego que se pone más difícil según
@@ -560,30 +560,40 @@ ERROR del rival, no en su velocidad.
 
 Tu pala va a 1150 px/s: **siempre eres más rápido que la máquina**.
 
-### 🧱 Ladrillos — la cuesta va por muro
+### 🧱 Ladrillos — la cuesta va por muro, y **no se acaba**
 
-Una fila más por muro hasta llenar la pantalla, ladrillos más duros según se
-avanza, y la pelota acelerando.
+Dos cosas suben a la vez: **el tamaño** (una fila más por muro, hasta llenar la
+pantalla en el sexto) y **la dureza**, que es la que no tiene techo.
 
-| Muro | 1 | 2 | 3 | 4 | 5 | 6 | 7+ |
-|---|---|---|---|---|---|---|---|
-| Filas | 3 | 4 | 5 | 6 | 7 | 8 | 8 |
-| Ladrillos | 42 | 56 | 70 | 82 | 89 | 96 | ~106 |
-| Golpes para limpiarlo | 42 | 56 | 98 | 110 | 152 | 201 | ~226 |
-| Pelota | 780 | 835 | 890 | 945 | 1000 | 1055 | +55/muro |
+La regla de la dureza es una sola y se repite para siempre: se van convirtiendo
+filas **de arriba abajo** al siguiente número de golpes, cuatro muros por vuelta,
+y **cuando el muro entero está en ese número, empieza otra vuelta con el
+siguiente**.
 
-Los duros van **arriba** a propósito: obligan a abrirse un hueco y colar la
-pelota por él en vez de barrer de abajo a arriba. Desde el cuarto muro aparecen
-claros al azar (10 %), que se lee mucho mejor que un muro macizo.
+| Muro | 1-2 | 3 | 4 | 5 | **6** | 7 | 8 | 9 | **10** | 11-13 | **14** | … |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Reparto | todo de 1 | ¼ de 2 | ½ de 2 | ¾ de 2 | **todo de 2** | ¼ de 3 | ½ de 3 | ¾ de 3 | **todo de 3** | van entrando los de 4 | **todo de 4** | sin techo |
+| Golpes para limpiarlo | 42-56 | 84 | 126 | 168 | 224 | 252 | 280 | 308 | 336 | 364-420 | 448 | +28 por muro |
+| Pelota (px/s) | 780-835 | 890 | 945 | 1000 | 1055 | 1110 | 1165 | 1220 | 1275 | 1330-1400 | 1400 | topa |
 
-> **Donde la cuesta se aplana, y hay que decirlo.** A partir del muro 7 las filas
-> ya no crecen —están topadas en ocho— y el reparto de durezas se queda fijo, así
-> que lo único que sigue subiendo es la velocidad de la pelota… que topa en 1400
-> px/s en el muro 12. **Del muro 12 en adelante el juego no se pone más
-> difícil.** Con tres vidas es difícil llegar, y el presupuesto de ocho minutos y
-> medio corta antes en la práctica, pero está ahí. Si algún día estorba, lo
-> barato es seguir subiendo la proporción de ladrillos de tres golpes y bajar la
-> de huecos.
+En el muro 26 el suelo es de siete golpes; en el 100, de veinticinco. Nadie va a
+llegar —tres vidas y ocho minutos y medio—, y ese es justo el punto: **el juego
+se acaba porque fallas, no porque se te acaben los muros**.
+
+Los duros van **arriba** a propósito: si estuvieran abajo, el muro se limpiaría de
+abajo a arriba de una pasada y nunca habría que apuntar. Arriba obligan a abrirse
+un hueco y colar la pelota por él. Y desde el cuarto muro aparecen claros al azar
+(10 %), que se lee mucho mejor que uno macizo y abre caminos.
+
+Los puntos por ladrillo salen de una fórmula y no de una tabla, porque la dureza
+ya no tiene techo: `5 × d × (d+1)` — 10, 30, 60, 100, 150… Crece más deprisa que
+el esfuerzo, que es lo que hace que compense meterse con las filas de arriba.
+
+> **Lo que venía antes**, y por qué se cambió: había tres escalones puestos a mano
+> —dos golpes desde el muro 3, tres desde el 6— y ahí se acababa. Como las filas
+> también topan en ocho, del muro 7 en adelante lo único que subía era la
+> velocidad de la pelota… que topa en el 12. Del 12 en adelante el juego **no se
+> ponía más difícil**.
 
 ### Los tres relojes
 
