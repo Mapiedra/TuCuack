@@ -7,6 +7,32 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.26.0] - 2026-09-07
+
+### Añadido
+
+- **👾 Invasores.** Nivel 38, 1700 cuacks, en la pantalla entera. Tu mascota se
+  mueve por abajo con **← →** y pone huevos hacia arriba con **espacio**;
+  enfrente, filas de gaviotas que van de lado, bajan un escalón al tocar un
+  borde y aceleran según quedan menos. Que lleguen a tu altura es el final.
+
+  **Sólo dos huevos en el aire a la vez**, como manda el género: aporrear el
+  espacio no sirve, hay que apuntar. Ellas también disparan —siempre la de más
+  abajo de cada columna— y cada impacto cuesta una de tus **tres vidas**.
+
+  Se guarda **la oleada a la que llegas**. Cada una trae una fila más, empieza
+  más abajo y va más rápida; en la duodécima, la última gaviota corre más que
+  tú.
+
+### Cambiado
+
+- **Una regla más en el contrato de los minijuegos, y comprobada por el CI.** Ni
+  un `const` ni un `let` después del `return` de `crearPartida`: ahí no se izan y
+  revientan dentro de un callback, sin traza visible. Había mordido tres veces
+  —Memoria se quedaba muda tras la primera carta, el Minigolf por turnos
+  reventaba al llegar el primer golpe del rival, y El suelo es lava ni abría—.
+  A la cuarta la encuentra `npm run juegos:check`.
+
 ## [0.25.0] - 2026-09-07
 
 ### Añadido
