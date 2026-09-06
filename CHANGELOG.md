@@ -7,6 +7,15 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.27.1] - 2026-09-07
+
+### Cambiado
+
+- **En el 🔤 Ahorcado, los fallos dibujan la horca.** Antes se gastaban plumas.
+  La figura es el juego: cada fallo añade un trazo —cabeza, cuerpo, dos brazos y
+  dos piernas— y al sexto se acabó. La base, el poste, la viga y la cuerda están
+  desde el principio.
+
 ## [0.27.0] - 2026-09-07
 
 ### Añadido
