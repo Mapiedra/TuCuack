@@ -7,6 +7,34 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.24.0] - 2026-09-07
+
+### Añadido
+
+- **⛳ Minigolf contra otra mascota, por turnos.** El primero de pantalla
+  completa que se juega en red: se reta desde el propio panel del juego, como el
+  tres en raya.
+
+  Cada uno con su bola **en el mismo recorrido** —sale de la misma semilla, así
+  que los dos veis el mismo campo aunque uno juegue en un monitor grande y el
+  otro en un portátil— y los golpes se alternan. Quien emboca se queda mirando
+  mientras el otro termina el hoyo, y cuando los dos han acabado pasáis al
+  siguiente. **Gana quien acabe los diez con menos golpes.**
+
+  Verás su bola —azul, con su inicial— haciendo el recorrido de verdad de cada
+  golpe suyo, no apareciendo de golpe en el destino.
+
+  Contra alguien, lo que decide la partida es el marcador y no el récord; tus
+  golpes siguen subiendo al marcador global igual.
+
+### Corregido
+
+- **Un juego de pantalla completa en red se quedaba colgado si el rival se iba.**
+  No tenía panel que cerrar —tiene la pantalla prestada— y nadie sabía
+  devolverla. Ahora se cierra y te lo cuenta.
+- **Y no pagaba el doble.** Las partidas contra otra mascota pagan el doble de
+  cuacks, pero las de pantalla completa se cobraban como si fueran en solitario.
+
 ## [0.23.1] - 2026-09-04
 
 ### Cambiado
