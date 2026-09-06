@@ -1235,15 +1235,23 @@ html, body {
   min-height: 24px;
   font-variant-numeric: tabular-nums;
 }
-/* Las plumas que quedan. Un ahorcado sin horca: en una app de una mascota,
-   dibujar a alguien colgado sobraba. */
-.ah-plumas {
-  margin: 0 0 6px;
-  text-align: center;
-  font-size: 14px;
-  letter-spacing: 3px;
-  min-height: 18px;
+/* La horca. Se dibuja con SVG y no con un lienzo porque no hay nada que animar:
+   son diez trazos fijos y lo único que cambia es cuántos se ven. */
+.ah-horca {
+  display: block;
+  width: 78px;
+  height: 100px;
+  margin: 0 auto 4px;
+  overflow: visible;
 }
+.ah-madera, .ah-trazo {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+/* El muñeco, en el rojo de los avisos: se lee de un vistazo cuánto queda. */
+.ah-trazo { stroke: #c1121f; }
 
 .ah-proponer { display: flex; gap: 6px; margin: 6px 0; }
 .ah-campo {

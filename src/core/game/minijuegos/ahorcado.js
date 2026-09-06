@@ -35,8 +35,71 @@
 import { sembrar } from './azar.js';
 import { compromiso, cumpleCompromiso } from '../protocolo.js';
 
-/** Fallos que se permiten por palabra. Seis, como toda la vida. */
-const PLUMAS = 6;
+/**
+ * Fallos que se permiten por palabra. Seis, como toda la vida.
+ *
+ * Y son seis por una razón que no es la tradición: son exactamente los trazos
+ * del muñeco —cabeza, cuerpo, dos brazos y dos piernas—. El dibujo ES el
+ * contador, así que cambiar este número es cambiar `TRAZOS`.
+ */
+const FALLOS = 6;
+
+const SVG = 'http://www.w3.org/2000/svg';
+
+/**
+ * La horca, en dos partes.
+ *
+ * Las cuatro maderas —base, poste, viga y cuerda— están desde el principio: son
+ * el escenario, no la cuenta. Lo que aparece de uno en uno con cada fallo son
+ * los seis trazos del muñeco, y en el orden de siempre.
+ */
+const MADERAS = [
+  ['line', { x1: 4, y1: 88, x2: 46, y2: 88 }],   // base
+  ['line', { x1: 14, y1: 88, x2: 14, y2: 4 }],   // poste
+  ['line', { x1: 14, y1: 4, x2: 46, y2: 4 }],    // viga
+  ['line', { x1: 46, y1: 4, x2: 46, y2: 13 }]    // cuerda
+];
+
+const TRAZOS = [
+  ['circle', { cx: 46, cy: 20, r: 7 }],                 // cabeza
+  ['line', { x1: 46, y1: 27, x2: 46, y2: 52 }],         // cuerpo
+  ['line', { x1: 46, y1: 33, x2: 36, y2: 44 }],         // brazo izquierdo
+  ['line', { x1: 46, y1: 33, x2: 56, y2: 44 }],         // brazo derecho
+  ['line', { x1: 46, y1: 52, x2: 36, y2: 66 }],         // pierna izquierda
+  ['line', { x1: 46, y1: 52, x2: 56, y2: 66 }]          // pierna derecha
+];
+
+/** @returns {{el:SVGElement, mostrar:(fallos:number)=>void}} */
+function crearHorca() {
+  const svg = document.createElementNS(SVG, 'svg');
+  svg.setAttribute('viewBox', '0 0 70 92');
+  svg.setAttribute('class', 'ah-horca');
+  // Decorativo: lo que hay que saber —cuántos fallos llevas— lo dice el aviso,
+  // y un lector de pantalla leyendo «línea, línea, círculo» no ayuda a nadie.
+  svg.setAttribute('aria-hidden', 'true');
+
+  const pinta = (clase) => ([tipo, atributos]) => {
+    const nodo = document.createElementNS(SVG, tipo);
+    for (const [k, v] of Object.entries(atributos)) nodo.setAttribute(k, String(v));
+    nodo.setAttribute('class', clase);
+    svg.appendChild(nodo);
+    return nodo;
+  };
+
+  MADERAS.map(pinta('ah-madera'));
+  const partes = TRAZOS.map(pinta('ah-trazo'));
+
+  return {
+    el: svg,
+    mostrar(fallos) {
+      partes.forEach((nodo, i) => {
+        // `visibility` y no `hidden`: en SVG el atributo `hidden` de HTML no
+        // pinta nada, y esconder con `display` reflowía el dibujo entero.
+        nodo.setAttribute('visibility', i < fallos ? 'visible' : 'hidden');
+      });
+    }
+  };
+}
 
 const ALFABETO = 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ';
 
@@ -119,9 +182,8 @@ export function crearPartida(ctx) {
   huecos.className = 'ah-palabra';
   el.appendChild(huecos);
 
-  const plumas = document.createElement('p');
-  plumas.className = 'ah-plumas';
-  el.appendChild(plumas);
+  const horca = crearHorca();
+  el.appendChild(horca.el);
 
   const caja = document.createElement('div');
   caja.className = 'ah-proponer';
@@ -276,7 +338,7 @@ export function crearPartida(ctx) {
     pintar();
 
     if (enigma.descubiertas.every((c) => c)) { sacada(); return; }
-    if (enigma.fallos >= PLUMAS) { fallada(); return; }
+    if (enigma.fallos >= FALLOS) { fallada(); return; }
   }
 
   function sacada() {
@@ -430,9 +492,7 @@ export function crearPartida(ctx) {
         .join(' ')
       : '';
 
-    plumas.textContent = enigma.descubiertas.length
-      ? '🪶'.repeat(Math.max(0, PLUMAS - enigma.fallos)) + '·'.repeat(Math.min(PLUMAS, enigma.fallos))
-      : '';
+    horca.mostrar(enigma.descubiertas.length ? enigma.fallos : 0);
 
     for (const [letra, b] of teclas) {
       b.disabled = fase !== 'adivinando' || enigma.pedidas.has(letra);

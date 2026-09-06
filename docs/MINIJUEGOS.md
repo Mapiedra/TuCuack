@@ -785,6 +785,18 @@ que adivinarla: una pestaña de herramientas y se acabó el juego. Y con esto,
 además, tampoco se puede ir cambiándola sobre la marcha para que no se acierte
 nunca. Mentir sigue siendo posible; queda en evidencia, que entre amigos basta.
 
+### El dibujo ES el contador
+
+Los seis fallos son exactamente los seis trazos del muñeco —cabeza, cuerpo, dos
+brazos y dos piernas—, así que cambiar `FALLOS` es cambiar `TRAZOS`. Las cuatro
+maderas —base, poste, viga y cuerda— están desde el principio: son el escenario,
+no la cuenta.
+
+Va en **SVG y no en un lienzo** porque no hay nada que animar: son diez trazos
+fijos y lo único que cambia es cuántos se ven. Se muestran con `visibility` y no
+con `hidden` —que en SVG no pinta nada— ni con `display`, que reflowía el dibujo
+entero en cada fallo.
+
 ### Dos detalles que costaron una pasada
 
 - **`descubiertas` guarda la LETRA de cada hueco, no un sí/no.** Con booleanos no
