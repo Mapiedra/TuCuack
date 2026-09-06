@@ -7,6 +7,26 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.27.0] - 2026-09-07
+
+### Añadido
+
+- **🔤 Ahorcado.** Nivel 43, 1925 cuacks. Adivina la palabra letra a letra;
+  seis fallos y se acabó.
+
+  **Contra tu mascota**, que va sacando palabras —todas de patos y de agua, y te
+  lo dice— y las encadena hasta que una se te resiste. La marca es cuántas
+  llevas seguidas.
+
+  **O contra otra mascota**, y ahí los dos ponéis palabra a la vez y cada uno
+  adivina la del otro: nadie se queda mirando. Gana quien la saque con menos
+  fallos.
+
+  Y en red **nadie ve la palabra del otro**: no viaja. Se manda su largo y una
+  promesa sellada, se contesta letra a letra, y al final se revela para que el
+  otro compruebe que era la que había prometido. Cambiarla a mitad para que no
+  se acierte nunca deja rastro.
+
 ## [0.26.0] - 2026-09-07
 
 ### Añadido
