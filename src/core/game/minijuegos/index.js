@@ -273,6 +273,19 @@ export const MINIJUEGOS = [
     superficie: 'escenario',
     marca: { etiqueta: 'segundos', mejor: 'mas' },
     cargar: () => import('./lava.js')
+  },
+  {
+    id: 'invasores',
+    nombre: 'Invasores',
+    icono: '👾',
+    descripcion: 'Gaviotas que bajan. Muévete, pon huevos y que no lleguen.',
+    nivel: 38,
+    precio: 1700,
+    modos: ['solo'],
+    jugadores: { min: 1, max: 1 },
+    superficie: 'escenario',
+    marca: { etiqueta: 'oleada', mejor: 'mas' },
+    cargar: () => import('./invasores.js')
   }
 ];
 

@@ -59,6 +59,7 @@ jobs:
                    core/game/minijuegos/pong.js \
                    core/game/minijuegos/ladrillos.js \
                    core/game/minijuegos/lava.js \
+                   core/game/minijuegos/invasores.js \
                    core/game/minijuegos/escenario.js \
                    core/game/salas.js core/game/protocolo.js \
                    core/game/broma.js \

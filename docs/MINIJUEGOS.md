@@ -19,6 +19,7 @@ abren desde `🎮 Juegos` en el menú del pato.
 | 🏓 Pong | 24 | solo | escenario |
 | 🧱 Ladrillos | 28 | solo | escenario |
 | 🌋 El suelo es lava | 33 | solo | escenario |
+| 👾 Invasores | 38 | solo | escenario |
 
 La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
 segundo, después los de pensar, y al final los que piden pulso. Los huecos están
@@ -543,6 +544,7 @@ global—.
 | 24 | 🏓 Pong | peloteo · más | **ganas el partido** |
 | 28 | 🧱 Ladrillos | ladrillos · más | bates tu récord |
 | 33 | 🌋 El suelo es lava | segundos · más | bates tu récord |
+| 38 | 👾 Invasores | oleada · más | bates tu récord |
 
 Dos excepciones que merecen la pena:
 
@@ -561,7 +563,7 @@ conciencia al escribir uno nuevo:
 | Eje | Quién lo usa | Qué se siente |
 |---|---|---|
 | **Dentro de la partida, con final** | ⛳ Minigolf (diez hoyos) | un recorrido con principio y fin |
-| **Dentro de la partida, sin final** | 🧱 Ladrillos (muros, sin techo), 🌋 El suelo es lava, The Hole, Runner, Flappy | aguantar hasta que fallas |
+| **Dentro de la partida, sin final** | 🧱 Ladrillos (muros), 🌋 El suelo es lava, 👾 Invasores (oleadas), The Hole, Runner, Flappy | aguantar hasta que fallas |
 | **Con TU nivel** | 🏓 Pong, ⭕ Tres en raya | el rival aprende contigo |
 
 El tercero es el delicado: el récord de un juego que se pone más difícil según
@@ -926,7 +928,7 @@ que son una línea en un array.
 | 20 | 68 | 💥 Artillería | todo junto | 49 | 3050 |
 
 Los días son de uso normal —unas 736 XP diarias entre convivencia, cuidados,
-racha, chat y el tope de partidas—. Los catorce primeros están **hechos**; del 15
+racha, chat y el tope de partidas—. Los quince primeros están **hechos**; del 16
 en adelante, [por hacer](#los-que-faltan).
 
 El nivel ABRE un juego y el precio lo COMPRA. Quien ya lo tuviera abierto el día
@@ -951,7 +953,6 @@ para todos: ninguno pide ampliarlo.
 
 | Juego | Nivel | Modos | Superficie | Lo que estrena |
 |---|---|---|---|---|
-| 👾 Invasores | 38 | solo | escenario | disparar hacia arriba, y algo que baja |
 | 🔤 Ahorcado | 43 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
 | 🚢 Hundir la flota | 49 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
 | 🎱 8 Pool | 55 | solo · red (2) | escenario | choques entre bolas: el único caso donde la física exacta sale bien |
@@ -961,21 +962,6 @@ para todos: ninguno pide ampliarlo.
 Los dos últimos estaban en el tintero y **están confirmados**: se hacen, y se
 hacen al final. El [ranking entre patos](#-ranking-entre-patos--hecho-en-la-0170)
 no está en esta tabla porque no es un juego, y además ya está hecho.
-
-### 👾 Invasores
-
-Space Invaders. La mascota se mueve por abajo y lanza huevos hacia arriba;
-enfrente, filas de gaviotas que bajan un escalón cada vez que llegan a un borde,
-y aceleran según quedan menos. Te alcanzan y se acabó.
-
-Es el único de los de escenario que **dispara**, así que trae algo que no hay:
-proyectiles propios, en las dos direcciones. Sigue sin necesitar arte —las
-gaviotas se pintan con un emoji en el lienzo, como el resto del catálogo— y el
-huevo es un círculo.
-
-- **Marca:** `{ etiqueta: 'oleada', mejor: 'mas' }`. No se gana: se aguanta.
-- La barra espaciadora dispara, o sea que necesita el mismo arreglo de
-  `escenario.js` que «Pato Runner» y «Flappy Pato». Ya está hecho.
 
 ### 🎱 8 Pool
 
