@@ -167,10 +167,10 @@ memoria, un emoji por pose— para que el juego no dependa de que llegue.
 
 ---
 
-## Tres reglas duras
+## Cuatro reglas duras
 
-Las tres vienen de que el pato también vive **sobre páginas web ajenas**, dentro
-de un Shadow DOM, y se muda de pestaña cada pocos segundos.
+Las tres primeras vienen de que el pato también vive **sobre páginas web
+ajenas**, dentro de un Shadow DOM, y se muda de pestaña cada pocos segundos.
 
 1. **Nunca escuches en `document` ni en `window`.** Robarle las teclas a quien
    está leyendo una web es inaceptable. El teclado se engancha al propio `el`,
@@ -181,6 +181,36 @@ de un Shadow DOM, y se muda de pestaña cada pocos segundos.
    documento muerto.
 3. **Nunca `innerHTML` con datos de otro.** `textContent` siempre: los nombres
    de los rivales los escribe otra persona.
+4. **Ni un `const` ni un `let` después del `return` de `crearPartida`.**
+
+### La cuarta merece explicación, porque ya ha mordido tres veces
+
+Los juegos de esta casa se escriben igual: el estado arriba, `return { ... }` en
+medio, y debajo un montón de funciones. Eso funciona porque **las declaraciones
+de función se izan**: se pueden usar antes de donde están escritas.
+
+`const` y `let` **no**. Uno declarado ahí abajo entra en su zona muerta y no
+llega a inicializarse nunca, porque la ejecución salió por el `return` antes de
+alcanzarlo. La primera vez que alguien lo toca:
+
+```
+ReferenceError: Cannot access 'loQueSea' before initialization
+```
+
+Lo que lo hace peligroso no es el fallo, es **dónde aparece**: casi siempre
+dentro de un callback —un clic, un mensaje del rival, el primer fotograma—, o
+sea sin traza visible en pantalla. Y `node --check` pasa tan contento, porque
+sintácticamente es válido.
+
+| Dónde | Qué se vio |
+|---|---|
+| `memoria.js` | el juego se quedaba mudo tras la primera carta |
+| Minigolf por turnos | reventaba al llegar el primer golpe del rival |
+| `lava.js` | la escena ni abría |
+
+Las tres se encontraron a mano, jugando. **Si hace falta un valor calculado
+abajo, se declara arriba y se asigna abajo**; si es una función de una línea, se
+escribe con `function`.
 
 Y una medida: el tablero no debería pasar de **280 × 300 px**. Por encima, el
 panel se coloca debajo del pato y entra en scroll.

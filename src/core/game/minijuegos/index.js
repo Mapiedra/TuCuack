@@ -306,8 +306,8 @@ export const MINIJUEGOS = [
 /**
  * Lo que recibe un juego al empezar una partida.
  *
- * Dos reglas duras, y las dos por la extensión, donde el pato vive sobre la
- * página de otra persona:
+ * Tres reglas duras. Las dos primeras, por la extensión, donde el pato vive
+ * sobre la página de otra persona:
  *
  *   1. Un juego **nunca** escucha en `document` ni en `window`. Robarle las
  *      teclas a quien está leyendo una web es inaceptable. El teclado se
@@ -316,6 +316,20 @@ export const MINIJUEGOS = [
  *      `addEventListener` por su cuenta: usa `cadaFrame`, `cadaCierto` y
  *      `escuchar`. El pato se muda de pestaña continuamente y un bucle suelto
  *      se queda dando vueltas sobre un documento muerto.
+ *
+ * Y la tercera, por cómo se escriben los juegos de esta casa:
+ *
+ *   3. **Ni un `const` ni un `let` después del `return` de `crearPartida`.**
+ *      Todo el estado va ARRIBA, antes del `return`; abajo sólo declaraciones de
+ *      función, que son las únicas que se izan. Un `const` ahí abajo no llega a
+ *      inicializarse nunca y revienta con «Cannot access before initialization»
+ *      la primera vez que alguien lo toca —casi siempre dentro de un callback,
+ *      o sea sin que se vea, y con `node --check` pasando tan contento—.
+ *
+ *      No es una manía: ha pasado **tres veces**. En `memoria.js` el juego se
+ *      quedaba mudo tras la primera carta; en el minigolf por turnos reventaba
+ *      al llegar el primer golpe del rival; en `lava.js` la escena ni abría.
+ *      Las tres se encontraron a mano, jugando.
  *
  * Y una medida: el tablero no debería pasar de **280 × 300 px**. Por encima, el
  * panel se coloca debajo del pato y entra en scroll.
