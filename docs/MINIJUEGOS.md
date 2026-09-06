@@ -18,6 +18,7 @@ abren desde `🎮 Juegos` en el menú del pato.
 | ⛳ Minigolf | 20 | solo · red (2) | escenario |
 | 🏓 Pong | 24 | solo | escenario |
 | 🧱 Ladrillos | 28 | solo | escenario |
+| 🌋 El suelo es lava | 33 | solo | escenario |
 
 La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
 segundo, después los de pensar, y al final los que piden pulso. Los huecos están
@@ -511,6 +512,7 @@ global—.
 | 20 | ⛳ Minigolf | golpes · **menos** | bates tu récord — o **ganas la ronda**, en red |
 | 24 | 🏓 Pong | peloteo · más | **ganas el partido** |
 | 28 | 🧱 Ladrillos | ladrillos · más | bates tu récord |
+| 33 | 🌋 El suelo es lava | segundos · más | bates tu récord |
 
 Dos excepciones que merecen la pena:
 
@@ -529,7 +531,7 @@ conciencia al escribir uno nuevo:
 | Eje | Quién lo usa | Qué se siente |
 |---|---|---|
 | **Dentro de la partida, con final** | ⛳ Minigolf (diez hoyos) | un recorrido con principio y fin |
-| **Dentro de la partida, sin final** | 🧱 Ladrillos (muros, sin techo), The Hole, Runner, Flappy | aguantar hasta que fallas |
+| **Dentro de la partida, sin final** | 🧱 Ladrillos (muros, sin techo), 🌋 El suelo es lava, The Hole, Runner, Flappy | aguantar hasta que fallas |
 | **Con TU nivel** | 🏓 Pong, ⭕ Tres en raya | el rival aprende contigo |
 
 El tercero es el delicado: el récord de un juego que se pone más difícil según
@@ -559,6 +561,32 @@ ERROR del rival, no en su velocidad.
 | Falla con la pelota al tope | 55 % | 49 % | 43 % | 34 % | 22 % |
 
 Tu pala va a 1150 px/s: **siempre eres más rápido que la máquina**.
+
+### 🌋 El suelo es lava — la cuesta va por segundos
+
+Todo se hunde más deprisa según pasa el tiempo (`HUNDE_POR_PARTIDA`), y lo que
+decide si esto es un juego o una encerrona es **cuánto dura el bloque que estás
+pisando**:
+
+| Bloque | Vacío, al empezar | Pisado, al empezar | Vacío a los 60 s | Pisado a los 60 s |
+|---|---|---|---|---|
+| El de salida (183 px) | 10,5 s | **5,9 s** | 4,4 s | 2,0 s |
+| Uno bajo (83 px) | 6,3 s | 3,4 s | 2,1 s | 0,9 s |
+| Uno alto (432 px) | 17,6 s | 10,4 s | 9,3 s | 4,4 s |
+
+La primera versión dejaba el de salida en **tres segundos** —medido, no estimado—
+y no daba tiempo ni a mirar dónde saltar. Con seis, se elige; a los sesenta
+segundos, se reacciona. Esa es toda la cuesta.
+
+> **Y una lección de `pet/fisica.js` que vale para el próximo juego de
+> plataformas:** `paso()` empieza con `if (!vuelo.volando) return`. La física **no
+> mueve a la mascota mientras está posada**, así que un bloque que se hunde la
+> dejaría flotando en el aire. Hay dos regímenes y se llevan a mano: posada, su
+> `y` ES el techo del bloque copiado cada fotograma; en el aire manda `paso`, y
+> el `suelo` que se le pasa no es el de la ventana sino el techo del bloque que
+> tenga debajo —con eso el aterrizaje, el bote y el `posado` salen gratis—. Sin
+> bloque debajo, el suelo es la lava, y ahí se acaba sin tener que matar a nadie
+> a mano.
 
 ### 🧱 Ladrillos — la cuesta va por muro, y **no se acaba**
 
@@ -868,8 +896,8 @@ que son una línea en un array.
 | 20 | 68 | 💥 Artillería | todo junto | 49 | 3050 |
 
 Los días son de uso normal —unas 736 XP diarias entre convivencia, cuidados,
-racha, chat y el tope de partidas—. Los trece primeros están **hechos**; del 14 en
-adelante, [por hacer](#los-que-faltan).
+racha, chat y el tope de partidas—. Los catorce primeros están **hechos**; del 15
+en adelante, [por hacer](#los-que-faltan).
 
 El nivel ABRE un juego y el precio lo COMPRA. Quien ya lo tuviera abierto el día
 que llegó la moneda no paga por él —ver [Los cuacks](#los-cuacks)—.
@@ -893,7 +921,6 @@ para todos: ninguno pide ampliarlo.
 
 | Juego | Nivel | Modos | Superficie | Lo que estrena |
 |---|---|---|---|---|
-| 🌋 El suelo es lava | 33 | solo | escenario | plataformas que se mueven y se hunden |
 | 👾 Invasores | 38 | solo | escenario | disparar hacia arriba, y algo que baja |
 | 🔤 Ahorcado | 43 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
 | 🚢 Hundir la flota | 49 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
@@ -919,30 +946,6 @@ huevo es un círculo.
 - **Marca:** `{ etiqueta: 'oleada', mejor: 'mas' }`. No se gana: se aguanta.
 - La barra espaciadora dispara, o sea que necesita el mismo arreglo de
   `escenario.js` que «Pato Runner» y «Flappy Pato». Ya está hecho.
-
-### 🌋 El suelo es lava
-
-El suelo es lava. Del techo caen bloques que flotan un momento y **se van
-hundiendo porque la lava los derrite**, así que hay que ir saltando de uno a otro
-antes de que el que pisas desaparezca. Se cuenta lo que aguantas.
-
-Es el primero que pide **moverse en dos ejes**: hasta ahora la mascota o corría
-en el sitio (Runner), o subía y bajaba (Flappy), o no se movía (Hook). Aquí hay
-izquierda, derecha y salto.
-
-Y trae lo único de verdad nuevo: **plataformas que se mueven**. `fisica.paso`
-sabe chocar contra un suelo fijo, no contra cajas que bajan; «estoy de pie sobre
-ese bloque, y bajo con él» hay que resolverlo a mano. Es media tarea, y conviene
-saberlo antes de empezar:
-
-- Cada bloque tiene su altura y su velocidad de hundimiento, que crece con el
-  tiempo que lleva pisado.
-- La mascota se apoya en el bloque cuyo techo tenga justo debajo, y hereda su
-  bajada mientras siga encima.
-- El salto es el del [Runner](../src/core/game/minijuegos/obstaculos.js), pero
-  desde el bloque en vez de desde el suelo.
-
-`marca: { etiqueta: 'segundos', mejor: 'mas' }`.
 
 ### 🎱 8 Pool
 

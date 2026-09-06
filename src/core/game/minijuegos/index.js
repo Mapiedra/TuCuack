@@ -260,6 +260,19 @@ export const MINIJUEGOS = [
     // de una mano y un marcador donde todo el mundo empata en 4 no compara nada.
     marca: { etiqueta: 'ladrillos', mejor: 'mas' },
     cargar: () => import('./ladrillos.js')
+  },
+  {
+    id: 'lava',
+    nombre: 'El suelo es lava',
+    icono: '🌋',
+    descripcion: 'Salta de bloque en bloque. Los que pisas se derriten antes.',
+    nivel: 33,
+    precio: 1475,
+    modos: ['solo'],
+    jugadores: { min: 1, max: 1 },
+    superficie: 'escenario',
+    marca: { etiqueta: 'segundos', mejor: 'mas' },
+    cargar: () => import('./lava.js')
   }
 ];
 
