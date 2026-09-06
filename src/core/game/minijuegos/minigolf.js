@@ -31,6 +31,32 @@
 // Cada muro deja hueco a un lado, y los bloques sueltos son pequeños. Con eso el
 // hoyo siempre se puede alcanzar sin tener que comprobarlo con un buscador de
 // caminos, que para nueve rectángulos sería matar moscas a cañonazos.
+//
+// ---- Por turnos, contra otra mascota ---------------------------------------
+//
+// Es el primer juego de ESCENARIO que se juega en red, y sale barato por dos
+// cosas que ya estaban aquí sin buscarlo:
+//
+//   1. **El recorrido sale entero de `ctx.semilla`**, que en red la reparte el
+//      anfitrión. Misma semilla, mismo campo en las dos máquinas.
+//   2. **Y está en proporciones, no en píxeles.** Da igual que uno juegue en un
+//      monitor de 1920 y el otro en un portátil: el hoyo cae en el mismo sitio
+//      RELATIVO. Por eso todo lo que viaja por la red viaja también en
+//      proporciones, y se convierte al llegar.
+//
+// El ritmo cabe de sobra: un mensaje por golpe, unos cien en una ronda entera de
+// los dos. El presupuesto del protocolo son cuatro por segundo (`RITMO_MAX`).
+//
+// Cada uno tiene su bola en el MISMO hoyo y los golpes se alternan. Quien
+// emboca (o llega al tope) se queda mirando mientras el otro termina, y cuando
+// los dos han acabado pasan de hoyo a la vez. Gana quien acabe los diez con
+// menos golpes.
+//
+// **El que golpea manda DÓNDE acabó su bola, no sólo con qué fuerza la tiró.**
+// La física es determinista y el campo es el mismo, pero el `dt` de cada máquina
+// no lo es, y dos integraciones con pasos distintos acaban separándose. Así que
+// la posición final es autoritativa: el otro lado REPITE el golpe para que se
+// vea el recorrido, y al acabar clava la bola donde diga el mensaje.
 
 import { sembrar } from './azar.js';
 
@@ -90,6 +116,17 @@ const PRESUPUESTO_MS = 8.5 * 60 * 1000;
 /** A partir de aquí el marcador avisa de que queda poco. */
 const AVISO_MS = 60 * 1000;
 
+/** Lo que se mira el hoyo recién acabado antes de pasar al siguiente. */
+const CELEBRACION_S = 0.8;
+/**
+ * Y lo que como mucho dura la repetición del golpe del rival.
+ *
+ * La repetición es adorno: la posición buena viene en el mensaje. Si por lo que
+ * sea la bola no para —otra resolución, otro tamaño de campo—, no puede quedarse
+ * dando vueltas mientras a alguien le toca jugar.
+ */
+const TOPE_REPETICION_S = 6;
+
 /**
  * @param {import('./index.js').ContextoPartida} ctx
  * @returns {import('./index.js').Partida}
@@ -100,26 +137,54 @@ export function crearPartida(ctx) {
 
   const mejorPrevio = typeof ctx.marcas.mejor === 'number' ? ctx.marcas.mejor : null;
 
+  const enRed = ctx.modo === 'turnos' && !!ctx.sala;
+  const nombreRival = (ctx.jugadores || []).find((n) => n !== ctx.yo) || 'tu rival';
+
   /** El recorrido en proporciones, para que un cambio de tamaño no lo rehaga. */
   const disenos = disenarRecorrido(ctx.semilla);
   const parTotal = disenos.reduce((s, d) => s + d.par, 0);
 
-  /** 'apuntando' | 'rodando' | 'celebrando' | 'fin' */
+  /** 'apuntando' | 'rodando' | 'esperando' | 'celebrando' | 'fin' */
   let fase = 'apuntando';
   let hoyo = 0;
   let golpesAqui = 0;
   let golpesTotal = 0;
+  /** Si ya he acabado ESTE hoyo —embocando o llegando al tope—. */
+  let hecho = false;
   let terminada = false;
   let pulsadoAntes = false;
   let celebracion = 0;
   let transcurrido = 0;
   /** Dónde estaba la bola al empezar el golpe, para devolverla si cae al agua. */
   let antesDelGolpe = { x: 0, y: 0 };
+  /** Con qué se tiró el último golpe, para que el rival pueda repetirlo. */
+  let ultimoTiro = { vx: 0, vy: 0 };
+  /** En red, de quién es el golpe. En solo, siempre mío. */
+  let miTurno = true;
+
+  /**
+   * El rival, si lo hay.
+   *
+   * `bola` es la suya mientras se repite su golpe; `destino` es donde el mensaje
+   * dice que acabó, y ahí se clava al terminar la repetición.
+   */
+  const rival = {
+    golpesAqui: 0, golpesTotal: 0, hecho: false,
+    bola: null, destino: null, repitiendo: false, reloj: 0
+  };
+  /** Golpes que llegaron antes de que yo pasara de hoyo. Ver `atenderCola`. */
+  const cola = [];
 
   let campo = medirCampo(pista.medidas, pista.aPantalla);
   const bola = { x: 0, y: 0, vx: 0, vy: 0, radio: 8 };
   /** El hoyo, las piezas y la salida de ESTE hoyo, ya en píxeles. */
   let mapa = null;
+
+  let bajaSala = null;
+  if (enRed) {
+    bajaSala = ctx.sala.alRecibir((jugada) => encolarGolpe(jugada));
+    ctx.sala.alIrseUnJugador(() => { /* lo cierra la sala desde app.js */ });
+  }
 
   pista.cursor('crosshair');
   colocarMascota(pista.medidas);
@@ -127,7 +192,10 @@ export function crearPartida(ctx) {
 
   return { actualizar, destroy };
 
-  function destroy() { terminada = true; }
+  function destroy() {
+    terminada = true;
+    if (bajaSala) { try { bajaSala(); } catch { /* da igual */ } bajaSala = null; }
+  }
 
   // ---- Un fotograma ------------------------------------------------------
 
@@ -143,6 +211,10 @@ export function crearPartida(ctx) {
     // segundo para enseñar un número que cambia una.
     if (PRESUPUESTO_MS - transcurrido < AVISO_MS
       && Math.ceil(antes / 1000) !== Math.ceil(transcurrido / 1000)) marcar();
+
+    // La bola del rival va por su cuenta: se esté repitiendo su golpe o no, mi
+    // fase es cosa mía.
+    if (rival.repitiendo) rodarRival(dt);
 
     if (fase === 'celebrando') {
       celebracion -= dt;
@@ -188,6 +260,7 @@ export function crearPartida(ctx) {
   function golpear(golpe) {
     if (golpe.fuerza < 40) return;   // un clic encima de la bola no es un golpe
     antesDelGolpe = { x: bola.x, y: bola.y };
+    ultimoTiro = { vx: golpe.vx, vy: golpe.vy };
     golpesAqui++;
     golpesTotal++;
     bola.vx = golpe.vx;
@@ -210,18 +283,18 @@ export function crearPartida(ctx) {
       // El rozamiento va exponencial: frena mucho al principio y se va
       // acabando, que es como rueda una bola de verdad. En la arena, el mismo
       // cálculo con otro número.
-      const roce = enAlgo('arena') ? ROZAMIENTO_ARENA : ROZAMIENTO;
+      const roce = enAlgo(bola, 'arena') ? ROZAMIENTO_ARENA : ROZAMIENTO;
       const freno = Math.exp(-roce * paso);
       bola.vx *= freno;
       bola.vy *= freno;
       bola.x += bola.vx * paso;
       bola.y += bola.vy * paso;
 
-      for (const m of mapa.muros) chocarConMuro(m);
-      for (const t of mapa.topes) chocarConTope(t);
-      chocarConLasBandas();
+      for (const m of mapa.muros) chocarConMuro(bola, m);
+      for (const t of mapa.topes) chocarConTope(bola, t);
+      chocarConLasBandas(bola);
 
-      if (enAlgo('agua')) { alAgua(); return; }
+      if (enAlgo(bola, 'agua')) { alAgua(); return; }
       if (entraEnElHoyo()) { embocar(); return; }
     }
 
@@ -229,17 +302,57 @@ export function crearPartida(ctx) {
       bola.vx = 0;
       bola.vy = 0;
       if (golpesAqui >= mapa.tope) { rendirElHoyo(); return; }
-      fase = 'apuntando';
-      // No dispara solo si se llegó aquí con el botón pulsado.
-      pulsadoAntes = entrada.pulsado;
+      finDeGolpe('para');
     }
   }
 
-  /** Si el centro de la bola está dentro de alguna zona de ese tipo. */
-  function enAlgo(tipo) {
+  /**
+   * La bola del rival, repitiendo su golpe.
+   *
+   * Misma física, y a propósito: así lo que se ve es el recorrido que hizo de
+   * verdad y no una línea recta que atraviesa un muro. Lo que NO se repite es lo
+   * que cuesta golpes —el agua, el hoyo—: eso ya lo resolvió su máquina y viene
+   * dado en el mensaje. Al parar, la bola se clava donde diga él.
+   */
+  function rodarRival(dt) {
+    const b = rival.bola;
+    if (!b) { rival.repitiendo = false; return; }
+    rival.reloj += dt;
+
+    const v = Math.hypot(b.vx, b.vy);
+    const pasos = Math.max(1, Math.ceil((v * dt) / PASO_MAX));
+    const paso = dt / pasos;
+    for (let i = 0; i < pasos; i++) {
+      const roce = enAlgo(b, 'arena') ? ROZAMIENTO_ARENA : ROZAMIENTO;
+      const freno = Math.exp(-roce * paso);
+      b.vx *= freno;
+      b.vy *= freno;
+      b.x += b.vx * paso;
+      b.y += b.vy * paso;
+      for (const m of mapa.muros) chocarConMuro(b, m);
+      for (const t of mapa.topes) chocarConTope(b, t);
+      chocarConLasBandas(b);
+    }
+
+    // Y un tope de tiempo, que la repetición es adorno: si por lo que sea no
+    // para, no puede quedarse dando vueltas mientras al otro le toca jugar.
+    if (Math.hypot(b.vx, b.vy) < PARADA || rival.reloj > TOPE_REPETICION_S) pararLaRepeticion();
+  }
+
+  function pararLaRepeticion() {
+    rival.repitiendo = false;
+    if (!rival.bola || !rival.destino) return;
+    rival.bola.x = rival.destino.x;
+    rival.bola.y = rival.destino.y;
+    rival.bola.vx = 0;
+    rival.bola.vy = 0;
+  }
+
+  /** Si el centro de una bola está dentro de alguna zona de ese tipo. */
+  function enAlgo(b, tipo) {
     for (const z of mapa.zonas) {
       if (z.tipo !== tipo) continue;
-      if (bola.x >= z.x && bola.x <= z.x + z.w && bola.y >= z.y && bola.y <= z.y + z.h) return true;
+      if (b.x >= z.x && b.x <= z.x + z.w && b.y >= z.y && b.y <= z.y + z.h) return true;
     }
     return false;
   }
@@ -249,22 +362,22 @@ export function crearPartida(ctx) {
    * de la bola y, si está más cerca que el radio, se la saca por ahí y se
    * refleja la velocidad contra esa normal.
    */
-  function chocarConMuro(m) {
-    const px = Math.max(m.x, Math.min(bola.x, m.x + m.w));
-    const py = Math.max(m.y, Math.min(bola.y, m.y + m.h));
-    let dx = bola.x - px;
-    let dy = bola.y - py;
+  function chocarConMuro(b, m) {
+    const px = Math.max(m.x, Math.min(b.x, m.x + m.w));
+    const py = Math.max(m.y, Math.min(b.y, m.y + m.h));
+    let dx = b.x - px;
+    let dy = b.y - py;
     let d = Math.hypot(dx, dy);
 
-    if (d >= bola.radio) return;
+    if (d >= b.radio) return;
 
     if (d < 0.0001) {
       // El centro ha acabado dentro del muro. No debería pasar con subpasos,
       // pero si pasa hay que salir por algún lado: el más cercano.
-      const izq = bola.x - m.x;
-      const der = m.x + m.w - bola.x;
-      const arr = bola.y - m.y;
-      const aba = m.y + m.h - bola.y;
+      const izq = b.x - m.x;
+      const der = m.x + m.w - b.x;
+      const arr = b.y - m.y;
+      const aba = m.y + m.h - b.y;
       const min = Math.min(izq, der, arr, aba);
       dx = min === izq ? -1 : min === der ? 1 : 0;
       dy = min === arr ? -1 : min === aba ? 1 : 0;
@@ -273,9 +386,9 @@ export function crearPartida(ctx) {
 
     const nx = dx / d;
     const ny = dy / d;
-    bola.x = px + nx * bola.radio;
-    bola.y = py + ny * bola.radio;
-    reflejar(nx, ny, REBOTE);
+    b.x = px + nx * b.radio;
+    b.y = py + ny * b.radio;
+    reflejar(b, nx, ny, REBOTE);
   }
 
   /**
@@ -285,48 +398,48 @@ export function crearPartida(ctx) {
    * igual, o el tope se convierte en un sitio donde la bola se queda muerta,
    * que es justo lo contrario de lo que promete su pinta.
    */
-  function chocarConTope(t) {
-    const dx = bola.x - t.x;
-    const dy = bola.y - t.y;
+  function chocarConTope(b, t) {
+    const dx = b.x - t.x;
+    const dy = b.y - t.y;
     const d = Math.hypot(dx, dy) || 0.0001;
-    const juntos = t.r + bola.radio;
+    const juntos = t.r + b.radio;
     if (d >= juntos) return;
 
     const nx = dx / d;
     const ny = dy / d;
-    bola.x = t.x + nx * juntos;
-    bola.y = t.y + ny * juntos;
-    if (!reflejar(nx, ny, REBOTE_TOPE)) return;
+    b.x = t.x + nx * juntos;
+    b.y = t.y + ny * juntos;
+    if (!reflejar(b, nx, ny, REBOTE_TOPE)) return;
 
-    const v = Math.hypot(bola.vx, bola.vy);
+    const v = Math.hypot(b.vx, b.vy);
     if (v < TOPE_MINIMO) {
-      bola.vx = nx * TOPE_MINIMO;
-      bola.vy = ny * TOPE_MINIMO;
+      b.vx = nx * TOPE_MINIMO;
+      b.vy = ny * TOPE_MINIMO;
     }
     ctx.sonido.nota(660, 0.07);
   }
 
   /** Refleja la velocidad contra una normal. Devuelve si de verdad chocaba. */
-  function reflejar(nx, ny, devuelve) {
-    const vn = bola.vx * nx + bola.vy * ny;
+  function reflejar(b, nx, ny, devuelve) {
+    const vn = b.vx * nx + b.vy * ny;
     if (vn >= 0) return false;              // ya se estaba alejando
-    bola.vx -= (1 + devuelve) * vn * nx;
-    bola.vy -= (1 + devuelve) * vn * ny;
+    b.vx -= (1 + devuelve) * vn * nx;
+    b.vy -= (1 + devuelve) * vn * ny;
     sonarChoque(-vn);
     return true;
   }
 
-  function chocarConLasBandas() {
-    const r = bola.radio;
-    if (bola.x < campo.x0 + r) { bola.x = campo.x0 + r; rebotar('x'); }
-    else if (bola.x > campo.x1 - r) { bola.x = campo.x1 - r; rebotar('x'); }
-    if (bola.y < campo.y0 + r) { bola.y = campo.y0 + r; rebotar('y'); }
-    else if (bola.y > campo.y1 - r) { bola.y = campo.y1 - r; rebotar('y'); }
+  function chocarConLasBandas(b) {
+    const r = b.radio;
+    if (b.x < campo.x0 + r) { b.x = campo.x0 + r; rebotar(b, 'x'); }
+    else if (b.x > campo.x1 - r) { b.x = campo.x1 - r; rebotar(b, 'x'); }
+    if (b.y < campo.y0 + r) { b.y = campo.y0 + r; rebotar(b, 'y'); }
+    else if (b.y > campo.y1 - r) { b.y = campo.y1 - r; rebotar(b, 'y'); }
   }
 
-  function rebotar(eje) {
-    const v = eje === 'x' ? bola.vx : bola.vy;
-    if (eje === 'x') bola.vx = -v * REBOTE; else bola.vy = -v * REBOTE;
+  function rebotar(b, eje) {
+    const v = eje === 'x' ? b.vx : b.vy;
+    if (eje === 'x') b.vx = -v * REBOTE; else b.vy = -v * REBOTE;
     sonarChoque(Math.abs(v));
   }
 
@@ -352,10 +465,121 @@ export function crearPartida(ctx) {
     ctx.sonido.nota(180, 0.22);
     ctx.decir('Al agua. Un golpe de penalización.');
     if (golpesAqui >= mapa.tope) { rendirElHoyo(); return; }
-    fase = 'apuntando';
-    pulsadoAntes = entrada.pulsado;
+    finDeGolpe('agua');
+  }
+
+  // ---- El final de un golpe ----------------------------------------------
+
+  /**
+   * Todo golpe acaba aquí, y es lo que hace que esto se pueda jugar por turnos:
+   * un solo sitio donde se cuenta lo que pasó, se manda al rival y se decide de
+   * quién es el siguiente.
+   *
+   * @param {'para'|'agua'|'hoyo'|'tope'} fin
+   */
+  function finDeGolpe(fin) {
+    mandarGolpe(fin);
+    // El turno pasa si al rival le queda hoyo por jugar. Si ya acabó, sigo yo
+    // hasta terminar: esperar a alguien que no tiene nada que hacer es esperar
+    // por nada.
+    miTurno = !enRed || rival.hecho;
+    decidirFase();
     marcar();
   }
+
+  /**
+   * En qué estado se queda la partida después de un golpe —mío o suyo—.
+   *
+   * Está en un solo sitio porque las combinaciones no son obvias: acabar yo el
+   * hoyo no lo acaba, y que sea su turno no significa que yo no tenga nada que
+   * hacer más que mirar.
+   */
+  function decidirFase() {
+    if (hecho && (!enRed || rival.hecho)) { celebrarElHoyo(); return; }
+    if (hecho || !miTurno) { fase = 'esperando'; return; }
+    fase = 'apuntando';
+    // No dispara solo si se llegó aquí con el botón pulsado.
+    pulsadoAntes = entrada.pulsado;
+  }
+
+  function celebrarElHoyo() {
+    fase = 'celebrando';
+    celebracion = CELEBRACION_S;
+  }
+
+  /** Lo que se manda tras cada golpe. Todo en proporciones del campo. */
+  function mandarGolpe(fin) {
+    if (!enRed) return;
+    ctx.sala.enviar({
+      t: 'golpe',
+      h: hoyo,
+      sx: aProporcionX(antesDelGolpe.x), sy: aProporcionY(antesDelGolpe.y),
+      vx: ultimoTiro.vx / campo.ancho, vy: ultimoTiro.vy / campo.alto,
+      x: aProporcionX(bola.x), y: aProporcionY(bola.y),
+      g: golpesAqui, gt: golpesTotal, fin
+    });
+  }
+
+  /**
+   * Un golpe del rival. Se guarda hasta que yo esté en su hoyo.
+   *
+   * El protocolo entrega en orden, así que un mensaje de un hoyo por delante
+   * sólo puede querer decir que él ya pasó y yo estoy en la celebración del
+   * anterior. Se guarda medio segundo y se atiende, en vez de tirarlo.
+   */
+  function encolarGolpe(m) {
+    if (!m || m.t !== 'golpe') return;
+    cola.push(m);
+    atenderCola();
+  }
+
+  function atenderCola() {
+    while (cola.length && Number(cola[0].h) <= hoyo) {
+      const m = cola.shift();
+      if (Number(m.h) < hoyo) continue;    // de un hoyo ya pasado: no hay nada que hacer
+      aplicarGolpeDelRival(m);
+    }
+  }
+
+  function aplicarGolpeDelRival(m) {
+    rival.golpesAqui = Number(m.g) || 0;
+    rival.golpesTotal = Number(m.gt) || 0;
+    rival.hecho = m.fin === 'hoyo' || m.fin === 'tope';
+    rival.destino = { x: deProporcionX(m.x), y: deProporcionY(m.y) };
+    rival.reloj = 0;
+
+    if (m.fin === 'agua') {
+      // El agua devuelve la bola atrás: repetir el recorrido acabaría enseñando
+      // un viaje que no termina donde dice el mensaje.
+      rival.bola = { ...rival.destino, vx: 0, vy: 0, radio: mapa.bolaRadio };
+      rival.repitiendo = false;
+      ctx.sonido.nota(180, 0.18);
+    } else {
+      rival.bola = {
+        x: deProporcionX(m.sx), y: deProporcionY(m.sy),
+        vx: (Number(m.vx) || 0) * campo.ancho, vy: (Number(m.vy) || 0) * campo.alto,
+        radio: mapa.bolaRadio
+      };
+      rival.repitiendo = true;
+      ctx.sonido.nota(460, 0.05);
+    }
+
+    if (m.fin === 'hoyo') ctx.decir(`${nombreRival} ha embocado en ${rival.golpesAqui}.`);
+
+    if (!hecho) miTurno = true;
+    decidirFase();
+    marcar();
+  }
+
+  // Declaradas con `function` y no con `const`: todo esto vive DESPUÉS del
+  // `return` de `crearPartida`, donde sólo se izan las declaraciones de función.
+  // Un `const` aquí no llega a inicializarse nunca y revienta con un
+  // «Cannot access before initialization» la primera vez que llega un golpe del
+  // rival —dentro de un callback, o sea sin que se vea—.
+  function aProporcionX(x) { return (x - campo.x0) / campo.ancho; }
+  function aProporcionY(y) { return (y - campo.y0) / campo.alto; }
+  function deProporcionX(p) { return campo.x0 + (Number(p) || 0) * campo.ancho; }
+  function deProporcionY(p) { return campo.y0 + (Number(p) || 0) * campo.alto; }
 
   /**
    * Deprisa se pasa de largo.
@@ -381,9 +605,23 @@ export function crearPartida(ctx) {
     bola.vy = 0;
     antesDelGolpe = { x: bola.x, y: bola.y };
     golpesAqui = 0;
-    fase = 'apuntando';
-    pulsadoAntes = entrada.pulsado;
+    hecho = false;
+
+    rival.golpesAqui = 0;
+    rival.hecho = false;
+    rival.repitiendo = false;
+    rival.destino = null;
+    rival.bola = enRed
+      ? { x: mapa.salida.x, y: mapa.salida.y, vx: 0, vy: 0, radio: mapa.bolaRadio }
+      : null;
+
+    // Se turna quien abre cada hoyo, y sale de la paridad: los dos lados llegan
+    // a lo mismo sin mandarse nada, que es la clase de acuerdo que no se rompe.
+    miTurno = !enRed || (ctx.anfitrion === (hoyo % 2 === 0));
+
+    decidirFase();
     marcar();
+    atenderCola();
   }
 
   function embocar() {
@@ -391,23 +629,21 @@ export function crearPartida(ctx) {
     bola.vy = 0;
     bola.x = mapa.hoyo.x;
     bola.y = mapa.hoyo.y;
-    fase = 'celebrando';
-    celebracion = 0.8;
+    hecho = true;
     pato.setState('happy');
     ctx.sonido.nota(880, 0.1);
     ctx.sonido.nota(1174, 0.14);
     const par = disenos[hoyo].par;
     if (golpesAqui < par) ctx.decir(golpesAqui === 1 ? '¡De un golpe!' : `${par - golpesAqui} bajo par.`);
-    marcar();
+    finDeGolpe('hoyo');
   }
 
   /** El hoyo se da por jugado con el tope puesto. Ver `MARGEN_TOPE`. */
   function rendirElHoyo() {
-    fase = 'celebrando';
-    celebracion = 0.6;
+    hecho = true;
     ctx.sonido.nota(220, 0.18);
     ctx.decir(`Ese hoyo, por imposible: ${mapa.tope} golpes.`);
-    marcar();
+    finDeGolpe('tope');
   }
 
   function siguienteHoyo() {
@@ -437,12 +673,30 @@ export function crearPartida(ctx) {
     // A menos es mejor, así que aquí un récord es bajar, no subir.
     const esRecord = mejorPrevio === null || golpesTotal < mejorPrevio;
 
-    ctx.sonido[esRecord ? 'victoria' : 'derrota']();
+    // Contra alguien, lo que decide es el partido, no el récord —como en el
+    // Pong—. La marca sigue siendo tus golpes, que es lo que sube al marcador.
+    const resultado = enRed
+      ? (golpesTotal < rival.golpesTotal ? 'victoria'
+        : golpesTotal === rival.golpesTotal ? 'empate' : 'derrota')
+      : (esRecord ? 'victoria' : 'derrota');
+
+    ctx.sonido[resultado === 'victoria' ? 'victoria' : 'derrota']();
     ctx.alTerminar({
-      resultado: esRecord ? 'victoria' : 'derrota',
+      resultado,
       puntos: golpesTotal,
-      detalle: detalleFinal(golpesTotal, esRecord)
+      detalle: enRed ? detalleEnRed(resultado, esRecord) : detalleFinal(golpesTotal, esRecord)
     });
+  }
+
+  function detalleEnRed(resultado, esRecord) {
+    const marcador = `${golpesTotal} a ${rival.golpesTotal}`;
+    const cabeza = resultado === 'victoria' ? `Ganado ${marcador}`
+      : resultado === 'empate' ? `Empate a ${golpesTotal}`
+        : `Perdido ${marcador}`;
+    const cola = esRecord
+      ? (mejorPrevio === null ? ' Y estrenas marca.' : ` Y récord: antes eran ${mejorPrevio}.`)
+      : '';
+    return `${cabeza} contra ${nombreRival}.${cola}`;
   }
 
   function detalleFinal(total, esRecord) {
@@ -457,12 +711,22 @@ export function crearPartida(ctx) {
 
   function marcar() {
     const d = disenos[Math.min(hoyo, HOYOS - 1)];
-    const base = `Hoyo ${Math.min(hoyo + 1, HOYOS)}/${HOYOS}  ·  ${golpesAqui} de par ${d.par}`
-      + `  ·  ${golpesTotal} de ${parTotal}`;
-    const record = mejorPrevio === null ? '' : `  ·  récord ${mejorPrevio}`;
+    const cabeza = `Hoyo ${Math.min(hoyo + 1, HOYOS)}/${HOYOS}  ·  par ${d.par}`;
     const queda = PRESUPUESTO_MS - transcurrido;
     const prisa = queda < AVISO_MS ? `  ·  ¡${Math.max(0, Math.ceil(queda / 1000))} s!` : '';
-    pista.marcador(base + record + prisa);
+
+    if (enRed) {
+      const turno = hecho && rival.hecho ? ''
+        : miTurno ? '  ·  te toca'
+          : `  ·  juega ${nombreRival}`;
+      pista.marcador(`${cabeza}  ·  tú ${golpesTotal}  ·  ${nombreRival} ${rival.golpesTotal}`
+        + turno + prisa);
+      return;
+    }
+
+    const record = mejorPrevio === null ? '' : `  ·  récord ${mejorPrevio}`;
+    pista.marcador(`${cabeza}  ·  ${golpesAqui} aquí  ·  ${golpesTotal} de ${parTotal}`
+      + record + prisa);
   }
 
   // ---- Medidas -----------------------------------------------------------
@@ -513,6 +777,9 @@ export function crearPartida(ctx) {
     for (const t of mapa.topes) dibujarTope(g, t);
     dibujarSalida(g);
     dibujarHoyo(g);
+    // La del rival por debajo de la mía: si se solapan, la que hay que ver para
+    // decidir el golpe es la propia.
+    if (rival.bola) dibujarBolaDelRival(g);
     dibujarBola(g);
     if (fase === 'apuntando') dibujarPrevia(g, medidas);
   }
@@ -604,6 +871,27 @@ export function crearPartida(ctx) {
     g.closePath();
     g.fillStyle = '#c1121f';
     g.fill();
+    g.restore();
+  }
+
+  /** La del rival, de otro color y con su inicial. */
+  function dibujarBolaDelRival(g) {
+    const b = rival.bola;
+    g.save();
+    g.beginPath();
+    g.arc(b.x, b.y, b.radio, 0, Math.PI * 2);
+    g.fillStyle = '#8ecae6';
+    g.fill();
+    g.lineWidth = 2;
+    g.strokeStyle = '#1c4a78';
+    g.stroke();
+    g.fillStyle = '#1c4a78';
+    g.font = `700 ${Math.round(b.radio * 1.2)}px system-ui, sans-serif`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    // La inicial y no el nombre: en una bola de diez píxeles no cabe más, y con
+    // dos bolas en pantalla basta para saber cuál es cuál.
+    g.fillText((nombreRival[0] || '?').toUpperCase(), b.x, b.y + 1);
     g.restore();
   }
 

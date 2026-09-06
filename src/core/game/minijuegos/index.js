@@ -217,8 +217,11 @@ export const MINIJUEGOS = [
     descripcion: 'Diez hoyos vistos desde arriba. Apunta, mide la fuerza y cuenta los golpes.',
     nivel: 20,
     precio: 900,
-    modos: ['solo'],
-    jugadores: { min: 1, max: 1 },
+    // El primero de ESCENARIO que se juega por turnos. Sale barato porque el
+    // recorrido ya se sorteaba con `ctx.semilla` y en proporciones: misma
+    // semilla, mismo campo, aunque las dos pantallas midan distinto.
+    modos: ['solo', 'turnos'],
+    jugadores: { min: 2, max: 2 },
     superficie: 'escenario',
     // Del recorrido de cinco hoyos al de diez. Las marcas de la 0.20.0 no se
     // pueden comparar con éstas —ni batir—, así que se borran.

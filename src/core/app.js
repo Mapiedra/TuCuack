@@ -59,6 +59,14 @@ let escena = null;               // minijuego que tiene prestado el escenario
 // El panel de la partida en curso, para poder hablarle desde fuera: en una
 // revancha hay que cerrarlo y abrir el de la partida nueva.
 let partidaAbierta = null;
+/**
+ * Lo mismo que `partidaAbierta`, pero para las de escenario.
+ *
+ * Un juego de escenario en red no tiene panel: tiene la pantalla prestada. Si el
+ * rival se va, lo que hay que hacer no es cerrar un panel sino DEVOLVER el
+ * escenario, y eso sólo sabe hacerlo el préstamo que lo pidió.
+ */
+let escenaEnRed = null;
 /** Cerrando un panel para abrir el de la partida siguiente, no para irse. */
 let cambiandoDePartida = false;
 let overHot = false;         // sobre el pato o sobre un panel/menú
@@ -1079,6 +1087,7 @@ function pagarElPeaje() {
 function abrirEscena(juego, modo, opciones) {
   const limpieza = [];
   let contada = false;
+  const enRed = modo === 'turnos' && !!opciones.sala;
 
   const prestamo = prestarEscenario({
     // Ya resuelto: el nombre puede llevar dentro el de la mascota, y en el
@@ -1114,7 +1123,7 @@ function abrirEscena(juego, modo, opciones) {
     alTerminar: (r) => {
       if (contada) return;
       contada = true;
-      const res = anotarPartida(juego, r);
+      const res = anotarPartida(juego, r, enRed);
       // Sin panel donde pintar el pie, el resultado se dice en un cartel. Los
       // cuacks van siempre —no tienen tope— y la experiencia sólo mientras
       // quede cupo; decir por qué se ha parado evita que parezca un fallo.
@@ -1127,6 +1136,15 @@ function abrirEscena(juego, modo, opciones) {
       prestamo.terminar('fin');
     }
   };
+
+  // En red, la sala tiene que poder cerrar esto desde fuera: si el rival se va
+  // o se cae, quedarse mirando un campo donde ya no va a moverse nada es peor
+  // que cualquier mensaje. No hay panel que cerrar —por eso no vale
+  // `partidaAbierta`—, así que se guarda cómo devolver el escenario.
+  if (enRed) {
+    escenaEnRed = { terminar: () => prestamo.terminar('usuario') };
+    limpieza.push(() => { escenaEnRed = null; });
+  }
 
   // Por el descriptor y no por `cargarMinijuego(id)`: es lo mismo para un juego
   // del catálogo, y permite probar el préstamo con uno de mentira.
@@ -1529,6 +1547,13 @@ function setupSalas() {
  * @param {string} texto
  */
 function cerrarPartidaPorElRival(nombre, texto) {
+  // Primero el escenario, si lo había: devolveríalo el propio préstamo, y hasta
+  // que no lo haga el pato sigue prestado y el ratón, capturado.
+  if (escenaEnRed) {
+    const cerrar = escenaEnRed.terminar;
+    escenaEnRed = null;
+    try { cerrar(); } catch (err) { console.warn('[pato] fallo al cerrar la escena', err); }
+  }
   if (partidaAbierta) {
     // Marcado como cambio de partida: el rival YA se ha ido, así que anunciarle
     // a él que abandonamos no tiene sentido.

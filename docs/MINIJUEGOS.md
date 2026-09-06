@@ -15,7 +15,7 @@ abren desde `🎮 Juegos` en el menú del pato.
 | 🏓 «Pato Jumping» | 12 | solo | escenario |
 | 🪶 «Flappy Pato» | 14 | solo | escenario |
 | 🕳️ The Hole | 16 | solo | escenario |
-| ⛳ Minigolf | 20 | solo | escenario |
+| ⛳ Minigolf | 20 | solo · red (2) | escenario |
 | 🏓 Pong | 24 | solo | escenario |
 | 🧱 Ladrillos | 28 | solo | escenario |
 
@@ -508,7 +508,7 @@ global—.
 | 12 | 🏓 «{mascota} Jumping» | toques · más | bates tu récord |
 | 14 | 🪶 «Flappy {mascota}» | huecos · más | bates tu récord |
 | 16 | 🕳️ The Hole | calibre · más | bates tu récord |
-| 20 | ⛳ Minigolf | golpes · **menos** | bates tu récord (bajando) |
+| 20 | ⛳ Minigolf | golpes · **menos** | bates tu récord — o **ganas la ronda**, en red |
 | 24 | 🏓 Pong | peloteo · más | **ganas el partido** |
 | 28 | 🧱 Ladrillos | ladrillos · más | bates tu récord |
 
@@ -676,6 +676,74 @@ El préstamo del escenario corta a los diez minutos y lo hace **sin resultado**
 partida entera. El juego se da a sí mismo **ocho minutos y medio**: al llegar,
 cierra él, da por perdidos los hoyos que falten y apunta la marca. Perder por
 lento es una derrota; perderlo todo, un fallo.
+
+---
+
+## Minigolf por turnos, y por qué el Pong no
+
+Es el primer juego de **escenario** que se juega en red, y salió barato por dos
+cosas que ya estaban ahí sin haberlas puesto para esto:
+
+1. **El recorrido sale entero de `ctx.semilla`**, que en red reparte el
+   anfitrión. Misma semilla, mismo campo en las dos máquinas.
+2. **Y está en proporciones, no en píxeles.** Da igual que uno juegue en un
+   monitor de 1920 y el otro en un portátil: el hoyo cae en el mismo sitio
+   relativo. Por eso **todo lo que viaja por la red viaja en proporciones** y se
+   convierte al llegar.
+
+### Cómo se juega
+
+Cada uno con su bola en el mismo hoyo y golpes alternos. Quien emboca —o llega
+al tope— se queda mirando mientras el otro termina, y cuando los dos han acabado
+pasan de hoyo a la vez. Gana quien acabe los diez con menos golpes.
+
+Quién abre cada hoyo sale de la paridad (`anfitrion === (hoyo % 2 === 0)`): los
+dos lados llegan a lo mismo sin mandarse nada, que es la clase de acuerdo que no
+se rompe.
+
+### Lo que viaja: un mensaje por golpe
+
+```
+{ t:'golpe', h, sx, sy, vx, vy, x, y, g, gt, fin }
+```
+
+**El que golpea manda DÓNDE acabó su bola, no sólo con qué fuerza la tiró.** La
+física es determinista y el campo es el mismo, pero el `dt` de cada máquina no lo
+es, y dos integraciones con pasos distintos acaban separándose. Así que la
+posición final es autoritativa: el otro lado **repite** el golpe con la misma
+física —para que se vea el recorrido y no una línea recta que atraviesa un muro—
+y al parar clava la bola donde diga el mensaje.
+
+Lo que no se repite es lo que cuesta golpes: el agua y el hoyo ya los resolvió la
+máquina de quien tiró, y vienen dados en el `fin`.
+
+El ritmo cabe de sobra:
+
+| Ronda | Mensajes de los dos | Del presupuesto (`RITMO_MAX` = 4/s) |
+|---|---|---|
+| Al par | 76 | 5 % |
+| Normal | 110 | 8 % |
+| La peor posible | 136 | 9 % |
+
+### Y el Pong se queda en solo
+
+Se estudió y no sale. El transporte se autolimita a **cuatro mensajes de juego
+por segundo** —de los diez del cliente Realtime, dejando seis para el chat, que
+es lo que no puede romperse—. Con la pelota entre 560 y 1180 px/s:
+
+| | Mensajes/s | Cada | La pelota se mueve |
+|---|---|---|---|
+| Hoy | 4 | 250 ms | 140-295 px |
+| Robándole todo al chat | 10 | 100 ms | 56-118 px |
+| Lo que pide un Pong | 30 | 33 ms | 19-39 px |
+
+La pelota mide 18 px y la pala 80. Y hay tres cosas más, cada una un problema
+por sí sola: el canal es **compartido** por todos los patos, `protocolo.js` está
+hecho al revés de lo que hace falta —confirma y reintenta, cuando en tiempo real
+lo que quieres es tirar lo viejo—, y harían falta predicción y reconciliación.
+
+**Es posible, pero es otra arquitectura**: canal propio por sala, protocolo no
+fiable y predicción. Por un juego, no compensa —y el Pong ya tiene rival—.
 
 ---
 
