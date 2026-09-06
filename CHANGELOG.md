@@ -7,6 +7,22 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.25.0] - 2026-09-07
+
+### Añadido
+
+- **🌋 El suelo es lava.** Nivel 33, 1475 cuacks, en la pantalla entera. Del
+  techo caen bloques que flotan un momento y **se van hundiendo porque la lava
+  los derrite**. Hay que ir saltando de uno a otro: el que pisas baja más
+  deprisa que los demás, así que quedarse quieto no es una opción.
+
+  Se mueve con **← →** (o A y D) y se salta con **espacio** —mantenerlo pulsado
+  salta más alto—. Es el primero que se juega con las dos manos.
+
+  Se guarda **los segundos que aguantas**. Al empezar, el bloque que pisas te da
+  unos seis segundos para elegir el siguiente; al minuto de partida, dos. Los
+  más altos duran más, y se les nota el calor: cuanto más rojo, menos le queda.
+
 ## [0.24.0] - 2026-09-07
 
 ### Añadido
