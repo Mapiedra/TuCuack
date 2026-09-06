@@ -242,6 +242,21 @@ export const MINIJUEGOS = [
     // el peloteo más largo. Es el primero donde son dos cosas distintas.
     marca: { etiqueta: 'peloteo', mejor: 'mas' },
     cargar: () => import('./pong.js')
+  },
+  {
+    id: 'ladrillos',
+    nombre: 'Ladrillos',
+    icono: '🧱',
+    descripcion: 'Tu mascota de pala abajo y un muro arriba. Tres vidas.',
+    nivel: 28,
+    precio: 1250,
+    modos: ['solo'],
+    jugadores: { min: 1, max: 1 },
+    superficie: 'escenario',
+    // Ladrillos rotos y no muros alcanzados: los muros se cuentan con los dedos
+    // de una mano y un marcador donde todo el mundo empata en 4 no compara nada.
+    marca: { etiqueta: 'ladrillos', mejor: 'mas' },
+    cargar: () => import('./ladrillos.js')
   }
 ];
 

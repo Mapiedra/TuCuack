@@ -17,6 +17,7 @@ abren desde `🎮 Juegos` en el menú del pato.
 | 🕳️ The Hole | 16 | solo | escenario |
 | ⛳ Minigolf | 20 | solo | escenario |
 | 🏓 Pong | 24 | solo | escenario |
+| 🧱 Ladrillos | 28 | solo | escenario |
 
 La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
 segundo, después los de pensar, y al final los que piden pulso. Los huecos están
@@ -30,6 +31,14 @@ El ⛳ Minigolf es el primero que hay que **comprar** —900 cuacks, ver [Los
 cuacks](#los-cuacks)— y el primero que puntúa **a menos**: gana quien acabe los
 diez hoyos con menos golpes. El recorrido se sortea entero en cada partida —ver
 [cómo se genera](#el-recorrido-del-minigolf)—.
+
+Los 🧱 Ladrillos cierran el trío de «mantén la pelota en el aire con la
+mascota», y la duda de si sobraba estaba anotada desde el principio. **Se hizo**,
+porque en las manos no se parecen: en Jumping la mascota ES la pelota y se juega
+en vertical; en el Pong es una pala **vertical** que sube y baja contra un rival;
+en Ladrillos es una pala **horizontal** que va de lado contra un muro. Eje
+distinto y objetivo distinto —el Pong es defenderse, esto es apuntar—. Y es el
+único de los tres donde la mascota se queda en su suelo de siempre.
 
 El 🏓 Pong es el primero con un **rival de verdad** en un juego de escenario, y
 el primero donde **ganar y batir el récord son dos cosas distintas**: se gana el
@@ -671,7 +680,7 @@ que son una línea en un array.
 | 20 | 68 | 💥 Artillería | todo junto | 49 | 3050 |
 
 Los días son de uso normal —unas 736 XP diarias entre convivencia, cuidados,
-racha, chat y el tope de partidas—. Los doce primeros están **hechos**; del 13 en
+racha, chat y el tope de partidas—. Los trece primeros están **hechos**; del 14 en
 adelante, [por hacer](#los-que-faltan).
 
 El nivel ABRE un juego y el precio lo COMPRA. Quien ya lo tuviera abierto el día
@@ -696,7 +705,6 @@ para todos: ninguno pide ampliarlo.
 
 | Juego | Nivel | Modos | Superficie | Lo que estrena |
 |---|---|---|---|---|
-| 🧱 Ladrillos | 28 | solo | escenario | un muro que se rompe, sobre el Pong |
 | 🌋 El suelo es lava | 33 | solo | escenario | plataformas que se mueven y se hunden |
 | 👾 Invasores | 38 | solo | escenario | disparar hacia arriba, y algo que baja |
 | 🔤 Ahorcado | 43 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
@@ -706,25 +714,8 @@ para todos: ninguno pide ampliarlo.
 | 💥 Artillería | 68 | red (2) | escenario | terreno destructible y turnos con física compartida |
 
 Los dos últimos estaban en el tintero y **están confirmados**: se hacen, y se
-hacen al final. El [ranking entre patos](#-ranking-entre-patos) tampoco está en
-esta tabla porque no es un juego: es lo siguiente que se ejecuta.
-
-### 🧱 Ladrillos
-
-Arkanoid: la mascota abajo de pala, un muro de ladrillos arriba, y la pelota
-rompiendo. **Es el Pong con el rival cambiado por un muro**, así que hacerlo
-justo después sale casi por el precio del cambio: misma pelota, mismo rebote
-contra `pato.cuerpo()`, mismo bucle. Lo nuevo es una rejilla de ladrillos y una
-colisión de círculo contra rectángulo.
-
-Se gana limpiando el muro y se pierde al dejar caer la pelota tres veces. Los
-muros van por niveles: cuando limpias uno, entra el siguiente más apretado, y la
-marca es hasta qué muro llegaste.
-
-> **Aviso de repetirse.** Malabares, Pong y Ladrillos son los tres «mantén la
-> pelota en el aire con la mascota». Tres es el límite: si al jugar seguido se
-> notan iguales, el que sobra es éste, que es el que menos aporta. Conviene
-> escribirlo **después** del Pong y decidir entonces.
+hacen al final. El [ranking entre patos](#-ranking-entre-patos--hecho-en-la-0170)
+no está en esta tabla porque no es un juego, y además ya está hecho.
 
 ### 👾 Invasores
 
@@ -925,7 +916,7 @@ la mañana le habría dicho «8 de 8».
 La lista se desplaza, por lo mismo que la rejilla: con los juegos que hay, el
 panel entero se iba a 500 px.
 
-### 🌐 Ranking entre patos — decidido, y es lo siguiente
+### 🌐 Ranking entre patos — **hecho**, en la 0.17.0
 
 **Global, permanente y para todos.** Se descarta la opción barata —anunciar las
 marcas por el canal y quedarse con lo que se oyó mientras estabas conectado— y se
@@ -934,21 +925,27 @@ decirlo entero antes de empezar: hasta hoy el proyecto usa de Supabase **sólo
 Realtime**, que es un tubo por el que pasan mensajes y no guarda nada. Con la
 primera tabla entran el esquema, las políticas de acceso y una identidad.
 
-### Lo que hace falta
+### Cómo quedó
 
-| Pieza | Estado |
+| Pieza | Dónde |
 |---|---|
-| Proyecto de Supabase y clave publicable | **Ya está.** `supabase.json`, ver [`main/config.js`](../src/main/config.js) |
-| Cliente `@supabase/supabase-js` | **Ya está**, lo usa el chat |
-| Identidad estable del pato | **Ya está**: `settings.patoId`, el mismo que usan las salas |
-| El secreto por pato, para reclamar sus filas | **Falta**, y es una línea al lado del `patoId` |
-| La tabla, la vista y la función | **Escritas** en [`supabase/records.sql`](../supabase/records.sql); falta **ejecutarlas** en el panel |
+| La tabla, la vista y la función | [`supabase/records.sql`](../supabase/records.sql), ya ejecutado en el panel |
+| El secreto con el que se firma | `settings.recordSecreto`, al lado del `patoId` (ver [`main/store.js`](../src/main/store.js)) |
+| El cliente del escritorio | [`main/marcador.js`](../src/main/marcador.js), con `fetch` a pelo |
+| El gemelo de la extensión | dentro de [`extension/sw.js`](../src/extension/sw.js) |
+| El contrato | `marcadorGlobal` y `marcador` en [`core/platform.js`](../src/core/platform.js) |
+| La pantalla | dentro de 🏅 Tus récords: las filas con 🌐 llevan al marcador |
+| La comprobación | `npm run marcador` |
+
+> **El dueño de una fila es el sha256 del secreto, no el `patoId`.** Se corrigió
+> antes de publicar: el `patoId` viaja en la presencia del canal, así que
+> cualquiera podía ver el de otro y reclamar sus filas ANTES que él, para
+> siempre. El secreto no sale nunca de la carcasa.
 
 ### La tabla y sus reglas
 
-Están escritas y listas para pegar en el editor SQL del panel:
-[`supabase/records.sql`](../supabase/records.sql). Es idempotente, así que se
-puede lanzar entero las veces que haga falta.
+Están en [`supabase/records.sql`](../supabase/records.sql), que es idempotente:
+se puede volver a lanzar entero las veces que haga falta.
 
 Una fila por pato y juego —no una por partida—: lo que se enseña es el récord, y
 guardar cada partida sería un histórico que nadie va a leer y que crece sin
@@ -978,10 +975,10 @@ Lo que sí funciona, y es lo que está escrito:
 Así, lo peor que puede hacer alguien es mentir sobre lo suyo. No puede tocar lo
 de los demás, ni borrarlo, ni bajarlo.
 
-> **Lo que hay que hacer a mano, y no lo puede hacer el pato:** ejecutar ese SQL
-> en el panel. La clave que lleva la app es la publicable, y con ésa no se crean
-> tablas ni funciones —para eso hace falta la `service_role` o entrar al panel—.
-> Es un pegar y darle a «Run».
+> **Lo único que hubo que hacer a mano**, porque no lo puede hacer el pato: pegar
+> ese SQL en el panel y darle a «Run». La clave que lleva la app es la
+> publicable, y con ésa no se crean tablas ni funciones. Al añadir algo al
+> esquema, lo mismo.
 
 Para comprobar que quedó bien: **`npm run marcador`**. Se conecta con la misma
 clave publicable que lleva la app, así que verifica exactamente lo que va a poder
@@ -993,9 +990,15 @@ sin tocar la tabla.
 
 ### En la interfaz
 
-Va donde ya está [Tus récords](#-tus-récords--hecho): una pestaña más, o una
-columna al lado de tu marca con el mejor de todos y quién lo tiene. Los nombres
-los escribe otra gente, así que **`textContent` siempre**, como en el chat.
+Vive dentro de [Tus récords](#-tus-récords--hecho): cada fila de un juego con
+marca lleva al marcador de todos, y lo dice con un 🌐 al final. Esa pista se
+añadió después, en la 0.17.0, porque sin ella el marcador **estaba y no se
+encontraba**: la única puerta era pulsar la fila, y lo único que lo delataba era
+el cursor al pasarle por encima. Nadie pasa el ratón por una lista que ha venido
+a leer.
+
+Los nombres los escribe otra gente, así que **`textContent` siempre**, como en el
+chat.
 
 ### Lo que hay que decir en voz alta
 
