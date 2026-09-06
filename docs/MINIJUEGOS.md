@@ -488,6 +488,116 @@ así que el consejo se mantiene tal cual: no lo pulses.
 
 ---
 
+## Puntuación y cuesta de dificultad
+
+Dos cosas distintas que conviene no mezclar: **el resultado** —que es lo que cobra
+la partida en cuacks y experiencia— y **la marca** —que es lo que sube al marcador
+global—.
+
+### Qué guarda cada juego
+
+| Nv | Juego | Marca | Resultado = «victoria» cuando… |
+|---|---|---|---|
+| 1 | ✌️ Piedra, papel o tijera | — | ganas el duelo |
+| 2 | 🔊 «{mascota} dice» | ronda · más | bates tu récord |
+| 3 | 🎲 Par o impar | — | ganas |
+| 4 | 🃏 Memoria | — | ganas |
+| 6 | ⭕ Tres en raya | — | ganas |
+| 8 | 🌵 «{mascota} Runner» | metros · más | bates tu récord |
+| 9 | 🎯 «{mascota} Hook» | puntos · más | limpias las cinco dianas |
+| 12 | 🏓 «{mascota} Jumping» | toques · más | bates tu récord |
+| 14 | 🪶 «Flappy {mascota}» | huecos · más | bates tu récord |
+| 16 | 🕳️ The Hole | calibre · más | bates tu récord |
+| 20 | ⛳ Minigolf | golpes · **menos** | bates tu récord (bajando) |
+| 24 | 🏓 Pong | peloteo · más | **ganas el partido** |
+| 28 | 🧱 Ladrillos | ladrillos · más | bates tu récord |
+
+Dos excepciones que merecen la pena:
+
+- **El Minigolf es el único que puntúa a menos.** La dirección `mejor: 'menos'`
+  estaba en el contrato desde el principio sin que la usara nadie.
+- **En el Pong, ganar y batir el récord son cosas distintas.** En los demás
+  juegos de marca, «victoria» ES el récord porque no hay a quién ganar. Ahí sí
+  lo hay: se gana el partido a siete, y lo que se guarda es el peloteo más
+  largo. Se puede perder 7-3 y firmar la mejor marca de tu vida.
+
+### Los tres ejes por los que sube la dificultad
+
+No todos los juegos aprietan por el mismo sitio, y conviene elegirlo a
+conciencia al escribir uno nuevo:
+
+| Eje | Quién lo usa | Qué se siente |
+|---|---|---|
+| **Dentro de la partida, con final** | ⛳ Minigolf (diez hoyos) | un recorrido con principio y fin |
+| **Dentro de la partida, sin final** | 🧱 Ladrillos (muros), The Hole, Runner, Flappy | aguantar hasta que fallas |
+| **Con TU nivel** | 🏓 Pong, ⭕ Tres en raya | el rival aprende contigo |
+
+El tercero es el delicado: el récord de un juego que se pone más difícil según
+subes deja de ser comparable con el de ayer. Se acepta en el Pong porque un rival
+mejor también alarga los peloteos, que es justo lo que se guarda.
+
+### ⛳ Minigolf — la cuesta va por hoyo
+
+El hoyo `n` lleva `n-1` piezas, y el TIPO va entrando escalonado. Par total del
+recorrido: **38**. Cada hoyo se da por perdido a los `par + 3` golpes.
+
+| Hoyo | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Piezas | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
+| Par | 2 | 3 | 3 | 3 | 4 | 4 | 4 | 5 | 5 | 5 |
+| Novedad | muro │ | | muro ─ | bloque | arena | | agua | tope | | |
+
+### 🏓 Pong — la cuesta va por tu nivel
+
+De batible en el 24 a muy fino en el 40, y ahí se queda. La dificultad vive en el
+ERROR del rival, no en su velocidad.
+
+| Tu nivel | 24 | 28 | 32 | 36 | 40+ |
+|---|---|---|---|---|---|
+| Velocidad del rival | 560 | 675 | 790 | 905 | 1020 px/s |
+| Falla al sacar | 36 % | 25 % | 10 % | 0 % | 0 % |
+| Falla con la pelota al tope | 55 % | 49 % | 43 % | 34 % | 22 % |
+
+Tu pala va a 1150 px/s: **siempre eres más rápido que la máquina**.
+
+### 🧱 Ladrillos — la cuesta va por muro
+
+Una fila más por muro hasta llenar la pantalla, ladrillos más duros según se
+avanza, y la pelota acelerando.
+
+| Muro | 1 | 2 | 3 | 4 | 5 | 6 | 7+ |
+|---|---|---|---|---|---|---|---|
+| Filas | 3 | 4 | 5 | 6 | 7 | 8 | 8 |
+| Ladrillos | 42 | 56 | 70 | 82 | 89 | 96 | ~106 |
+| Golpes para limpiarlo | 42 | 56 | 98 | 110 | 152 | 201 | ~226 |
+| Pelota | 780 | 835 | 890 | 945 | 1000 | 1055 | +55/muro |
+
+Los duros van **arriba** a propósito: obligan a abrirse un hueco y colar la
+pelota por él en vez de barrer de abajo a arriba. Desde el cuarto muro aparecen
+claros al azar (10 %), que se lee mucho mejor que un muro macizo.
+
+> **Donde la cuesta se aplana, y hay que decirlo.** A partir del muro 7 las filas
+> ya no crecen —están topadas en ocho— y el reparto de durezas se queda fijo, así
+> que lo único que sigue subiendo es la velocidad de la pelota… que topa en 1400
+> px/s en el muro 12. **Del muro 12 en adelante el juego no se pone más
+> difícil.** Con tres vidas es difícil llegar, y el presupuesto de ocho minutos y
+> medio corta antes en la práctica, pero está ahí. Si algún día estorba, lo
+> barato es seguir subiendo la proporción de ladrillos de tres golpes y bajar la
+> de huecos.
+
+### Los tres relojes
+
+Los tres juegos nuevos llevan un presupuesto propio de **8 minutos y medio**,
+porque el préstamo del escenario corta a los diez y lo hace **sin resultado** (ver
+`TOPE_PARTIDA_MS` en escenario.js). Perder por lento es una derrota; perder la
+partida entera y la marca, un fallo. Al llegar:
+
+- **Minigolf**: los hoyos que falten se dan por perdidos a su tope y se apunta.
+- **Pong**: gana quien vaya por delante.
+- **Ladrillos**: se cierra con los ladrillos que lleves.
+
+---
+
 ## El recorrido del minigolf
 
 Diez hoyos, y **ninguno se repite**: el recorrido entero sale de `ctx.semilla`,
