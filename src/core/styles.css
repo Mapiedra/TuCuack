@@ -1221,3 +1221,61 @@ html, body {
    letra pequeña, porque es lo único de ese bloque que da una razón para
    pulsar; el resto del bloque da razones para no hacerlo. */
 .broma-cebo { color: var(--accent-2); }
+
+/* ---- Ahorcado (ver core/game/minijuegos/ahorcado.js) ---- */
+
+/* La palabra, que es lo que se viene a mirar: grande y con aire entre letras,
+   que un `_ _ _` apretado no se cuenta de un vistazo. */
+.ah-palabra {
+  margin: 6px 0 2px;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-align: center;
+  min-height: 24px;
+  font-variant-numeric: tabular-nums;
+}
+/* Las plumas que quedan. Un ahorcado sin horca: en una app de una mascota,
+   dibujar a alguien colgado sobraba. */
+.ah-plumas {
+  margin: 0 0 6px;
+  text-align: center;
+  font-size: 14px;
+  letter-spacing: 3px;
+  min-height: 18px;
+}
+
+.ah-proponer { display: flex; gap: 6px; margin: 6px 0; }
+.ah-campo {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  text-transform: uppercase;
+  padding: 6px 8px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+}
+
+/* Siete columnas: veintisiete letras caben en cuatro filas, y el tablero no
+   pasa de los 280 px que aguanta el panel. */
+.ah-teclado {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.ah-tecla {
+  font: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 6px 0;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 5px;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+.ah-tecla:hover:not(:disabled) { background: rgba(255, 183, 3, 0.22); }
+/* Una letra ya pedida se queda ahí, apagada: saber lo que ya has probado es
+   la mitad del juego, y quitarla obligaría a acordarse. */
+.ah-tecla.usada { opacity: 0.35; }
+.ah-tecla:disabled { cursor: default; }

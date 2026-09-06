@@ -286,6 +286,22 @@ export const MINIJUEGOS = [
     superficie: 'escenario',
     marca: { etiqueta: 'oleada', mejor: 'mas' },
     cargar: () => import('./invasores.js')
+  },
+  {
+    id: 'ahorcado',
+    nombre: 'Ahorcado',
+    icono: '🔤',
+    descripcion: 'Adivina la palabra letra a letra. Seis fallos y se acabó.',
+    nivel: 43,
+    precio: 1925,
+    modos: ['solo', 'turnos'],
+    // A DOS, aunque la lista de pendientes dijera «2+»: `salas.js` está cableado
+    // a un solo rival y pasar de ahí es reescribirlo entero. Ver la cabecera de
+    // ahorcado.js.
+    jugadores: { min: 2, max: 2 },
+    superficie: 'panel',
+    marca: { etiqueta: 'palabras', mejor: 'mas' },
+    cargar: () => import('./ahorcado.js')
   }
 ];
 

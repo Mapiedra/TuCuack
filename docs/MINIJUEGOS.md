@@ -20,6 +20,7 @@ abren desde `🎮 Juegos` en el menú del pato.
 | 🧱 Ladrillos | 28 | solo | escenario |
 | 🌋 El suelo es lava | 33 | solo | escenario |
 | 👾 Invasores | 38 | solo | escenario |
+| 🔤 Ahorcado | 43 | solo · red (2) | panel |
 
 La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
 segundo, después los de pensar, y al final los que piden pulso. Los huecos están
@@ -545,6 +546,7 @@ global—.
 | 28 | 🧱 Ladrillos | ladrillos · más | bates tu récord |
 | 33 | 🌋 El suelo es lava | segundos · más | bates tu récord |
 | 38 | 👾 Invasores | oleada · más | bates tu récord |
+| 43 | 🔤 Ahorcado | palabras · más | bates tu récord — o **la sacas con menos fallos**, en red |
 
 Dos excepciones que merecen la pena:
 
@@ -739,6 +741,60 @@ lento es una derrota; perderlo todo, un fallo.
 
 ---
 
+## El ahorcado: a dos, y sin que nadie vea la palabra del otro
+
+### Por qué a dos, si la tabla decía «2+»
+
+Porque **`salas.js` está cableado a dos jugadores**, y no de refilón: hay un
+único `sala.rival` y los doce envíos del módulo van a `sala.rival.clave`.
+`sala.jugadores` es sólo una lista de nombres para enseñar.
+
+Pasar de ahí no es añadir un bucle. Son **secuencias, confirmaciones, reenvíos y
+plazos de ausencia por jugador**; un vestíbulo en vez de un reto, con aceptaciones
+parciales; y que irse a mitad deje de ser el final de la partida y pase a ser
+«seguid sin mí». Es reescribir el módulo más delicado del proyecto —el de la
+máquina de reconexión que costó afinar— por un solo juego. El «2+» era
+aspiracional; queda anotado que no se hace y por qué.
+
+### Los dos proponen a la vez
+
+Por turnos de verdad —uno propone, el otro adivina, y luego al revés— la mitad de
+la partida es mirar. Así que las dos palabras se ponen a la vez y cada uno
+adivina la del otro por su cuenta. No hay tiempos muertos, y contestar a las
+letras del rival se puede hacer siempre, porque tu palabra la tienes tú.
+
+Gana quien la saque con menos fallos; sacarla gana a no sacarla.
+
+### El compromiso, que aquí sí se usa
+
+`protocolo.js` trae `compromiso()` y `cumpleCompromiso()` desde el principio,
+escritos para esto y sin estrenar hasta ahora. El que propone **no manda la
+palabra**: manda su largo y el hash de `sal:palabra`. Después contesta a cada
+letra con las posiciones donde está, y sólo al final revela palabra y sal.
+
+| Mensaje | Lleva |
+|---|---|
+| `palabra` | `largo`, `prometido` — nunca la palabra |
+| `letra` | la letra que se pide |
+| `donde` | la letra y las posiciones donde estaba |
+| `resultado` | `fallos`, `acerte` |
+| `revelo` | `palabra`, `sal` — al terminar |
+
+Sin esto la palabra viajaría al empezar y estaría en la memoria de quien tiene
+que adivinarla: una pestaña de herramientas y se acabó el juego. Y con esto,
+además, tampoco se puede ir cambiándola sobre la marcha para que no se acierte
+nunca. Mentir sigue siendo posible; queda en evidencia, que entre amigos basta.
+
+### Dos detalles que costaron una pasada
+
+- **`descubiertas` guarda la LETRA de cada hueco, no un sí/no.** Con booleanos no
+  basta: por red este lado no tiene la palabra —de eso va el compromiso— y al
+  acertar no sabría cuál pintar. Salía `_ ? _ _ ?`.
+- **La Ñ se aparta antes de normalizar.** En NFD se descompone en N + virgulilla,
+  y quitar los diacríticos convertiría «AÑO» en «ANO».
+
+---
+
 ## Minigolf por turnos, y por qué el Pong no
 
 Es el primer juego de **escenario** que se juega en red, y salió barato por dos
@@ -921,15 +977,15 @@ que son una línea en un array.
 | 13 | 28 | 🧱 Ladrillos | Pong con puntería | 14 | 1250 |
 | 14 | 33 | 🌋 El suelo es lava | dos ejes y ritmo | 17 | 1475 |
 | 15 | 38 | 👾 Invasores | reflejos y disparar | 21 | 1700 |
-| 16 | 43 | 🔤 Ahorcado | vocabulario, y hacen falta dos | 25 | 1925 |
+| 16 | 43 | 🔤 Ahorcado | vocabulario | 25 | 1925 |
 | 17 | 49 | 🚢 Hundir la flota | deducción, partidas largas | 31 | 2200 |
 | 18 | 55 | 🎱 8 Pool | tacto para la física | 36 | 2475 |
 | 19 | 61 | 🏹 «Angry Pato» | puntería y leer estructuras | 42 | 2750 |
 | 20 | 68 | 💥 Artillería | todo junto | 49 | 3050 |
 
 Los días son de uso normal —unas 736 XP diarias entre convivencia, cuidados,
-racha, chat y el tope de partidas—. Los quince primeros están **hechos**; del 16
-en adelante, [por hacer](#los-que-faltan).
+racha, chat y el tope de partidas—. Los dieciséis primeros están **hechos**; del
+17 en adelante, [por hacer](#los-que-faltan).
 
 El nivel ABRE un juego y el precio lo COMPRA. Quien ya lo tuviera abierto el día
 que llegó la moneda no paga por él —ver [Los cuacks](#los-cuacks)—.
@@ -953,7 +1009,6 @@ para todos: ninguno pide ampliarlo.
 
 | Juego | Nivel | Modos | Superficie | Lo que estrena |
 |---|---|---|---|---|
-| 🔤 Ahorcado | 43 | red (2+) | panel | uno propone y los demás adivinan por turnos; teclado en el panel |
 | 🚢 Hundir la flota | 49 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
 | 🎱 8 Pool | 55 | solo · red (2) | escenario | choques entre bolas: el único caso donde la física exacta sale bien |
 | 🏹 «Angry {mascota}» | 61 | solo | escenario | estructuras que se vienen abajo |
