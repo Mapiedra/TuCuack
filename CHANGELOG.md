@@ -7,6 +7,25 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.28.0] - 2026-09-07
+
+### Añadido
+
+- **🚢 Hundir la flota.** Nivel 49, 2200 cuacks. Mar de 7 × 7 y cinco barcos:
+  uno de cuatro, dos de tres y dos de dos. Los colocas tú —con botón de girar y
+  previa al pasar por encima, o «Barajar» si no quieres pensarlo— y luego a
+  buscar. **Acierto, repites.** Los dos mares van en pestañas.
+
+  Contra tu mascota, que caza y remata; o contra otro pato.
+
+  Y en red **la flota no viaja**: se manda sellada, se contesta tiro a tiro, y al
+  acabar se revela. Entonces no sólo se comprueba que sea la que había prometido,
+  sino que **todas las respuestas cuadran con ella**: mentir en una sola casilla
+  se ve, y te dice en cuál.
+
+  La marca son los **disparos** —menos es mejor— y sólo se apunta si ganas: si
+  pierdes, haber tirado poco es que te hundieron antes, no un récord.
+
 ## [0.27.1] - 2026-09-07
 
 ### Cambiado
