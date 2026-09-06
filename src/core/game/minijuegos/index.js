@@ -302,6 +302,22 @@ export const MINIJUEGOS = [
     superficie: 'panel',
     marca: { etiqueta: 'palabras', mejor: 'mas' },
     cargar: () => import('./ahorcado.js')
+  },
+  {
+    id: 'flota',
+    nombre: 'Hundir la flota',
+    icono: '🚢',
+    descripcion: 'Coloca tus barcos y busca los suyos. Acierto, repites.',
+    nivel: 49,
+    precio: 2200,
+    modos: ['solo', 'turnos'],
+    jugadores: { min: 2, max: 2 },
+    superficie: 'panel',
+    // A menos, y sólo se apunta al ganar: los disparos de una derrota serían un
+    // récord falso —tirar poco porque te hundieron antes—. Ver `acabar` en
+    // flota.js: el contrato permite omitir `puntos`.
+    marca: { etiqueta: 'disparos', mejor: 'menos' },
+    cargar: () => import('./flota.js')
   }
 ];
 

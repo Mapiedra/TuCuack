@@ -21,6 +21,7 @@ abren desde `🎮 Juegos` en el menú del pato.
 | 🌋 El suelo es lava | 33 | solo | escenario |
 | 👾 Invasores | 38 | solo | escenario |
 | 🔤 Ahorcado | 43 | solo · red (2) | panel |
+| 🚢 Hundir la flota | 49 | solo · red (2) | panel |
 
 La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
 segundo, después los de pensar, y al final los que piden pulso. Los huecos están
@@ -547,6 +548,7 @@ global—.
 | 33 | 🌋 El suelo es lava | segundos · más | bates tu récord |
 | 38 | 👾 Invasores | oleada · más | bates tu récord |
 | 43 | 🔤 Ahorcado | palabras · más | bates tu récord — o **la sacas con menos fallos**, en red |
+| 49 | 🚢 Hundir la flota | disparos · **menos**, y sólo al ganar | hundes su flota antes |
 
 Dos excepciones que merecen la pena:
 
@@ -738,6 +740,46 @@ El préstamo del escenario corta a los diez minutos y lo hace **sin resultado**
 partida entera. El juego se da a sí mismo **ocho minutos y medio**: al llegar,
 cierra él, da por perdidos los hoyos que falten y apunta la marca. Perder por
 lento es una derrota; perderlo todo, un fallo.
+
+---
+
+## Hundir la flota: la revelación de verdad
+
+### Las medidas, que aquí no son gusto
+
+Un 10 × 10 no cabe: el tablero de un juego de panel no pasa de **280 × 300 px**, y
+ahí una casilla saldría a 26 píxeles con las etiquetas. Y cien casillas por mar
+son una partida larga, que es justo lo que un minijuego no debe ser.
+
+**7 × 7, y flota de catorce casillas**: 4, 3, 3, 2, 2. Y los dos mares en
+**pestañas**, porque dos rejillas de siete en alto no entran una encima de otra en
+300 píxeles, y encogerlas hasta que entren deja un juego donde no se acierta a
+pulsar.
+
+Los barcos no pueden ir pegados: dos que se toquen se leen como uno solo, y
+hundir el primero delataría al segundo sin haberlo buscado.
+
+### Lo que estrena de verdad
+
+El ahorcado estrenó el compromiso para una palabra. Aquí es para un tablero, y
+con la vuelta que le faltaba:
+
+1. Al empezar, cada uno manda el **hash** de `sal:flota`. La flota no viaja.
+2. Cada tiro se contesta con agua, tocado o hundido.
+3. Al acabar, los dos revelan. Y **no basta con que el hash cuadre**: eso sólo
+   dice que el tablero no ha cambiado. Se **recomprueban todas las respuestas que
+   dio** contra el tablero que revela, así que un tablero legítimo con una sola
+   casilla mentida se caza igual, y se dice en qué casilla.
+
+Sin un servidor que juegue la partida no se pueden impedir las trampas. Se pueden
+dejar en evidencia, que entre amigos es lo que hace falta.
+
+### La marca sólo se apunta al ganar
+
+`disparos`, y **a menos**. Apuntarlos en una derrota registraría como récord el
+haber tirado poco *porque te hundieron antes*. El contrato ya lo permite: `puntos`
+es opcional en el resultado, y `ProgresoJuegos.anotar` sólo toca la marca cuando
+llega un número. Es el primer juego que lo aprovecha.
 
 ---
 
@@ -996,8 +1038,8 @@ que son una línea en un array.
 | 20 | 68 | 💥 Artillería | todo junto | 49 | 3050 |
 
 Los días son de uso normal —unas 736 XP diarias entre convivencia, cuidados,
-racha, chat y el tope de partidas—. Los dieciséis primeros están **hechos**; del
-17 en adelante, [por hacer](#los-que-faltan).
+racha, chat y el tope de partidas—. Los diecisiete primeros están **hechos**; del
+18 en adelante, [por hacer](#los-que-faltan).
 
 El nivel ABRE un juego y el precio lo COMPRA. Quien ya lo tuviera abierto el día
 que llegó la moneda no paga por él —ver [Los cuacks](#los-cuacks)—.
@@ -1021,7 +1063,6 @@ para todos: ninguno pide ampliarlo.
 
 | Juego | Nivel | Modos | Superficie | Lo que estrena |
 |---|---|---|---|---|
-| 🚢 Hundir la flota | 49 | red (2) | panel | compromiso y revelación de verdad: el tablero secreto |
 | 🎱 8 Pool | 55 | solo · red (2) | escenario | choques entre bolas: el único caso donde la física exacta sale bien |
 | 🏹 «Angry {mascota}» | 61 | solo | escenario | estructuras que se vienen abajo |
 | 💥 Artillería | 68 | red (2) | escenario | terreno destructible y turnos con física compartida |

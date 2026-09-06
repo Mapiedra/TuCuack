@@ -1287,3 +1287,48 @@ html, body {
    la mitad del juego, y quitarla obligaría a acordarse. */
 .ah-tecla.usada { opacity: 0.35; }
 .ah-tecla:disabled { cursor: default; }
+
+/* ---- Hundir la flota (ver core/game/minijuegos/flota.js) ---- */
+
+.fl-pestanas { display: flex; gap: 4px; margin: 4px 0 6px; }
+.fl-pestana {
+  flex: 1;
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 0;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 6px;
+  background: var(--paper);
+  color: #8a8a95;
+  cursor: pointer;
+}
+.fl-pestana.activa { color: var(--ink); font-weight: 700; background: rgba(255, 183, 3, 0.2); }
+
+/* Siete columnas cuadradas. Con `1fr` y `aspect-ratio` el tablero se ajusta al
+   ancho que haya sin tener que calcular píxeles en JS. */
+.fl-rejilla {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.fl-casilla {
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: 3px;
+  background: rgba(142, 202, 230, 0.35);   /* mar */
+  cursor: pointer;
+}
+.fl-casilla:disabled { cursor: default; }
+.fl-casilla.barco { background: #6c757d; }
+/* El agua tirada, hundida: un punto y ya. Lo que importa es lo que NO se ha
+   probado, así que lo probado tiene que pesar poco. */
+.fl-casilla.agua { background: rgba(142, 202, 230, 0.15); box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.08); }
+.fl-casilla.tocado { background: #fb8500; }
+.fl-casilla.hundido { background: #c1121f; }
+
+/* Al colocar: verde donde cabe, rojo en la casilla donde no. */
+.fl-casilla.cabe { background: #35a34a; }
+.fl-casilla.nocabe { background: rgba(193, 18, 31, 0.5); }
+
+.fl-pie { margin-top: 6px; }
