@@ -21,7 +21,7 @@ npm start
 ```
 
 El pato aparece sobre la barra de tareas y empieza a pasear. **Clic derecho** sobre él
-abre el menú (Alimentar, Jugar, Limpiar, Dormir, Hablar, Estadísticas, Ajustes, Salir).
+abre el menú (Alimentar, Jugar, Limpiar, Dormir, Chat, Estadísticas, Ajustes, Salir).
 También hay icono en la bandeja del sistema.
 
 Modo desarrollo con DevTools: `npm run dev`
@@ -92,14 +92,19 @@ son tres pasos y ningún cambio en el resto del código:
 escribes aparece en tu bocadillo y en el de los demás, y viceversa. Cada pato tiene un
 **nombre**, que se comprueba que no esté siendo usado por otro pato conectado.
 
-**Histórico de la sesión.** El bocadillo dura unos segundos, así que **Hablar** guarda
-los últimos **50 mensajes** —los de los demás y los tuyos— y los enseña encima de la
-caja de escribir. Se anotan aunque el panel esté cerrado, que es justo cuando hacen
-falta. Vive en memoria y se va al cerrar el pato: ni fichero, ni base de datos, ni nada
-que sobreviva a la sesión ([`src/core/chat/historial.js`](src/core/chat/historial.js)).
-En la extensión el pato se muda de pestaña y estrenaría memoria en cada salto, así que
-ahí lo guarda el service worker en `storage.session` —se borra al cerrar Chrome— y se
-lo pasa al pato al llegar.
+**Histórico del chat.** El bocadillo dura unos segundos, así que **Chat** guarda los
+últimos **2000 mensajes** —los de los demás y los tuyos— y los enseña encima de la caja
+de escribir. Se anotan aunque el panel esté cerrado, que es justo cuando hacen falta, y
+**sobreviven a cerrar el pato**: en el escritorio van a un `historial.json` en la
+carpeta de datos del usuario, y en la extensión al almacenamiento local de Chrome, que
+es donde los deja el service worker —el único que sigue despierto cuando no hay ninguna
+pestaña a la vista ([`src/core/chat/historial.js`](src/core/chat/historial.js)).
+
+Se guardan **en tu equipo y en ningún sitio más**: los mensajes viajan por broadcast y
+no quedan en ningún servidor, así que lo que se dijera con el pato apagado no lo tiene
+nadie. El panel lleva la cuenta de lo que no has leído: el menú del pato lo dice al
+lado de **Chat**, y al abrirlo se coloca en la raya de «nuevos» en vez de al final.
+De lo antiguo se pinta sólo el último trozo; el resto se trae subiendo.
 
 **Quién anda por ahí.** La opción **Conectados** del menú (y de la bandeja) abre la
 lista de los patos que están en el canal ahora mismo, con el tuyo el primero. El menú

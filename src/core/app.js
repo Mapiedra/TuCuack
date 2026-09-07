@@ -186,6 +186,9 @@ export async function arrancarPato(plataforma) {
   config = await api.config();
   settings = await api.cargarAjustes();
   const saved = await api.cargarEstado();
+  // El histórico del chat, antes de que el canal pueda entregar nada: si un
+  // mensaje llegara mientras se está cargando, la carga lo pisaría.
+  await historial.arrancar(api.historial);
 
   // Primer arranque: el pato necesita un nombre para el chat. Se propone uno
   // con sufijo aleatorio para que dos instalaciones no choquen de salida; el
@@ -408,9 +411,6 @@ export async function arrancarPato(plataforma) {
       verStats: () => { const p = duckAnchor(); openStats(p.x, p.y); },
       verConectados: () => { const p = duckAnchor(); openOnline(p.x, p.y); },
       verHablar: () => { const p = duckAnchor(); openTalk(p.x, p.y); },
-      // Para poder llenar el chat desde una sonda sin red: `sembrar` es lo
-      // mismo que usa el puente de la extensión.
-      historial,
       verAjustes: () => { const p = duckAnchor(); openSettings(p.x, p.y); },
       level,
       // Por `_sumar` y no tocando `level.xp` a pelo: así se emiten los eventos
@@ -434,6 +434,9 @@ export async function arrancarPato(plataforma) {
       verPaseo: () => hacerElPaseo(),
       paseo: () => paseo,
       chat,
+      // Para llenar el chat desde una sonda sin levantar la red: `anadir` apunta
+      // un mensaje como si hubiera llegado (y lo guarda), y `sembrar` mete una
+      // tanda de golpe sin escribir nada.
       historial,
       speech,
       sonido,
@@ -717,7 +720,7 @@ function openDuckMenu(x, y) {
   }
   // Las cuatro cosas que se hacen CON el pato, en dos filas limpias.
   items.push(
-    { label: '💬 Hablar…', onClick: () => openTalk(x, y) },
+    { label: etiquetaChat(), onClick: () => openTalk(x, y) },
     { label: etiquetaConectados(), onClick: () => openOnline(x, y) },
     { label: '👕 Diseños', onClick: () => openSkins(x, y) },
     { label: '🎮 Juegos', onClick: () => openJuegos(x, y) }
@@ -1416,6 +1419,22 @@ function avisarPresencia() {
   for (const cb of oyentesPresencia) cb(estado);
 }
 
+/**
+ * Entrada del menú del chat, con los mensajes que quedan por leer.
+ *
+ * Se llamaba «Hablar» cuando era una caja para soltar una frase. Con histórico,
+ * no leídos y conversación que sigue ahí mañana, lo que hay detrás es un chat y
+ * el menú lo dice.
+ *
+ * Se calcula al abrir el menú, que es cuando se enseña: no hay nada que
+ * mantener al día ni de lo que acordarse.
+ */
+function etiquetaChat() {
+  const pendientes = historial.noLeidos();
+  if (!pendientes) return '💬 Chat';
+  return `💬 Chat · ${pendientes > 99 ? '99+' : pendientes}`;
+}
+
 /** Entrada del menú, con cuántos patos hay ahora mismo (contándonos). */
 function etiquetaConectados() {
   if (!chat || !chat.connected) return '🟢 Conectados';
@@ -1425,21 +1444,14 @@ function etiquetaConectados() {
 function setupChat() {
   chat = new ChatClient(api.chat);
   chat.onMessage((m) => {
-    // Se anota SIEMPRE, esté abierto el panel de Hablar o no: el bocadillo dura
+    // Se anota SIEMPRE, esté abierto el panel del chat o no: el bocadillo dura
     // unos segundos y justo eso es lo que hay que poder releer después.
-    historial.anadir({ from: m.from, text: m.text, ts: m.ts, propio: false });
+    historial.anadir({ mid: m.mid, from: m.from, text: m.text, ts: m.ts, propio: false });
     speech.show(m.from, m.text, { self: false });
     // Un poco más grave que el propio, para distinguir quién habla.
     sonido.cuack({ agudo: 0.9 });
     if (behavior) behavior.playOnce('talk', 2.2);
   });
-  // Sólo en la extensión: el pato se muda de pestaña y el histórico de este
-  // documento nace vacío, así que quien mantiene la conexión le pasa el suyo.
-  //
-  // Si llega vacío no se hace nada: significa "todavía no hay nada apuntado"
-  // —o que el service worker estaba dormido—, y nunca que haya que borrar lo
-  // que este pato ya tenga.
-  chat.onHistorial((ms) => { if (ms.length) historial.sembrar(ms); });
   chat.onStatus(() => {
     // Con el canal caído no se sabe quién sigue ahí, y los demás tampoco nos
     // ven: la lista de antes ya no vale.
@@ -1639,6 +1651,7 @@ function setupVisitas() {
     alAnotar: (v) => {
       const texto = (v.texto || '').trim();
       historial.anadir({
+        mid: historial.nuevoMid(),
         from: v.de,
         text: texto ? `🛫 vino a saludar: ${texto}` : '🛫 vino a saludar',
         ts: v.ts || Date.now(),
@@ -1697,6 +1710,7 @@ function enviarVisita(destino, texto) {
     texto: (texto || '').trim()
   });
   historial.anadir({
+    mid: historial.nuevoMid(),
     from: duckName(),
     text: `🛫 tu mascota se ha ido a ver a ${destino.nombre}`,
     ts: Date.now(),
@@ -1731,7 +1745,7 @@ function cancelarPaseo() {
 
 /**
  * Manda un mensaje al canal común.
- * @returns {boolean} si ha salido de verdad; el panel de Hablar lo dice cuando
+ * @returns {boolean} si ha salido de verdad; el panel del chat lo dice cuando
  *   no, en vez de dejar creer que el mensaje llegó a alguien.
  */
 function sendChat(text) {
@@ -1739,8 +1753,11 @@ function sendChat(text) {
   // entre compañeros, que es la gracia de tenerla.
   const name = `${duckName()} · Nv ${level.nivel}`;
   const salio = !!(chat && chat.connected);
-  chat.send(name, text);
-  historial.anadir({ from: name, text, ts: Date.now(), propio: true, fallo: !salio });
+  // El identificador se pone aquí, UNA vez, y viaja con el mensaje: así lo que
+  // se apunta en casa y lo que le llega al otro son el mismo mensaje y no dos.
+  const mid = historial.nuevoMid();
+  chat.send(name, text, mid);
+  historial.anadir({ mid, from: name, text, ts: Date.now(), propio: true, fallo: !salio });
   speech.show(name, text, { self: true });
   sonido.cuack();
   level.chat();

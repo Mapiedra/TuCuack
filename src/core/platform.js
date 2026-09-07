@@ -73,6 +73,25 @@ const MARCADOR_DESACTIVADO = {
   guardar: async () => ({ ok: false, error: 'sin-marcador' })
 };
 
+/**
+ * Dónde se guarda el histórico del chat, cuando no hay dónde.
+ *
+ * Quién escribe de verdad cambia según la casa, y por eso esto es un hueco del
+ * contrato y no un fichero del núcleo: en el escritorio el pato es el único que
+ * está despierto y escribe él; en la extensión escribe el service worker, que
+ * es lo único que sigue vivo cuando el pato se muda de pestaña o no hay ninguna
+ * a la vista. `anotar` tiene que ser idempotente —el mismo mensaje puede
+ * llegarle a los dos—, y por eso los mensajes llevan identificador.
+ */
+const HISTORIAL_SIN_GUARDAR = {
+  /** @type {() => Promise<{mensajes:object[], leidoHasta:number}>} */
+  cargar: async () => ({ mensajes: [], leidoHasta: 0 }),
+  /** Apunta un mensaje, si no estaba ya. */
+  anotar: noop,
+  /** Guarda hasta qué instante está leído el histórico. */
+  marcarLeido: noop
+};
+
 const CHAT_DESACTIVADO = {
   enviar: noop,
   // Mandar el pato a la pantalla de otro. Va por el mismo canal que el chat,
@@ -88,7 +107,7 @@ const CHAT_DESACTIVADO = {
   alRecibirEvento: noSuscribir,
   estado: async () => ({
     connected: false, names: [], presentes: [], clave: '', id: '',
-    historial: [], partida: null, reason: 'sin-plataforma'
+    partida: null, reason: 'sin-plataforma'
   }),
   // Sólo hace falta donde el canal viva fuera del pato y haya que soltarlo al
   // apagarse, para no dejar puentes abiertos que dupliquen los mensajes.
@@ -153,6 +172,9 @@ export function normalizarPlataforma(p = {}) {
 
     // ---- Chat entre patos ------------------------------------------------
     chat: { ...CHAT_DESACTIVADO, ...(p.chat || {}) },
+
+    // ---- Histórico del chat ----------------------------------------------
+    historial: { ...HISTORIAL_SIN_GUARDAR, ...(p.historial || {}) },
 
     // ---- Marcador global -------------------------------------------------
     marcador: { ...MARCADOR_DESACTIVADO, ...(p.marcador || {}) }

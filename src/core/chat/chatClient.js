@@ -11,7 +11,6 @@ export class ChatClient {
     this._onMessage = () => {};
     this._onStatus = () => {};
     this._onPresence = () => {};
-    this._onHistorial = () => {};
     this._onVisita = () => {};
     this._onJuego = () => {};
     this._onPartidaGuardada = () => {};
@@ -28,7 +27,7 @@ export class ChatClient {
     this.canal.alRecibirEvento((evt) => {
       if (!evt) return;
       if (evt.type === 'message') {
-        this._onMessage({ from: evt.from, text: evt.text, ts: evt.ts });
+        this._onMessage({ from: evt.from, text: evt.text, ts: evt.ts, mid: evt.mid });
       } else if (evt.type === 'status') {
         this.connected = !!evt.connected;
         this._onStatus({ connected: this.connected, reason: evt.reason });
@@ -46,11 +45,6 @@ export class ChatClient {
         // Sólo en la extensión: la partida que estaba en curso cuando el pato se
         // mudó de pestaña. Ver ChatClient.onPartidaGuardada.
         if (evt.partida) this._onPartidaGuardada(evt.partida);
-      } else if (evt.type === 'historial') {
-        // Sólo llega donde el canal vive fuera del pato y sobrevive a sus
-        // mudanzas: la extensión de Chrome. En el escritorio el histórico se
-        // queda en el propio pato, que no se muda a ninguna parte.
-        this._onHistorial(Array.isArray(evt.mensajes) ? evt.mensajes : []);
       }
     });
   }
@@ -58,7 +52,6 @@ export class ChatClient {
   onMessage(cb) { this._onMessage = cb; }
   onStatus(cb) { this._onStatus = cb; }
   onPresence(cb) { this._onPresence = cb; }
-  onHistorial(cb) { this._onHistorial = cb; }
   onVisita(cb) { this._onVisita = cb; }
   onJuego(cb) { this._onJuego = cb; }
   /**
@@ -106,17 +99,20 @@ export class ChatClient {
       this._anotarPresencia(st);
       this._onStatus({ connected: this.connected, reason: 'sync' });
       this._onPresence(this.names);
-      // Donde el canal viva fuera del pato, el histórico de la sesión también
-      // está ahí (ver ChatClient.onHistorial).
-      if (Array.isArray(st.historial)) this._onHistorial(st.historial);
-      // Y la partida que se quedó a medias, por el mismo motivo: el evento pudo
-      // emitirse antes de que el pato terminara de cargar.
+      // La partida que se quedó a medias: el evento pudo emitirse antes de que
+      // el pato terminara de cargar.
       if (st.partida) this._onPartidaGuardada(st.partida);
     } catch { /* el chat puede no estar disponible */ }
   }
 
-  send(from, text) {
-    this.canal.enviar({ from, text });
+  /**
+   * Manda un mensaje al canal común.
+   *
+   * `mid` lo pone quien llama y viaja con el mensaje: es lo que permite que el
+   * histórico no apunte dos veces lo mismo (ver core/chat/historial.js).
+   */
+  send(from, text, mid) {
+    this.canal.enviar({ from, text, mid });
   }
 
   /**

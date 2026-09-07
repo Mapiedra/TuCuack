@@ -4,6 +4,7 @@ const { app, BrowserWindow, screen, ipcMain, shell } = require('electron');
 const path = require('path');
 const store = require('./store');
 const marcador = require('./marcador');
+const historial = require('./historial');
 const { createTray } = require('./tray');
 const { initUpdater, configurarAvisos, estadoActualizacion, buscarActualizacion, instalarActualizacion }
   = require('./updater');
@@ -209,7 +210,7 @@ ipcMain.handle('config:get', () => ({
 
 // Chat entre patos.
 ipcMain.on('chat:send', (_evt, msg) => {
-  if (chat && msg) chat.send(msg.from, msg.text);
+  if (chat && msg) chat.send(msg.from, msg.text, msg.mid);
 });
 
 // Mandar el pato a la pantalla de otro.
@@ -229,6 +230,12 @@ ipcMain.on('chat:set-name', (_evt, name) => {
 });
 
 ipcMain.handle('chat:names', () => (chat ? chat.names() : []));
+
+// Histórico del chat. Vive en su propio fichero y lo escribe este proceso,
+// que es el único que sigue aquí cuando la ventana se va (ver historial.js).
+ipcMain.handle('historial:cargar', () => historial.cargar());
+ipcMain.on('historial:anotar', (_evt, mensaje) => historial.anotar(mensaje));
+ipcMain.on('historial:leido', (_evt, ts) => historial.marcarLeido(ts));
 
 // El canal suele conectarse antes de que el renderer registre sus listeners,
 // así que éste consulta el estado al arrancar en vez de esperar al evento.
@@ -312,6 +319,10 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  // Lo que quedara sin volcar del histórico: las escrituras van con retardo
+  // para no reescribir el fichero en cada mensaje, y al salir ya no hay más
+  // ocasiones.
+  historial.guardarYa();
   if (win && !win.isDestroyed()) {
     win.webContents.send('app:before-quit');
   }

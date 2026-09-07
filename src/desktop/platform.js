@@ -56,6 +56,15 @@ export function crearPlataformaElectron() {
       guardar: (record) => pato.marcadorGuardar(record)
     },
 
+    // El histórico del chat se guarda al otro lado del puente, en un fichero
+    // propio: aquí el pato es el único que escribe, así que basta con pasarle
+    // cada mensaje según se apunta.
+    historial: {
+      cargar: () => pato.historialCargar(),
+      anotar: (m) => pato.historialAnotar(m),
+      marcarLeido: (ts) => pato.historialLeido(ts)
+    },
+
     chat: {
       enviar: (msg) => pato.sendChat(msg),
       enviarVisita: (v) => pato.sendVisit(v),

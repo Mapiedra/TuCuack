@@ -88,7 +88,7 @@ function bloqueAyuda() {
     ['Tenerlo contento (todas las barras por encima de la mitad)', `+${XP.CONVIVENCIA} por minuto`],
     ['Atender una necesidad que estaba baja', `+${XP.CUIDADO}`],
     ['Primera atención del día (sube con los días seguidos)', `+${XP.RACHA}`],
-    ['Hablar por el chat', `+${XP.CHAT}`]
+    ['Escribir en el chat', `+${XP.CHAT}`]
   ]) {
     const li = document.createElement('li');
     const a = document.createElement('span');

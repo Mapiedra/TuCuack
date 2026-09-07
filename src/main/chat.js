@@ -87,14 +87,27 @@ function initChat(getWin, initialName, patoId) {
   });
 
   return {
-    send(from, text) {
+    /**
+     * Manda un mensaje al canal común.
+     *
+     * `mid` es el identificador del mensaje, y lo pone el pato. Viaja como
+     * campo añadido del payload: un pato anterior a esto lo ignora sin
+     * enterarse, y a los nuevos les evita apuntar dos veces el mismo mensaje
+     * (ver core/chat/historial.js).
+     */
+    send(from, text, mid) {
       if (!channel || !connected) return false;
       const clean = String(text || '').slice(0, 280);
       if (!clean.trim()) return false;
       channel.send({
         type: 'broadcast',
         event: 'chat',
-        payload: { from: String(from || 'Pato').slice(0, 40), text: clean, ts: Date.now() }
+        payload: {
+          from: String(from || 'Pato').slice(0, 40),
+          text: clean,
+          ts: Date.now(),
+          mid: String(mid || '').slice(0, 40)
+        }
       });
       return true;
     },
@@ -272,7 +285,10 @@ function crearCanal(getWin) {
       type: 'message',
       from: String(payload.from || 'Pato'),
       text: String(payload.text || ''),
-      ts: payload.ts || Date.now()
+      ts: payload.ts || Date.now(),
+      // Va vacío si lo manda un pato anterior a los identificadores; el
+      // histórico sabe apañárselas sin él.
+      mid: String(payload.mid || '').slice(0, 40)
     });
   });
 

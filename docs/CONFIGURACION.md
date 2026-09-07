@@ -1,7 +1,7 @@
 # Configurar el chat de TuCuack
 
 El chat entre patos necesita un proyecto de **Supabase**. Sin él la app funciona con
-normalidad (el pato camina, se cuida, se lanza…), pero la opción *Hablar…* no envía
+normalidad (el pato camina, se cuida, se lanza…), pero la opción *Chat* no envía
 nada.
 
 Esta guía cubre los cuatro entornos: tu equipo, el CI, el instalador que reparten y
@@ -159,7 +159,7 @@ ignoran, así que no dan errores de conexión falsos.
 1. Abre TuCuack en ambos, con las mismas credenciales.
 2. En cada uno, clic derecho → **Ajustes** y pon un **nombre distinto**. Si eliges uno
    ya ocupado, el panel avisa: *«Ya hay un pato llamado X»*.
-3. Clic derecho → **Hablar…**, escribe y pulsa Enter.
+3. Clic derecho → **Chat**, escribe y pulsa Enter.
 4. El mensaje aparece en un bocadillo sobre tu pato **y** sobre el del otro equipo, con
    el nombre de quien lo envió.
 

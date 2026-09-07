@@ -3,6 +3,7 @@
 
 const CLAVE_ESTADO = 'estado';
 const CLAVE_AJUSTES = 'ajustes';
+const CLAVE_HISTORIAL = 'historial';
 
 /**
  * ¿Seguimos formando parte de la extensión?
@@ -79,6 +80,25 @@ export const leerAjustes = () => leer(CLAVE_AJUSTES);
 export const escribirAjustes = (d) => escribir(CLAVE_AJUSTES, d);
 
 /**
+ * El histórico del chat, leído directamente del almacenamiento.
+ *
+ * Se lee aquí y no se pide por el puerto porque son miles de mensajes y el pato
+ * estrena documento cada vez que cambias de pestaña: mandarlos por el puente
+ * sería mover cientos de kilobytes cada pocos segundos.
+ *
+ * Sólo se LEE. Quien escribe es el service worker, que es el único que sigue
+ * despierto cuando no hay ninguna pestaña a la vista (ver sw.js); desde aquí se
+ * le pide por el puerto que apunte lo que él no puede saber.
+ */
+export async function leerHistorial() {
+  const d = await leer(CLAVE_HISTORIAL);
+  return {
+    mensajes: Array.isArray(d.mensajes) ? d.mensajes : [],
+    leidoHasta: Number(d.leidoHasta) || 0
+  };
+}
+
+/**
  * El marcador global, preguntándoselo al worker.
  *
  * Va por ahí y no directamente porque las credenciales y —sobre todo— la firma
@@ -149,6 +169,10 @@ export function conectarChat() {
     enviarJuego: (mensaje) => enviarAlWorker({ tipo: 'juego', mensaje }),
     olvidarPartida: () => enviarAlWorker({ tipo: 'olvidar-partida' }),
     ponerNombre: (nombre) => enviarAlWorker({ tipo: 'nombre', nombre }),
+    // Histórico: apuntar y decir hasta dónde se ha leído. Va por el puerto
+    // porque el fichero es del worker, no de este documento.
+    anotarEnHistorial: (mensaje) => enviarAlWorker({ tipo: 'anotar-historial', mensaje }),
+    marcarHistorialLeido: (ts) => enviarAlWorker({ tipo: 'historial-leido', ts }),
     alRecibirEvento: (cb) => { alRecibir = cb; },
     estado: async () => {
       try {
@@ -156,7 +180,7 @@ export function conectarChat() {
       } catch {
         return {
           connected: false, names: [], presentes: [], clave: '', id: '',
-          historial: [], partida: null, reason: 'worker-dormido'
+          partida: null, reason: 'worker-dormido'
         };
       }
     },

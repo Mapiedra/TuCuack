@@ -39,6 +39,11 @@ contextBridge.exposeInMainWorld('pato', {
   chatNames: () => ipcRenderer.invoke('chat:names'),
   chatStatus: () => ipcRenderer.invoke('chat:status'),
 
+  // Histórico del chat: lo guarda el proceso principal en su propio fichero.
+  historialCargar: () => ipcRenderer.invoke('historial:cargar'),
+  historialAnotar: (mensaje) => ipcRenderer.send('historial:anotar', mensaje),
+  historialLeido: (ts) => ipcRenderer.send('historial:leido', ts),
+
   // Acciones de app.
   quit: () => ipcRenderer.send('app:quit'),
   openExternal: (url) => ipcRenderer.send('open-external', url),

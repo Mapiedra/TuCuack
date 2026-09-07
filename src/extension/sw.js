@@ -61,18 +61,25 @@ function avisar(evt) {
   }
 }
 
-// ---- Histórico de la sesión ---------------------------------------------
+// ---- Histórico del chat --------------------------------------------------
 //
-// El pato guarda los mensajes de la sesión para poder releerlos (ver
+// El pato guarda los mensajes para poder releerlos (ver
 // src/core/chat/historial.js), pero aquí no basta con eso: el pato se muda de
-// pestaña y en cada página empieza un documento nuevo, con su memoria en blanco.
-// Así que el worker lleva su propia copia y se la entrega al llegar.
+// pestaña y en cada página empieza un documento nuevo, con su memoria en
+// blanco. Y hay ratos enteros sin ninguna pestaña a la vista, en los que el
+// único que se entera de un mensaje es este worker.
 //
-// Va en `storage.session` y no en una variable porque Manifest V3 recicla el
-// worker a los 30 segundos de inactividad; storage.session se borra sola al
-// cerrar Chrome, que es justo la vida que debe tener un histórico de sesión.
+// Así que **el que escribe el histórico en Chrome es el worker**, y sólo él: el
+// pato lee del mismo sitio y le manda por el puerto lo que él no puede saber
+// (que vino una visita, por ejemplo). Un único escritor evita que dos contextos
+// se pisen leyendo y escribiendo la misma clave, que en storage no es atómico.
+//
+// Va en `storage.local` y no en `storage.session` porque el histórico ya no
+// muere al cerrar Chrome: sobrevive, como el del escritorio. Y va en storage y
+// no en una variable porque Manifest V3 recicla el worker a los 30 segundos de
+// inactividad.
 const CLAVE_HISTORIAL = 'historial';
-const TOPE_HISTORIAL = 50;   // el mismo que el del pato
+const TOPE_HISTORIAL = 2000;   // el mismo que el del pato
 
 // Los mensajes pueden llegar de dos en dos: sin encolar las escrituras, dos
 // lecturas simultáneas del storage se pisarían y se perdería uno.
@@ -80,24 +87,55 @@ let colaHistorial = Promise.resolve();
 
 async function leerHistorial() {
   try {
-    const guardado = await chrome.storage.session.get(CLAVE_HISTORIAL);
-    const lista = guardado[CLAVE_HISTORIAL];
-    return Array.isArray(lista) ? lista : [];
+    const guardado = await chrome.storage.local.get(CLAVE_HISTORIAL);
+    const d = guardado[CLAVE_HISTORIAL];
+    return {
+      mensajes: (d && Array.isArray(d.mensajes)) ? d.mensajes : [],
+      leidoHasta: Number(d && d.leidoHasta) || 0
+    };
   } catch {
-    return [];
+    return { mensajes: [], leidoHasta: 0 };
   }
 }
 
+/**
+ * La clave con la que se reconoce un mensaje ya apuntado. Tiene que dar lo
+ * mismo que `claveDe` en core/chat/historial.js: el pato manda apuntar cosas
+ * que puede que ya estén aquí.
+ */
+function claveDeMensaje(m) {
+  return m.mid ? `i:${m.mid}` : `t:${m.ts}|${m.from}|${m.text}`;
+}
+
+/** Apunta un mensaje si no estaba ya. */
 function anotarEnHistorial(mensaje) {
   colaHistorial = colaHistorial.then(async () => {
     try {
-      const lista = await leerHistorial();
-      lista.push(mensaje);
-      await chrome.storage.session.set({
-        [CLAVE_HISTORIAL]: lista.slice(-TOPE_HISTORIAL)
-      });
+      const d = await leerHistorial();
+      const clave = claveDeMensaje(mensaje);
+      if (d.mensajes.some((m) => claveDeMensaje(m) === clave)) return;
+      d.mensajes.push(mensaje);
+      d.mensajes = d.mensajes.slice(-TOPE_HISTORIAL);
+      await chrome.storage.local.set({ [CLAVE_HISTORIAL]: d });
     } catch (err) {
       console.warn('[chat] no se pudo anotar en el histórico:', err);
+    }
+  });
+  return colaHistorial;
+}
+
+/** Hasta qué instante ha leído el usuario. Lo dice el pato, que es quien mira. */
+function marcarLeidoEnHistorial(ts) {
+  const n = Number(ts);
+  if (!Number.isFinite(n) || n <= 0) return colaHistorial;
+  colaHistorial = colaHistorial.then(async () => {
+    try {
+      const d = await leerHistorial();
+      if (n <= d.leidoHasta) return;
+      d.leidoHasta = n;
+      await chrome.storage.local.set({ [CLAVE_HISTORIAL]: d });
+    } catch (err) {
+      console.warn('[chat] no se pudo marcar el histórico como leído:', err);
     }
   });
   return colaHistorial;
@@ -338,7 +376,10 @@ function crearCanal() {
     const mensaje = {
       from: String(payload.from || 'Pato'),
       text: String(payload.text || ''),
-      ts: payload.ts || Date.now()
+      ts: payload.ts || Date.now(),
+      // Vacío si lo manda un pato anterior a los identificadores; el histórico
+      // sabe apañárselas sin él.
+      mid: String(payload.mid || '').slice(0, 40)
     };
     // Se anota aunque no haya ningún pato a la vista: es entonces cuando el
     // histórico gana su sueldo.
@@ -567,18 +608,26 @@ chrome.runtime.onConnect.addListener((puerto) => {
       olvidarPartida();
     } else if (msg.tipo === 'nombre') {
       await ponerNombre(msg.nombre);
+    } else if (msg.tipo === 'anotar-historial') {
+      // Lo que el worker no puede saber por su cuenta: una visita, un aviso del
+      // propio pato. Si el mensaje ya estaba apuntado, no pasa nada — apuntar
+      // es idempotente, y por eso los mensajes llevan identificador.
+      anotarEnHistorial(msg.mensaje);
+    } else if (msg.tipo === 'historial-leido') {
+      marcarLeidoEnHistorial(msg.ts);
     }
   });
 
   // El pato puede llegar con el canal ya conectado: se le pone al día en cuanto
-  // aparece, que si no se quedaría creyendo que no hay chat. Y con el histórico
-  // de la sesión, que él acaba de estrenar documento y no recuerda nada.
+  // aparece, que si no se quedaría creyendo que no hay chat.
+  //
+  // El histórico NO viaja por aquí: son miles de mensajes y el pato se muda de
+  // pestaña cada dos por tres. Lo lee él directamente de `storage.local`, que
+  // es donde lo deja este worker (ver `leerHistorial` en almacen.js).
   iniciar().then(async () => {
     puerto.postMessage({ type: 'status', connected: conectado, reason: 'sync' });
     puerto.postMessage({ type: 'presence', names: nombresPresentes(), presentes: presentes() });
-    const mensajes = await leerHistorial();
-    if (mensajes.length) puerto.postMessage({ type: 'historial', mensajes });
-    // Y si se estaba jugando algo cuando el pato se mudó, se le devuelve.
+    // Si se estaba jugando algo cuando el pato se mudó, se le devuelve.
     const partida = await leerPartida();
     if (partida) puerto.postMessage({ type: 'partida', partida });
   });
@@ -598,7 +647,14 @@ function enviar(msg) {
   }
 
   console.log(`[chat] enviando: ${msg.from}: ${texto}`);
-  const propio = { from: String(msg.from || 'Pato').slice(0, 40), text: texto, ts: Date.now() };
+  // `mid` lo pone el pato y viaja como campo añadido: un pato anterior a esto
+  // lo ignora, y a los nuevos les evita apuntar dos veces el mismo mensaje.
+  const propio = {
+    from: String(msg.from || 'Pato').slice(0, 40),
+    text: texto,
+    ts: Date.now(),
+    mid: String(msg.mid || '').slice(0, 40)
+  };
   canal.send({ type: 'broadcast', event: 'chat', payload: propio });
   // Lo dicho por uno mismo también es conversación: si no, al mudarse de
   // pestaña el histórico quedaría lleno de respuestas sin pregunta.
@@ -624,18 +680,14 @@ async function ponerNombre(nombre) {
 chrome.runtime.onMessage.addListener((msg, _emisor, responder) => {
   if (!msg) return false;
   if (msg.tipo === 'estado') {
-    // El histórico viaja también aquí, y no sólo al abrirse el puerto: el pato
-    // instala sus oyentes DESPUÉS de abrirlo, así que un envío que llegue justo
-    // en medio se perdería. Al preguntar él, no hay carrera que valga.
     iniciar()
-      .then(() => Promise.all([leerHistorial(), leerPartida()]))
-      .then(([historial, partida]) => responder({
+      .then(() => leerPartida())
+      .then((partida) => responder({
         connected: conectado,
         names: nombresPresentes(),
         presentes: presentes(),
         clave: miClave,
         id: miId,
-        historial,
         partida
       }));
     return true;   // la respuesta llega de forma asíncrona

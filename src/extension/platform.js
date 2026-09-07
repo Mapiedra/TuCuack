@@ -5,11 +5,13 @@
 // la versión de página —almacenamiento y chat— está en `almacen.js`.
 
 import { conectarChat, marcador, leerAjustes, escribirAjustes, leerEstado, escribirEstado,
-  alCerrarDocumento, ocultarElPato } from './almacen.js';
+  leerHistorial, alCerrarDocumento, ocultarElPato } from './almacen.js';
 
 /** @returns {import('./core/platform.js').Plataforma} */
 export function crearPlataformaExtension() {
   const manifest = chrome.runtime.getManifest();
+  // Un solo puente con el worker: por él van el chat y el histórico.
+  const canal = conectarChat();
 
   return {
     nombre: 'panel',
@@ -66,7 +68,17 @@ export function crearPlataformaExtension() {
       });
     },
 
-    chat: conectarChat(),
+    chat: canal,
+
+    // El histórico del chat: se lee del almacenamiento y se escribe pidiéndoselo
+    // al worker, que es el único que sigue despierto cuando el pato no está a la
+    // vista. Ver `leerHistorial` en almacen.js.
+    historial: {
+      cargar: leerHistorial,
+      anotar: (m) => canal.anotarEnHistorial(m),
+      marcarLeido: (ts) => canal.marcarHistorialLeido(ts)
+    },
+
     marcador
   };
 }

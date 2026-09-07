@@ -10,7 +10,7 @@
 //   - el suelo es el borde inferior de la ventana.
 
 import { conectarChat, marcador, leerAjustes, escribirAjustes, leerEstado, escribirEstado,
-  alCerrarDocumento, ocultarElPato } from './almacen.js';
+  leerHistorial, alCerrarDocumento, ocultarElPato } from './almacen.js';
 
 /**
  * @param {HTMLElement} anfitrion el div que aloja el Shadow DOM
@@ -18,6 +18,8 @@ import { conectarChat, marcador, leerAjustes, escribirAjustes, leerEstado, escri
  */
 export function crearPlataformaPagina(anfitrion) {
   const manifest = chrome.runtime.getManifest();
+  // Un solo puente con el worker: por él van el chat y el histórico.
+  const canal = conectarChat();
 
   return {
     nombre: 'pagina',
@@ -91,7 +93,17 @@ export function crearPlataformaPagina(anfitrion) {
       });
     },
 
-    chat: conectarChat(),
+    chat: canal,
+
+    // El histórico del chat: se lee del almacenamiento y se escribe pidiéndoselo
+    // al worker, que es el único que sigue despierto cuando el pato no está a la
+    // vista. Ver `leerHistorial` en almacen.js.
+    historial: {
+      cargar: leerHistorial,
+      anotar: (m) => canal.anotarEnHistorial(m),
+      marcarLeido: (ts) => canal.marcarHistorialLeido(ts)
+    },
+
     marcador
   };
 }

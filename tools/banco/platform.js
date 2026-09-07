@@ -7,6 +7,7 @@
 
 const CLAVE_ESTADO = 'tucuack:estado';
 const CLAVE_AJUSTES = 'tucuack:ajustes';
+const CLAVE_HISTORIAL = 'tucuack:historial';
 
 function leer(clave, porDefecto) {
   try {
@@ -58,6 +59,30 @@ export function crearPlataformaBanco({ ground = 48 } = {}) {
     guardarEstado: (d) => escribir(CLAVE_ESTADO, d),
     cargarAjustes: async () => leer(CLAVE_AJUSTES, {}),
     guardarAjustes: (d) => escribir(CLAVE_AJUSTES, d),
+
+    // El histórico del chat, en localStorage. Aquí no hay red y por tanto no
+    // llega ningún mensaje, pero sí se puede llenar a mano desde la consola
+    // (`__pato.historial.anadir(...)`) y comprobar que sobrevive a recargar,
+    // que es justo lo que se quiere poder probar sin levantar Electron.
+    historial: {
+      cargar: async () => {
+        const d = leer(CLAVE_HISTORIAL, {});
+        return {
+          mensajes: Array.isArray(d.mensajes) ? d.mensajes : [],
+          leidoHasta: Number(d.leidoHasta) || 0
+        };
+      },
+      anotar: (m) => {
+        const d = leer(CLAVE_HISTORIAL, {});
+        const mensajes = Array.isArray(d.mensajes) ? d.mensajes : [];
+        mensajes.push(m);
+        escribir(CLAVE_HISTORIAL, { ...d, mensajes: mensajes.slice(-2000) });
+      },
+      marcarLeido: (ts) => {
+        const d = leer(CLAVE_HISTORIAL, {});
+        escribir(CLAVE_HISTORIAL, { ...d, leidoHasta: ts });
+      }
+    },
 
     urlAsset: (rel) => `../../assets/${rel}`,
 

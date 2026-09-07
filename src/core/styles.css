@@ -388,7 +388,7 @@ html, body {
   font: inherit;
 }
 
-/* ---- Panel de Hablar: histórico de la sesión + caja de escribir ---------- */
+/* ---- Panel de Chat: histórico + caja de escribir ------------------------- */
 .panel-hablar { width: 296px; }
 
 .chat-historial {
@@ -399,6 +399,46 @@ html, body {
   padding-right: 2px;
 }
 .chat-vacio { text-align: center; padding: 14px 4px; margin: 0; }
+
+/* "Ver mensajes anteriores": con miles de mensajes guardados sólo se pinta el
+   último trozo, y esto es lo que trae el anterior. Ocupa todo el ancho para que
+   se lea como una franja y no como un botón perdido entre los mensajes. */
+.chat-anteriores {
+  display: block;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 5px 8px;
+  border: 1px dashed rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  background: transparent;
+  color: #666;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.chat-anteriores:hover { background: rgba(0, 0, 0, 0.05); color: var(--ink); }
+
+/* La raya de "nuevos": dónde te quedaste la última vez que miraste. Se pinta
+   con el corte de lectura de cuando se abrió el panel, así que no se mueve
+   mientras se lee. */
+.chat-nuevos {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #c1121f;
+}
+.chat-nuevos::before,
+.chat-nuevos::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(193, 18, 31, 0.35);
+}
 
 .chat-msg { margin-bottom: 8px; }
 .chat-msg-cab {
