@@ -7,6 +7,65 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.29.0] - 2026-09-07
+
+### Añadido
+
+- **🌐 Marcador global, en una pantalla.** En **Juegos** hay ahora dos botones a
+  la misma altura: **🏅 Tus récords**, que es lo tuyo, y **🌐 Marcador global**,
+  que es lo de todos. El segundo enseña de un vistazo, juego a juego, quién
+  manda y cuánta gente ha marcado, con lo último que se ha movido arriba; desde
+  ahí se entra al detalle de cada juego.
+
+  Había marcas de gente de verdad desde hacía días y no las veía nadie: el
+  marcador de todos sólo existía dentro de «Tus récords», detrás de un icono, y
+  con trece juegos con marca enterarse de dónde había movimiento costaba trece
+  pantallas. Ahora es una sola petición que trae la tabla entera.
+
+- **El chat recuerda.** El histórico ya no se va al cerrar la mascota: se guarda
+  en tu equipo —un fichero propio en el escritorio, el almacenamiento del
+  navegador en la extensión— y sube de 50 mensajes a 2000.
+
+  Con eso llegan los **no leídos**: el menú de la mascota lleva la cuenta al
+  lado de **💬 Chat**, el panel se abre por la raya de «nuevos» en vez de por el
+  final, y de lo antiguo se pinta el último trozo y el resto se trae subiendo.
+
+  Se guardan **en tu equipo y en ningún sitio más**. Los mensajes viajan por
+  broadcast y no quedan en ningún servidor, así que lo que se dijera con la
+  mascota apagada no lo tiene nadie.
+
+### Cambiado
+
+- **Las partidas por red se juegan en su propio canal.** Hasta ahora todas las
+  jugadas de todas las partidas iban por el canal común: con veinte mascotas
+  conectadas, las veinte recibían cada golpe de minigolf de una pareja ajena
+  para descartarlo por su cuenta. Ahora los dos jugadores se van a un canal para
+  ellos solos.
+
+  El reto sigue saliendo por el común —hasta que alguien reta no hay sala a la
+  que ir— y contra una mascota que todavía no sepa hacerlo se juega por el común
+  exactamente como antes. Quién puede se sabe por lo que cada una anuncia saber
+  hacer, nunca por su número de versión, así que las dos versiones conviven sin
+  que nadie se quede sin jugar.
+
+- **«Hablar» se llama ahora «Chat».** Tenía sentido cuando era una caja para
+  soltar una frase; con conversación que sigue ahí mañana y mensajes por leer,
+  lo que hay detrás es un chat.
+
+### Corregido
+
+- **Volver desde el marcador de un juego vuelve por donde entraste.** Llevaba
+  siempre a «Tus récords», así que entrar por el marcador global y salir por el
+  otro lado parecía que el panel se hubiera perdido.
+
+### Notas
+
+- La extensión de Chrome se actualiza descomprimiendo el zip encima de la
+  carpeta anterior; la app de escritorio se actualiza sola.
+- Las marcas del marcador **las declara cada mascota y nadie las comprueba**:
+  sin un servidor que juegue la partida eso no se puede verificar, y por eso
+  siempre se enseña el nombre de quien la declara.
+
 ## [0.28.1] - 2026-09-07
 
 ### Corregido

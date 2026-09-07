@@ -148,8 +148,10 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
     mandarSeguro(P.sobre(P.TIPOS.RETO, sala.id, rival.clave, {
       juego: juegoId,
       nombre: yo().nombre,
-      // RETIRAR: cuando ningún pato en circulación ignore este campo, el reto
-      // podrá dar por hecho el canal propio y dejar de anunciarlo.
+      // RETIRAR: cuando 0.32 sea lo mínimo. El canal por sala entra en la 0.29 y
+      // la extensión se actualiza a mano, así que hasta que lleve dos o tres
+      // versiones con esto hay patos que ignoran el campo y juegan por el común.
+      // A partir de ahí, el reto puede dar por hecho el canal propio.
       via: sala.via
     }));
     sala.caduca = Date.now() + P.RETO_MS;

@@ -161,9 +161,11 @@ export function alCambiar(cb) {
  * (hora, quién, texto) lo es igual: haría falta que el mismo pato dijera lo
  * mismo en el mismo milisegundo para confundir dos mensajes distintos.
  *
- * RETIRAR el camino sin `mid`: cuando ningún pato en circulación mande mensajes
- * sin identificador. No corre prisa —cuesta una rama de nada— y hasta entonces
- * es lo único que evita ver repetido lo que dice un pato viejo.
+ * RETIRAR: cuando 0.32 sea lo mínimo. Los identificadores entran en la 0.29, y
+ * la extensión se actualiza a mano, así que hacen falta dos o tres versiones
+ * antes de dar por hecho que nadie manda mensajes sin `mid`. No corre prisa
+ * —cuesta una rama de nada— y hasta entonces es lo único que evita ver repetido
+ * lo que dice un pato viejo.
  */
 function claveDe(m) {
   return m.mid ? `i:${m.mid}` : `t:${m.ts}|${m.from}|${m.text}`;
