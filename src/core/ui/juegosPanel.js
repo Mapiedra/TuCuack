@@ -604,11 +604,15 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
 
     const medio = document.createElement('div');
     const nom = document.createElement('b');
-    // El nombre del rival lo escribe otra persona: `textContent`, siempre.
-    nom.textContent = `${juego ? nombreDeJuego(juego, estado.yo) : f.juego} · ${f.rival}`;
+    nom.textContent = juego ? nombreDeJuego(juego, estado.yo) : f.juego;
     const bajo = document.createElement('span');
     bajo.className = 'records-detalle';
-    bajo.textContent = cuando(f.jugada_el);
+    // El rival va en la línea de abajo y no pegado al título: varios juegos
+    // llevan tu nombre dentro («Flappy Pato-1234»), y «Flappy Pato-1234 · Cris»
+    // se lee como si jugaran dos, sin saber cuál eres tú.
+    //
+    // El nombre lo escribe otra persona: `textContent`, siempre.
+    bajo.textContent = `contra ${f.rival} · ${cuando(f.jugada_el)}`;
     medio.append(nom, bajo);
 
     const resultado = document.createElement('span');
