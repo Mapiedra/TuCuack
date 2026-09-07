@@ -108,6 +108,15 @@ nadie. El panel lleva la cuenta de lo que no has leído: el menú del pato lo di
 lado de **Chat**, y al abrirlo se coloca en la raya de «nuevos» en vez de al final.
 De lo antiguo se pinta sólo el último trozo; el resto se trae subiendo.
 
+**Marcador global.** En **Juegos** hay dos botones: **🏅 Tus récords**, que es lo tuyo,
+y **🌐 Marcador global**, que es lo de todos. El segundo trae la tabla entera en una
+sola petición y enseña, juego a juego, quién manda y cuánta gente ha marcado, con lo
+último que se ha movido arriba; desde ahí se entra al detalle de cada juego. Las marcas
+las declara cada pato y **nadie las comprueba**: sin un servidor que juegue la partida
+eso no se puede verificar, y por eso el marcador enseña siempre el nombre de quien la
+declara. Cómo se protege la tabla —el dueño de una fila es el hash de un secreto que no
+sale de tu disco— está explicado en [`supabase/records.sql`](supabase/records.sql).
+
 **Quién anda por ahí.** La opción **Conectados** del menú (y de la bandeja) abre la
 lista de los patos que están en el canal ahora mismo, con el tuyo el primero. El menú
 lleva la cuenta al lado, y la lista se actualiza sola mientras está abierta según entra

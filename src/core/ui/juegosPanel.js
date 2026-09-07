@@ -22,6 +22,8 @@ import { panelHeader } from './panelHeader.js';
  * @param {(juego) => boolean} handlers.onComprar
  *   Cobra y apunta la compra. Devuelve si se ha comprado. Lo hace app.js y no
  *   este panel: aquí no se guarda en disco.
+ * @param {() => Promise<object>} [handlers.onMarcadorGlobal]
+ *   Todo el marcador de una vez, para la vista de conjunto.
  * @param {Function} [handlers.onBack]
  * @param {Function} handlers.onClose
  * @returns {{el:HTMLElement, actualizar:(p:object)=>void}}
@@ -34,6 +36,10 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
   let enRecords = false;
   /** Juego cuyo marcador global se está viendo, o null. */
   let enMarcador = null;
+  /** De dónde se entró al marcador de un juego, para saber a dónde vuelve. */
+  let marcadorDesde = 'records';
+  /** Si se está viendo el marcador de todos los juegos a la vez. */
+  let enGlobal = false;
   /** Juego que se está mirando para comprarlo, o null. */
   let enTienda = null;
 
@@ -59,15 +65,25 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
 
   function pintar() {
     if (cabecera) cabecera.remove();
-    const dentro = elegido || enRecords || enMarcador || enTienda;
+    const dentro = elegido || enRecords || enMarcador || enTienda || enGlobal;
     cabecera = panelHeader(titulo(), {
       // El botón de volver cambia de destino según la vista. Desde el marcador
       // de un juego se vuelve a la lista de récords, que es de donde se entró;
       // desde el resto, a la rejilla.
       onBack: enMarcador
-        ? () => { enMarcador = null; enRecords = true; pintar(); }
+        ? () => {
+          // Se vuelve por donde se entró: desde tus récords, a tus récords;
+          // desde el marcador de todos, al marcador de todos. Mandar siempre a
+          // un sitio hacía que entrar por uno y salir por el otro pareciera que
+          // el panel se había perdido.
+          const desde = marcadorDesde;
+          enMarcador = null;
+          enRecords = desde === 'records';
+          enGlobal = desde === 'global';
+          pintar();
+        }
         : (dentro
-          ? () => { elegido = null; enRecords = false; enTienda = null; pintar(); }
+          ? () => { elegido = null; enRecords = false; enTienda = null; enGlobal = false; pintar(); }
           : handlers.onBack),
       onClose: handlers.onClose
     });
@@ -75,6 +91,7 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
 
     cuerpo.textContent = '';
     if (enMarcador) pintarMarcador(enMarcador);
+    else if (enGlobal) pintarGlobal();
     else if (enTienda) pintarTienda(enTienda);
     else if (elegido) pintarModos(elegido);
     else if (enRecords) pintarRecords();
@@ -85,6 +102,7 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
     if (enMarcador) return nombreDeJuego(enMarcador, estado.yo);
     if (enTienda) return nombreDeJuego(enTienda, estado.yo);
     if (elegido) return nombreDeJuego(elegido, estado.yo);
+    if (enGlobal) return 'Marcador global';
     return enRecords ? 'Tus récords' : 'Juegos';
   }
 
@@ -181,7 +199,23 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
       ? `🏅 Tus récords · ${t.partidas} ${t.partidas === 1 ? 'partida' : 'partidas'}`
       : '🏅 Tus récords';
     verRecords.addEventListener('click', () => { enRecords = true; pintar(); });
-    cuerpo.appendChild(verRecords);
+
+    // Los dos juntos y a la misma altura, que es lo único que deja claro que
+    // hay dos cosas distintas: lo tuyo y lo de todos. Antes el marcador de
+    // todos sólo existía dentro de «Tus récords», detrás de un icono, y era
+    // indistinguible de no existir: había gente marcando y nadie lo veía.
+    const fila = document.createElement('div');
+    fila.className = 'juegos-botonera';
+    fila.appendChild(verRecords);
+    if (handlers.hayMarcadorGlobal && handlers.onMarcadorGlobal) {
+      const verGlobal = document.createElement('button');
+      verGlobal.className = 'btn';
+      verGlobal.type = 'button';
+      verGlobal.textContent = '🌐 Marcador global';
+      verGlobal.addEventListener('click', () => { enGlobal = true; pintar(); });
+      fila.appendChild(verGlobal);
+    }
+    cuerpo.appendChild(fila);
 
     cuerpo.appendChild(bloqueAyuda());
     cuerpo.appendChild(bloqueCuacks());
@@ -350,6 +384,147 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
     });
   }
 
+  /**
+   * El marcador de todos los juegos a la vez.
+   *
+   * Una sola petición trae la tabla entera y se agrupa aquí. Es lo contrario de
+   * lo que hace `pintarMarcador`, que pide un juego, y es a propósito: con trece
+   * juegos con marca, enterarse de dónde hay movimiento costaba trece pantallas
+   * y trece peticiones, así que en la práctica nadie se enteraba de nada.
+   */
+  function pintarGlobal() {
+    const lista = document.createElement('ul');
+    lista.className = 'records-lista';
+    const cargando = document.createElement('li');
+    cargando.className = 'muted';
+    cargando.textContent = 'Preguntando…';
+    lista.appendChild(cargando);
+    cuerpo.appendChild(lista);
+
+    const nota = document.createElement('p');
+    nota.className = 'muted';
+    nota.textContent = 'Lo declara cada pato. Nadie lo comprueba.';
+    cuerpo.appendChild(nota);
+
+    handlers.onMarcadorGlobal().then((res) => {
+      // El panel puede haberse cerrado o cambiado de vista mientras tanto.
+      if (!enGlobal || !lista.isConnected) return;
+      lista.textContent = '';
+      if (!res || !res.ok) {
+        const mal = document.createElement('li');
+        mal.className = 'muted';
+        mal.textContent = 'No se ha podido consultar. ¿Hay conexión?';
+        lista.appendChild(mal);
+        return;
+      }
+
+      const grupos = agruparPorJuego(res.datos);
+      if (!grupos.length) {
+        const vacio = document.createElement('li');
+        vacio.className = 'muted';
+        vacio.textContent = 'Nadie ha marcado nada todavía en ningún juego.';
+        lista.appendChild(vacio);
+        return;
+      }
+      for (const g of grupos) lista.appendChild(filaGlobal(g));
+
+      const conMarca = MINIJUEGOS.filter((j) => j.marca).length;
+      const faltan = conMarca - grupos.length;
+      if (faltan > 0) {
+        nota.textContent = faltan === 1
+          ? 'Queda un juego sin estrenar. Lo declara cada pato; nadie lo comprueba.'
+          : `Quedan ${faltan} juegos sin estrenar. Lo declara cada pato; nadie lo comprueba.`;
+      }
+    });
+  }
+
+  /**
+   * Agrupa las filas del marcador por juego y saca al líder de cada uno.
+   *
+   * Dos cuidados que no son opcionales:
+   *
+   *   - Se descarta lo que no esté en el catálogo o no tenga marca. En la tabla
+   *     hay filas de juegos que ya no existen y de sondas de desarrollo, y sin
+   *     esto la vista intentaría enseñar un juego sin nombre ni etiqueta.
+   *   - La dirección la manda el CATÁLOGO, no la fila. Cada fila trae el
+   *     `mejor_es` de cuando se guardó, y un juego que cambió de sentido dejaría
+   *     de líder a quien va último.
+   */
+  function agruparPorJuego(filas) {
+    const porId = new Map();
+    for (const fila of Array.isArray(filas) ? filas : []) {
+      if (!fila || typeof fila.juego !== 'string') continue;
+      const juego = MINIJUEGOS.find((j) => j.id === fila.juego);
+      if (!juego || !juego.marca) continue;
+      if (typeof fila.marca !== 'number' || !Number.isFinite(fila.marca)) continue;
+      if (!porId.has(juego.id)) porId.set(juego.id, { juego, filas: [] });
+      porId.get(juego.id).filas.push(fila);
+    }
+
+    const grupos = [...porId.values()].map((g) => {
+      const menosEsMejor = g.juego.marca.mejor === 'menos';
+      const lider = g.filas.reduce((mejor, f) => (
+        menosEsMejor ? (f.marca < mejor.marca ? f : mejor)
+          : (f.marca > mejor.marca ? f : mejor)
+      ));
+      // Lo último que se movió en este juego, para poner arriba lo vivo.
+      const movido = g.filas.reduce((alto, f) => {
+        const t = Date.parse(f.actualizado || '');
+        return Number.isFinite(t) && t > alto ? t : alto;
+      }, 0);
+      return { juego: g.juego, lider, cuantos: g.filas.length, movido };
+    });
+    grupos.sort((a, b) => b.movido - a.movido);
+    return grupos;
+  }
+
+  function filaGlobal({ juego, lider, cuantos }) {
+    const mio = progreso.de(juego.id);
+
+    const li = document.createElement('li');
+    li.className = 'records-fila conMarcador';
+    li.tabIndex = 0;
+    li.title = 'Ver el marcador de este juego';
+    const entrar = () => {
+      enMarcador = juego;
+      marcadorDesde = 'global';
+      enGlobal = false;
+      pintar();
+    };
+    li.addEventListener('click', entrar);
+    li.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      entrar();
+    });
+
+    const icono = document.createElement('span');
+    icono.className = 'records-icono';
+    icono.textContent = juego.icono;
+
+    const medio = document.createElement('div');
+    const nom = document.createElement('b');
+    nom.textContent = nombreDeJuego(juego, estado.yo);
+    const bajo = document.createElement('span');
+    bajo.className = 'records-detalle';
+    // El nombre lo escribe otra persona: `textContent`, siempre.
+    bajo.textContent = `🥇 ${lider.nombre}`
+      + (cuantos > 1 ? ` · ${cuantos} patos` : '')
+      + (mio.mejor != null ? ` · tú ${mio.mejor}` : '');
+    medio.append(nom, bajo);
+
+    const marca = document.createElement('span');
+    marca.className = 'records-marca';
+    marca.textContent = `${lider.marca} ${juego.marca.etiqueta}`;
+
+    const flecha = document.createElement('span');
+    flecha.className = 'records-flecha';
+    flecha.textContent = '›';
+
+    li.append(icono, medio, marca, flecha);
+    return li;
+  }
+
   function filaDelMarcador(fila, juego) {
     const li = document.createElement('li');
     li.className = 'marcador-fila';
@@ -419,13 +594,17 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
     if (conMarcador) {
       li.tabIndex = 0;
       li.title = 'Ver el marcador de todos';
-      li.addEventListener('click', () => { enMarcador = juego; enRecords = false; pintar(); });
+      const entrar = () => {
+        enMarcador = juego;
+        marcadorDesde = 'records';
+        enRecords = false;
+        pintar();
+      };
+      li.addEventListener('click', entrar);
       li.addEventListener('keydown', (e) => {
         if (e.key !== 'Enter' && e.key !== ' ') return;
         e.preventDefault();
-        enMarcador = juego;
-        enRecords = false;
-        pintar();
+        entrar();
       });
     }
 

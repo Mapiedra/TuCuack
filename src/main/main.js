@@ -263,6 +263,7 @@ ipcMain.handle('update:status', () => estadoActualizacion());
 // Marcador global. La firma con la que se escribe se queda aquí: el renderer
 // pide «guarda esta marca» y no sabe con qué se firma. Ver main/marcador.js.
 ipcMain.handle('marcador:mejores', (_evt, juego, mejorEs) => marcador.mejores(juego, mejorEs));
+ipcMain.handle('marcador:todos', () => marcador.todos());
 ipcMain.handle('marcador:guardar', (_evt, record) => marcador.guardar(record));
 ipcMain.on('update:check', () => buscarActualizacion());
 ipcMain.on('update:install', () => instalarActualizacion(() => win));

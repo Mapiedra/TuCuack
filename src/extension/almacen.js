@@ -110,6 +110,7 @@ export async function leerHistorial() {
  */
 export const marcador = {
   mejores: (juego, mejorEs) => preguntarAlWorker({ tipo: 'marcador-mejores', juego, mejorEs }),
+  todos: () => preguntarAlWorker({ tipo: 'marcador-todos' }),
   guardar: (record) => preguntarAlWorker({ tipo: 'marcador-guardar', record })
 };
 

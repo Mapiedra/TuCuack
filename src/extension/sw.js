@@ -266,6 +266,8 @@ async function leerCredenciales() {
 const CLAVE_SECRETO = 'recordSecreto';
 const TOPE_MARCADOR_MS = 8000;
 const TOPE_FILAS = 20;
+/** Lo que se trae la vista de conjunto (ver `todos` en src/main/marcador.js). */
+const TOPE_TODOS = 500;
 
 /**
  * La firma de este pato para el marcador. Se estrena una vez y se queda.
@@ -317,6 +319,20 @@ async function pedirAlMarcador(ruta, opciones) {
   } finally {
     clearTimeout(reloj);
   }
+}
+
+/**
+ * Todo el marcador de una vez, para la vista de conjunto (el gemelo de
+ * `todos` en src/main/marcador.js). Son diez filas hoy: una petición y agrupar
+ * en el pato sale mucho más barato que una por cada juego con marca.
+ */
+function todoElMarcador() {
+  return pedirAlMarcador(
+    '/rest/v1/records_publicos'
+    + '?select=juego,nombre,marca,mejor_es,actualizado'
+    + `&order=actualizado.desc&limit=${TOPE_TODOS}`,
+    { method: 'GET' }
+  );
 }
 
 function mejoresDelMarcador(juego, mejorEs) {
@@ -891,6 +907,11 @@ chrome.runtime.onMessage.addListener((msg, _emisor, responder) => {
   }
   if (msg.tipo === 'marcador-mejores') {
     mejoresDelMarcador(msg.juego, msg.mejorEs).then(responder);
+    return true;
+  }
+
+  if (msg.tipo === 'marcador-todos') {
+    todoElMarcador().then(responder);
     return true;
   }
 

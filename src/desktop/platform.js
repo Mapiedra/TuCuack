@@ -53,6 +53,7 @@ export function crearPlataformaElectron() {
 
     marcador: {
       mejores: (juego, mejorEs) => pato.marcadorMejores(juego, mejorEs),
+      todos: () => pato.marcadorTodos(),
       guardar: (record) => pato.marcadorGuardar(record)
     },
 

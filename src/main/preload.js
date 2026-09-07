@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld('pato', {
   // Marcador global. `invoke` y no `send`: aquí sí hace falta la respuesta, y
   // la firma con la que se escribe se queda al otro lado del puente.
   marcadorMejores: (juego, mejorEs) => ipcRenderer.invoke('marcador:mejores', juego, mejorEs),
+  marcadorTodos: () => ipcRenderer.invoke('marcador:todos'),
   marcadorGuardar: (record) => ipcRenderer.invoke('marcador:guardar', record),
   onChatEvent: (cb) => ipcRenderer.on('chat:event', (_e, evt) => cb(evt)),
   setChatName: (name) => ipcRenderer.send('chat:set-name', name),

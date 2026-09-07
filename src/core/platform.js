@@ -69,6 +69,9 @@ const CONFIG_POR_DEFECTO = { version: '0.0.0', isDev: false, ground: 0, sprites:
 const MARCADOR_DESACTIVADO = {
   /** @type {(juego:string, mejorEs:'mas'|'menos') => Promise<object>} */
   mejores: async () => ({ ok: false, error: 'sin-marcador' }),
+  /** Todo el marcador de una vez, para la vista de conjunto.
+   *  @type {() => Promise<object>} */
+  todos: async () => ({ ok: false, error: 'sin-marcador' }),
   /** @type {(r:{juego:string, nombre:string, marca:number, mejorEs:string}) => Promise<object>} */
   guardar: async () => ({ ok: false, error: 'sin-marcador' })
 };

@@ -1114,6 +1114,11 @@ html, body {
 .records-totales b { font-size: 17px; line-height: 1; }
 .records-totales span { font-size: 9px; color: #8a8a95; text-align: center; }
 
+/* Los dos botones del pie de la rejilla: lo tuyo y lo de todos, a la misma
+   altura. En dos columnas iguales para que ninguno parezca el principal. */
+.juegos-botonera { display: flex; gap: 6px; }
+.juegos-botonera .btn { flex: 1; min-width: 0; }
+
 .records-lista { list-style: none; margin: 0; padding: 0; }
 .records-fila {
   display: grid;

@@ -920,6 +920,8 @@ function openJuegos(x, y) {
       return hecho;
     },
     onMarcador: (juego) => api.marcador.mejores(juego.id, juego.marca.mejor),
+    // Todo el marcador de una vez, para la vista de conjunto.
+    onMarcadorGlobal: () => api.marcador.todos(),
     onJugar: (juego, modo, opciones) => {
       unregisterOverlay(el);
       openPartida(juego, modo, opciones, x, y);

@@ -26,6 +26,17 @@ const TOPE_MS = 8000;
 /** Cuántos se piden para la tabla de un juego. */
 const TOPE_FILAS = 20;
 
+/**
+ * Cuántas filas se traen para la vista de conjunto.
+ *
+ * La tabla entera de una vez, y a propósito: son diez filas hoy y agrupar por
+ * juego en el pato sale mucho más barato que una petición por cada uno de los
+ * trece juegos con marca. Cuando esto se quede corto se notará en que la vista
+ * empieza a olvidar juegos poco jugados —vienen ordenadas por lo último que se
+ * ha movido—, y ahí tocará una consulta que devuelva sólo el líder de cada uno.
+ */
+const TOPE_TODOS = 500;
+
 function cabeceras() {
   return {
     apikey: config.SUPABASE_KEY,
@@ -82,6 +93,23 @@ async function mejores(juego, mejorEs) {
 }
 
 /**
+ * Todo el marcador de una vez, para la vista de conjunto.
+ *
+ * Sin filtrar por juego y ordenado por lo más reciente: el pato agrupa, elige
+ * al líder de cada juego con la dirección que dice su catálogo —y no la de la
+ * fila, que puede venir de cuando el juego puntuaba al revés— y descarta lo que
+ * no reconozca.
+ *
+ * @returns {Promise<{ok:boolean, datos?:object[], error?:string}>}
+ */
+async function todos() {
+  const ruta = '/rest/v1/records_publicos'
+    + '?select=juego,nombre,marca,mejor_es,actualizado'
+    + `&order=actualizado.desc&limit=${TOPE_TODOS}`;
+  return pedir(ruta, { method: 'GET' });
+}
+
+/**
  * Manda una marca propia.
  *
  * El secreto lo pone este fichero, no quien llama. La función del servidor
@@ -109,4 +137,4 @@ async function guardar(r) {
   });
 }
 
-module.exports = { mejores, guardar };
+module.exports = { mejores, todos, guardar };
