@@ -21,6 +21,14 @@
 -- propia tabla. Lo que las hace seguras no es quién puede llamarlas, sino que
 -- sin el secreto no devuelven ni tocan nada de nadie.
 --
+-- También sale, como INFO, «RLS Enabled No Policy». Es correcto y es lo que se
+-- quiere: RLS encendido y CERO políticas es el estado más cerrado que hay —nadie
+-- puede hacer nada sobre la tabla directamente— y el único acceso son las
+-- funciones de arriba, que corren como el dueño y se saltan RLS. El aviso
+-- existe para quien encendió RLS y se olvidó de la política, dejándose la app
+-- rota sin enterarse; aquí es a propósito. (En `records` no sale porque esa
+-- tabla sí tiene política de lectura: el marcador es público.)
+--
 -- Lo que NO debe salir es «Function Search Path Mutable». Toda función de este
 -- fichero fija su `search_path`, incluidas las auxiliares de una línea: sin
 -- eso, quien pueda crear objetos en su propio esquema podría secuestrar los
