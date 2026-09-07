@@ -7,6 +7,22 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.28.1] - 2026-09-07
+
+### Corregido
+
+- **El chat se abre por el último mensaje.** Se abría por el primero y había
+  que bajar a mano para ver lo último dicho, que es justo a lo que uno va. La
+  orden de ir al fondo estaba puesta desde siempre, pero se perdía: el panel se
+  construye antes de meterlo en la página, y hasta entonces la lista no tiene
+  alturas que medir.
+
+### Cambiado
+
+- **Y el fondo deja de ser obligatorio.** Si has subido a releer algo, un mensaje
+  nuevo ya no te devuelve abajo de un tirón; sólo sigue al fondo quien ya estaba
+  al fondo.
+
 ## [0.28.0] - 2026-09-07
 
 ### Añadido
