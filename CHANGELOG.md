@@ -7,6 +7,43 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.32.0] - 2026-09-07
+
+### Cambiado
+
+- **Los privados están dentro del Chat**, en su propia pestaña junto a «Todos».
+  Desaparece la entrada suelta del menú, que se queda en **💬 Chat** y **🟢
+  Conectados**.
+
+  El motivo no es ahorrar una línea: las dos pestañas son las dos formas de
+  decirle algo a alguien, y estaban en sitios distintos. Lo que sí es otra cosa
+  es Conectados, que es **gente** y no mensajes — y desde ahí el sobre de cada
+  pato te lleva directo a la conversación con él. Dentro de una conversación las
+  pestañas se esconden y el «volver» va a la lista, no al menú.
+
+- **El recado que acompaña al pato se guarda como privado.** Tu mascota sigue
+  yendo a la pantalla del otro —eso es el gesto, y sigue teniendo su espera de
+  25 s porque interrumpe— pero **lo que escribes se queda en vuestra
+  conversación**, donde se relee y se contesta.
+
+  Antes el recado viajaba sólo con la visita: se perdía si el otro no estaba
+  mirando, no se podía responder y acababa como una línea suelta en el
+  histórico. Era una segunda mensajería, y peor. Contra una mascota que no
+  anuncie dirección sigue siendo efímero, y el panel lo dice antes de enviar.
+
+### Corregido
+
+- **Un panel que se abría y se cerraba solo.** Al ir de Conectados al chat, una
+  de cada cuatro veces el panel aparecía y desaparecía sin decir nada.
+
+  Saltar de un panel a otro cierra el primero y abre el segundo en el mismo
+  suspiro, y en ese hueco no queda ninguno abierto: la ventana soltaba el ratón
+  y lo recuperaba un instante después, y al recuperarlo el sistema entregaba un
+  clic que el panel recién abierto leía como «han pulsado fuera». Ahora soltar
+  el ratón se aplaza un tic y pedirlo no, así que un parpadeo no llega a
+  ocurrir. Afectaba a todos los saltos de panel a panel, incluido el «volver al
+  menú», desde siempre.
+
 ## [0.31.0] - 2026-09-07
 
 ### Añadido
