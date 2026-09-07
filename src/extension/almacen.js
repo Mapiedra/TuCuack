@@ -120,6 +120,22 @@ export const partidas = {
   mias: () => preguntarAlWorker({ tipo: 'partidas-mias' })
 };
 
+/**
+ * Mensajes privados, preguntándoselo al worker.
+ *
+ * Por ahí y no directamente por lo mismo de siempre: la firma vive allí, y este
+ * código corre dentro de la página web de cualquiera. Leer también la exige, así
+ * que ninguna de estas funciones lleva identidad: el worker ya sabe de quién es.
+ */
+export const privados = {
+  enviar: (mensaje) => preguntarAlWorker({ tipo: 'privados-enviar', mensaje }),
+  leer: (con, tope) => preguntarAlWorker({ tipo: 'privados-leer', con, tope }),
+  conversaciones: () => preguntarAlWorker({ tipo: 'privados-conversaciones' }),
+  bloquear: (a, si) => preguntarAlWorker({ tipo: 'privados-bloquear', a, si }),
+  bloqueados: () => preguntarAlWorker({ tipo: 'privados-bloqueados' }),
+  borrarTodo: () => preguntarAlWorker({ tipo: 'privados-borrar-todo' })
+};
+
 export const marcador = {
   mejores: (juego, mejorEs) => preguntarAlWorker({ tipo: 'marcador-mejores', juego, mejorEs }),
   todos: () => preguntarAlWorker({ tipo: 'marcador-todos' }),

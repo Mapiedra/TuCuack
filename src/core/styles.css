@@ -1123,6 +1123,34 @@ html, body {
 
 /* El resultado de una partida del historial. El color hace el trabajo: la lista
    se lee de un vistazo buscando las ganadas. */
+/* ---- Privados ------------------------------------------------------------ */
+.panel-privados { width: 320px; }
+/* El aviso de dónde se guardan los privados. Va arriba, se lee, y no se
+   disimula: el chat común no toca ningún servidor y esto sí. */
+.privados-aviso {
+  margin: 0 0 9px;
+  padding: 7px 9px;
+  border-left: 3px solid var(--accent);
+  background: rgba(255, 183, 3, 0.12);
+  border-radius: 0 8px 8px 0;
+  line-height: 1.35;
+}
+.privados-pie { margin-top: 8px; text-align: right; }
+.privados-bloquear {
+  border: 0;
+  background: transparent;
+  color: #c1121f;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+.privados-bloquear:hover { text-decoration: underline; }
+.privados-bloquear:disabled { color: #999; cursor: default; text-decoration: none; }
+/* El sobre va antes que el avión y con su propio hueco, para que no parezcan
+   el mismo botón partido en dos. */
+.btn-privado { margin-right: 4px; }
+
 .partida-ganada { color: #2a7d2e; }
 .partida-perdida { color: #c1121f; }
 .partida-empate { color: #8a8a95; }

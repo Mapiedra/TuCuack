@@ -53,7 +53,10 @@ const CAPACIDADES_POR_DEFECTO = {
   // mismo que el marcador, pero se pregunta aparte a propósito: son dos tablas
   // distintas y una carcasa puede llegar a una y no a la otra mientras se está
   // desplegando.
-  historialDePartidas: false
+  historialDePartidas: false,
+  // ¿Hay mensajes privados? Necesita que la carcasa pueda hablar con Supabase y
+  // que tenga una dirección con la que firmar (ver `privados` más abajo).
+  privados: false
 };
 
 const CONFIG_POR_DEFECTO = { version: '0.0.0', isDev: false, ground: 0, sprites: {} };
@@ -117,6 +120,34 @@ const PARTIDAS_DESACTIVADAS = {
   guardar: async () => ({ ok: false, error: 'sin-historial' }),
   /** @type {() => Promise<object>} */
   mias: async () => ({ ok: false, error: 'sin-historial' })
+};
+
+/**
+ * Mensajes privados, cuando no los hay.
+ *
+ * No van por el canal como el chat: van a una tabla. Un privado tiene que llegar
+ * aunque el otro no estuviera conectado, y un broadcast no se guarda en ningún
+ * sitio.
+ *
+ * Mismo reparto que el marcador: el núcleo no ve nunca la firma. Pide «mándale
+ * esto a esa dirección» y quien firma es la carcasa. Y leer también la exige,
+ * porque una conversación es de los dos que la tienen.
+ *
+ * Todas devuelven `{ok, datos?, error?}` y no lanzan.
+ */
+const PRIVADOS_DESACTIVADOS = {
+  /** @type {(m:{para:string, mid:string, texto:string}) => Promise<object>} */
+  enviar: async () => ({ ok: false, error: 'sin-privados' }),
+  /** @type {(con:string, tope?:number) => Promise<object>} */
+  leer: async () => ({ ok: false, error: 'sin-privados' }),
+  /** @type {() => Promise<object>} */
+  conversaciones: async () => ({ ok: false, error: 'sin-privados' }),
+  /** @type {(a:string, bloquear?:boolean) => Promise<object>} */
+  bloquear: async () => ({ ok: false, error: 'sin-privados' }),
+  /** @type {() => Promise<object>} */
+  bloqueados: async () => ({ ok: false, error: 'sin-privados' }),
+  /** @type {() => Promise<object>} */
+  borrarTodo: async () => ({ ok: false, error: 'sin-privados' })
 };
 
 const CHAT_DESACTIVADO = {
@@ -223,7 +254,10 @@ export function normalizarPlataforma(p = {}) {
     marcador: { ...MARCADOR_DESACTIVADO, ...(p.marcador || {}) },
 
     // ---- Historial de partidas por red -----------------------------------
-    partidas: { ...PARTIDAS_DESACTIVADAS, ...(p.partidas || {}) }
+    partidas: { ...PARTIDAS_DESACTIVADAS, ...(p.partidas || {}) },
+
+    // ---- Mensajes privados -----------------------------------------------
+    privados: { ...PRIVADOS_DESACTIVADOS, ...(p.privados || {}) }
   };
 }
 

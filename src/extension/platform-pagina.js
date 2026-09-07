@@ -9,8 +9,8 @@
 //     `img-src` del sitio lo bloquearía;
 //   - el suelo es el borde inferior de la ventana.
 
-import { conectarChat, marcador, partidas, leerAjustes, escribirAjustes, leerEstado,
-  escribirEstado, leerHistorial, alCerrarDocumento, ocultarElPato } from './almacen.js';
+import { conectarChat, marcador, partidas, privados, leerAjustes, escribirAjustes,
+  leerEstado, escribirEstado, leerHistorial, alCerrarDocumento, ocultarElPato } from './almacen.js';
 
 /**
  * @param {HTMLElement} anfitrion el div que aloja el Shadow DOM
@@ -41,7 +41,8 @@ export function crearPlataformaPagina(anfitrion) {
       // credenciales y quien sobrevive a que el pato se mude de pestaña. Desde
       // aquí sólo se le pregunta.
       marcadorGlobal: true,
-      historialDePartidas: true
+      historialDePartidas: true,
+      privados: true
     },
 
     async config() {
@@ -106,6 +107,7 @@ export function crearPlataformaPagina(anfitrion) {
     },
 
     marcador,
-    partidas
+    partidas,
+    privados
   };
 }

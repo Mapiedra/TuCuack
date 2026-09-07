@@ -51,8 +51,20 @@ const TOPE_JUEGO = 4096;
 const CANAL_DE_SALA = (salaId) => `sala:${salaId}`;
 
 /** Lo que este pato anuncia saber hacer, para que el otro lo mire ANTES de
- *  retar. Capacidades, nunca números de versión. */
-const CAPACIDADES = ['sala'];
+ *  retar o de escribirle. Capacidades, nunca números de versión. */
+const CAPACIDADES = ['sala', 'privados'];
+
+/**
+ * Nuestra DIRECCIÓN para los mensajes privados: `sha256(recordSecreto)`.
+ *
+ * Es la misma con la que se firma en el marcador y en el historial de partidas,
+ * y se anuncia en la presencia porque para escribirle a alguien hace falta
+ * saber a dónde. Publicarla no abre nada: escribir en las filas de alguien exige
+ * su SECRETO, no su hash (ver supabase/records.sql y supabase/mensajes.sql).
+ *
+ * Va vacía si no hay secreto, y entonces este pato no recibe privados.
+ */
+let miDireccion = '';
 
 let canalSala = null;
 let salaActual = '';
@@ -76,9 +88,12 @@ let anunciado = false;
  * @param {() => import('electron').BrowserWindow | null} getWin
  * @param {string} initialName
  * @param {string} [patoId]  identidad estable, de los ajustes
+ * @param {string} [direccion]  `sha256(recordSecreto)`, la dirección para los
+ *   privados. La calcula main.js, que es quien puede ver el secreto.
  */
-function initChat(getWin, initialName, patoId) {
+function initChat(getWin, initialName, patoId, direccion) {
   myName = initialName || '';
+  miDireccion = String(direccion || '');
   // Antes de cualquier `track`: si llegara después habría que volver a
   // anunciarse, y un `track` repetido AÑADE una entrada en la presencia en vez
   // de reemplazarla — el pato saldría duplicado en la lista de todo el mundo.
@@ -194,6 +209,8 @@ function initChat(getWin, initialName, patoId) {
     salirDeSala,
     /** El escritorio sabe abrir canales por partida. */
     puedeSala: () => true,
+    /** Nuestra dirección, para saber cuál de las conversaciones es con quién. */
+    direccion: () => miDireccion,
 
     /** Actualiza el nombre anunciado en la presencia. */
     async setName(name) {
@@ -202,7 +219,10 @@ function initChat(getWin, initialName, patoId) {
       myName = nuevo;
       if (channel && connected) {
         try {
-          await channel.track({ name: myName, at: Date.now(), id: myId, caps: CAPACIDADES });
+          await channel.track({
+            name: myName, at: Date.now(), id: myId,
+            caps: CAPACIDADES, dir: miDireccion
+          });
           anunciado = true;
         } catch (err) {
           console.error('[chat] no se pudo actualizar el nombre:', err);
@@ -520,7 +540,10 @@ function suscribir(getWin) {
       // en la lista de conectados de todos los demás.
       if (!anunciado) {
         try {
-          await channel.track({ name: myName, at: Date.now(), id: myId, caps: CAPACIDADES });
+          await channel.track({
+            name: myName, at: Date.now(), id: myId,
+            caps: CAPACIDADES, dir: miDireccion
+          });
           anunciado = true;
         } catch (e) {
           console.error('[chat] no se pudo anunciar la presencia:', e);
@@ -593,6 +616,7 @@ function disabledChat() {
     entrarEnSala() {},
     salirDeSala() {},
     puedeSala: () => false,
+    direccion: () => '',
     async setName() {},
     names: () => [],
     presentes: () => [],
@@ -635,7 +659,11 @@ function presentes() {
           // Lo que ese pato dice saber hacer. Viene vacío si es de una versión
           // anterior a las capacidades, y una lista vacía significa "el camino
           // de siempre": ni un `if` especial para los antiguos.
-          caps: Array.isArray(m.caps) ? m.caps.slice(0, 8).map(String) : []
+          caps: Array.isArray(m.caps) ? m.caps.slice(0, 8).map(String) : [],
+          // Su dirección para los privados. Vacía si es de una versión anterior,
+          // y entonces no se le puede escribir: la interfaz tiene que decirlo,
+          // no fallar en silencio.
+          dir: /^[0-9a-f]{64}$/.test(String(m.dir || '')) ? String(m.dir) : ''
         });
       }
     }

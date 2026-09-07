@@ -185,6 +185,21 @@ module.exports = {
   /** La firma para el marcador global. Sólo la usa el proceso principal. */
   secretoDelMarcador() {
     return leerAjustes().recordSecreto;
+  },
+
+  /**
+   * La DIRECCIÓN de este pato: `sha256(recordSecreto)`, en hexadecimal.
+   *
+   * A diferencia del secreto, ésta sí sale de aquí: se anuncia en la presencia
+   * del canal para que otros puedan escribirte en privado. Publicarla no abre
+   * nada —escribir en tus filas exige el secreto, no su hash— y es lo mismo que
+   * ya identifica al dueño en el marcador y en el historial de partidas (ver
+   * supabase/mensajes.sql).
+   */
+  direccion() {
+    const secreto = leerAjustes().recordSecreto;
+    if (!secreto) return '';
+    return require('crypto').createHash('sha256').update(secreto).digest('hex');
   }
 };
 

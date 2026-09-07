@@ -14,7 +14,7 @@
 import { panelHeader } from './panelHeader.js';
 
 /**
- * @typedef {{clave:string, nombre:string}} Presente
+ * @typedef {{clave:string, nombre:string, dir?:string}} Presente
  * @typedef {{yo:string, otros:string[], presentes:Presente[],
  *            conectado:boolean}} EstadoPresencia
  */
@@ -34,6 +34,7 @@ const REFRESCO_ESPERA = 250;
  *
  * @param {{onEnviar?:(destino:Presente, texto:string)=>boolean,
  *          esperaDe?:(clave:string)=>number, esperaTotal?:number,
+ *          hayPrivados?:boolean, onPrivado?:(destino:Presente)=>void,
  *          onBack?:Function, onClose:Function}} handlers
  * @returns {{el:HTMLElement, actualizar:(estado:EstadoPresencia)=>void}}
  */
@@ -110,8 +111,13 @@ export function buildOnlinePanel(inicial, handlers) {
       // Si el que estaba componiendo se ha ido del canal, se cierra el recado.
       if (componiendo && !presentes.some((p) => p.clave === componiendo)) cerrarRecado();
       for (const p of ordenar(presentes, (x) => x.nombre)) {
-        const li = fila(p, false, handlers.onEnviar ? abrirRecado : null);
-        const boton = li.querySelector('.btn-mandar');
+        const li = fila(
+          p, false,
+          handlers.onEnviar ? abrirRecado : null,
+          (handlers.hayPrivados && handlers.onPrivado) ? handlers.onPrivado : null
+        );
+        // El de mandar el pato, no el del sobre: es el único que lleva espera.
+        const boton = li.querySelector('.btn-mandar:not(.btn-privado)');
         if (boton) {
           botones.set(p.clave, { boton, nombre: p.nombre });
           const restante = esperaDe(p.clave);
@@ -286,11 +292,14 @@ function ordenar(items, nombreDe) {
 }
 
 /**
- * @param {{clave?:string, nombre:string}} quien
+ * @param {{clave?:string, nombre:string, dir?:string}} quien
  * @param {boolean} esYo
  * @param {((destino:object)=>void)|null} onMandar
+ * @param {((destino:object)=>void)|null} [onPrivado]
+ *   Escribirle a solas. Sólo se ofrece a quien anuncie dirección: contra un pato
+ *   anterior a los privados no hay a dónde escribir.
  */
-function fila(quien, esYo, onMandar) {
+function fila(quien, esYo, onMandar, onPrivado) {
   const li = document.createElement('li');
   if (esYo) li.className = 'yo';
 
@@ -311,6 +320,15 @@ function fila(quien, esYo, onMandar) {
     etiqueta.textContent = 'tú';
     li.appendChild(etiqueta);
     return li;
+  }
+
+  if (onPrivado && quien.dir) {
+    const sobre = document.createElement('button');
+    sobre.className = 'btn-mandar btn-privado';
+    sobre.textContent = '✉️';
+    sobre.title = `Escribirle a solas a ${txt.textContent}`;
+    sobre.addEventListener('click', () => onPrivado(quien));
+    li.appendChild(sobre);
   }
 
   if (onMandar) {

@@ -49,7 +49,30 @@ const TOPE_JUEGO = 4096;
 const CANAL_DE_SALA = (salaId) => `sala:${salaId}`;
 
 /** Lo que este pato anuncia saber hacer. Capacidades, nunca versiones. */
-const CAPACIDADES = ['sala'];
+const CAPACIDADES = ['sala', 'privados'];
+
+/**
+ * Nuestra DIRECCIÓN para los privados: `sha256(recordSecreto)`, en hexadecimal.
+ *
+ * La misma con la que se firma en el marcador y en el historial, y se anuncia en
+ * la presencia porque para escribirle a alguien hace falta saber a dónde.
+ * Publicarla no abre nada: escribir en las filas de alguien exige su SECRETO
+ * (ver supabase/mensajes.sql).
+ */
+let miDireccion = '';
+
+async function calcularDireccion() {
+  const secreto = await secretoDelMarcador();
+  if (!secreto) return '';
+  try {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secreto));
+    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  } catch (err) {
+    // Sin dirección no se reciben privados, pero el resto del pato va igual.
+    console.warn('[privados] no se pudo calcular la dirección:', err);
+    return '';
+  }
+}
 
 /**
  * En qué sala está el canal, guardado FUERA de la memoria del worker.
@@ -382,6 +405,56 @@ async function misPartidas() {
   });
 }
 
+// ---- Mensajes privados ---------------------------------------------------
+//
+// El gemelo de src/main/mensajes.js. No van por el canal: van a una tabla,
+// porque un privado tiene que llegar aunque el otro no estuviera conectado.
+// El porqué de todo lo demás está en supabase/mensajes.sql.
+
+const TOPE_MENSAJES = 100;
+const TOPE_HILOS = 30;
+const DIRECCION = /^[0-9a-f]{64}$/;
+
+async function rpcPrivados(fn, cuerpo) {
+  const secreto = await secretoDelMarcador();
+  if (!secreto) return { ok: false, error: 'sin-firma' };
+  return pedirASupabase(`/rest/v1/rpc/${fn}`, {
+    method: 'POST',
+    body: JSON.stringify({ p_secreto: secreto, ...cuerpo })
+  });
+}
+
+function enviarPrivado(m) {
+  const para = String((m && m.para) || '');
+  if (!DIRECCION.test(para)) return Promise.resolve({ ok: false, error: 'destino-malo' });
+  const texto = String((m && m.texto) || '').slice(0, 280);
+  if (!texto.trim()) return Promise.resolve({ ok: false, error: 'vacio' });
+  return rpcPrivados('enviar_mensaje', {
+    p_para: para,
+    p_mid: String((m && m.mid) || '').slice(0, 40),
+    p_texto: texto,
+    p_nombre: String((m && m.nombre) || '').slice(0, 40)
+  });
+}
+
+function leerPrivados(con, tope) {
+  if (!DIRECCION.test(String(con || ''))) return Promise.resolve({ ok: false, error: 'destino-malo' });
+  return rpcPrivados('leer_mensajes', {
+    p_con: String(con),
+    p_tope: Math.min(Math.max(Number(tope) || TOPE_MENSAJES, 1), TOPE_MENSAJES)
+  });
+}
+
+const conversacionesPrivadas = () => rpcPrivados('mis_conversaciones', { p_tope: TOPE_HILOS });
+
+function bloquearA(a, si) {
+  if (!DIRECCION.test(String(a || ''))) return Promise.resolve({ ok: false, error: 'destino-malo' });
+  return rpcPrivados('bloquear', { p_a: String(a), p_bloquear: si !== false });
+}
+
+const misBloqueos = () => rpcPrivados('mis_bloqueos', {});
+const borrarMisPrivados = () => rpcPrivados('borrar_mis_mensajes', {});
+
 function mejoresDelMarcador(juego, mejorEs) {
   const orden = mejorEs === 'menos' ? 'marca.asc' : 'marca.desc';
   return pedirASupabase(
@@ -444,6 +517,9 @@ async function conectar() {
   // Se lee ANTES del primer `track`: si llegara después habría que anunciarse
   // otra vez, y un `track` repetido duplica la entrada en la presencia.
   miId = await asegurarPatoId(ajustes);
+  // También antes del primer `track`, por lo mismo: anunciarse dos veces
+  // duplicaría la entrada en la presencia.
+  miDireccion = await calcularDireccion();
 
   console.log(`[chat] conectando a ${cred.url} · canal "${CANAL}" · como "${miNombre || '(sin nombre)'}"`);
 
@@ -550,7 +626,10 @@ function suscribir() {
       // anterior en la presencia, la duplica.
       if (!anunciado) {
         try {
-          await canal.track({ name: miNombre, at: Date.now(), id: miId, caps: CAPACIDADES });
+          await canal.track({
+            name: miNombre, at: Date.now(), id: miId,
+            caps: CAPACIDADES, dir: miDireccion
+          });
           anunciado = true;
         } catch (e) {
           console.error('[chat] no se pudo anunciar la presencia:', e);
@@ -615,7 +694,11 @@ function presentes() {
           id: String(m.id || ''),
           // Vacío si ese pato es de una versión anterior a las capacidades, y
           // una lista vacía significa "el camino de siempre".
-          caps: Array.isArray(m.caps) ? m.caps.slice(0, 8).map(String) : []
+          caps: Array.isArray(m.caps) ? m.caps.slice(0, 8).map(String) : [],
+          // Su dirección para los privados. Vacía si es de una versión anterior:
+          // a ése no se le puede escribir, y la interfaz tiene que decirlo en
+          // vez de fallar en silencio.
+          dir: /^[0-9a-f]{64}$/.test(String(m.dir || '')) ? String(m.dir) : ''
         });
       }
     }
@@ -929,7 +1012,10 @@ async function ponerNombre(nombre) {
   miNombre = nuevo;
   if (canal && conectado) {
     try {
-      await canal.track({ name: miNombre, at: Date.now(), id: miId, caps: CAPACIDADES });
+      await canal.track({
+            name: miNombre, at: Date.now(), id: miId,
+            caps: CAPACIDADES, dir: miDireccion
+          });
       anunciado = true;
     } catch (err) {
       console.error('[chat] no se pudo actualizar el nombre:', err);
@@ -969,6 +1055,31 @@ chrome.runtime.onMessage.addListener((msg, _emisor, responder) => {
 
   if (msg.tipo === 'partidas-mias') {
     misPartidas().then(responder);
+    return true;
+  }
+
+  if (msg.tipo === 'privados-enviar') {
+    enviarPrivado(msg.mensaje).then(responder);
+    return true;
+  }
+  if (msg.tipo === 'privados-leer') {
+    leerPrivados(msg.con, msg.tope).then(responder);
+    return true;
+  }
+  if (msg.tipo === 'privados-conversaciones') {
+    conversacionesPrivadas().then(responder);
+    return true;
+  }
+  if (msg.tipo === 'privados-bloquear') {
+    bloquearA(msg.a, msg.si).then(responder);
+    return true;
+  }
+  if (msg.tipo === 'privados-bloqueados') {
+    misBloqueos().then(responder);
+    return true;
+  }
+  if (msg.tipo === 'privados-borrar-todo') {
+    borrarMisPrivados().then(responder);
     return true;
   }
 

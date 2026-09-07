@@ -18,6 +18,7 @@ import { showStatsTooltip, hideStatsTooltip } from './ui/tooltip.js';
 import { buildStatsView } from './ui/statsView.js';
 import { buildSkinsPanel } from './ui/skinsPanel.js';
 import { buildOnlinePanel } from './ui/onlinePanel.js';
+import { buildPrivadosPanel } from './ui/privadosPanel.js';
 import { Level } from './game/Level.js';
 import { SKINS, skinPorId, estaDesbloqueada, SKIN_POR_DEFECTO } from './game/skins.js';
 import { MINIJUEGOS, minijuegoPorId, nombreDeJuego, juegosDisponibles } from './game/minijuegos/index.js';
@@ -727,6 +728,11 @@ function openDuckMenu(x, y) {
   );
   // Y abajo, tras la raya, las dos que son sobre el pato y no con él. Van juntas
   // para que la última fila quede completa: Ajustes solo dejaba un hueco.
+  // Los privados van con las de "sobre el pato" y no con las de "con el pato":
+  // no es una cosa que hagas CON tu mascota, es tu correspondencia.
+  if (api.capacidades.privados) {
+    items.push({ label: '✉️ Privados', onClick: () => openPrivados(x, y) });
+  }
   items.push({ sep: true }, { label: '⚙️ Ajustes…', onClick: () => openSettings(x, y) });
   if (api.capacidades.ocultar) {
     // Esconderse, no cerrarse: vuelve desde la bandeja del sistema o desde el
@@ -898,6 +904,14 @@ function openOnline(x, y) {
     onEnviar: (destino, texto) => enviarVisita(destino, texto),
     esperaDe: (clave) => esperaParaVisitar(clave),
     esperaTotal: ESPERA_ENTRE_VISITAS + MARGEN_ENVIO,
+    // Escribirle en privado a uno de la lista. Sólo sale en quien anuncie que
+    // sabe recibirlos y tenga dirección: contra un pato anterior a esto no hay
+    // a dónde escribir, y el panel lo dice en vez de fallar en silencio.
+    hayPrivados: !!api.capacidades.privados,
+    onPrivado: (destino) => {
+      unregisterOverlay(el);
+      openPrivados(x, y, destino.dir);
+    },
     onBack: () => volverAlMenu(el, x, y),
     onClose: () => unregisterOverlay(el)
   });
@@ -1394,6 +1408,32 @@ function avisoNivel(html) {
     window.innerWidth - el.offsetWidth - 8))}px`;
   el.style.top = `${Math.max(8, a.y - el.offsetHeight - 10)}px`;
   setTimeout(() => el.remove(), 5000);
+}
+
+/**
+ * Los privados. `dirInicial` abre directamente la conversación con alguien, que
+ * es como se entra desde Conectados.
+ */
+function openPrivados(x, y, dirInicial) {
+  const { el } = buildPrivadosPanel({
+    abrirCon: dirInicial || null,
+    // El nombre de una dirección sale de quién esté a la vista ahora mismo.
+    presentes: () => (chat && chat.presentes) || [],
+    onConversaciones: () => api.privados.conversaciones(),
+    onLeer: (con) => api.privados.leer(con),
+    onEnviar: ({ para, texto }) => api.privados.enviar({
+      para,
+      texto,
+      // El mismo identificador que usa el chat: reenviar no deja dos filas.
+      mid: historial.nuevoMid(),
+      // Con qué nombre firmas, para que al otro no le salga un hash.
+      nombre: duckName()
+    }),
+    onBloquear: (a, si) => api.privados.bloquear(a, si),
+    onBack: () => volverAlMenu(el, x, y),
+    onClose: () => unregisterOverlay(el)
+  });
+  mountPanel(el, x, y);
 }
 
 function openTalk(x, y) {

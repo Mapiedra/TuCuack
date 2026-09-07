@@ -4,8 +4,8 @@
 // esquivar, ni contenido de nadie a quien cederle los clics. Lo que comparte con
 // la versión de página —almacenamiento y chat— está en `almacen.js`.
 
-import { conectarChat, marcador, partidas, leerAjustes, escribirAjustes, leerEstado,
-  escribirEstado, leerHistorial, alCerrarDocumento, ocultarElPato } from './almacen.js';
+import { conectarChat, marcador, partidas, privados, leerAjustes, escribirAjustes,
+  leerEstado, escribirEstado, leerHistorial, alCerrarDocumento, ocultarElPato } from './almacen.js';
 
 /** @returns {import('./core/platform.js').Plataforma} */
 export function crearPlataformaExtension() {
@@ -29,7 +29,8 @@ export function crearPlataformaExtension() {
       // En el panel lateral el pato tiene el documento para él solo.
       juegosDeEscenario: true,
       marcadorGlobal: true,
-      historialDePartidas: true
+      historialDePartidas: true,
+      privados: true
     },
 
     async config() {
@@ -81,6 +82,7 @@ export function crearPlataformaExtension() {
     },
 
     marcador,
-    partidas
+    partidas,
+    privados
   };
 }

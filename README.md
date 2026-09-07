@@ -128,6 +128,24 @@ sino el cuaderno de cada cual, y el servidor recorta a las cien últimas por due
 que la tabla no crezca sin fin. **Las jugadas no se guardan**, y no es un olvido: el
 porqué está en [`supabase/partidas.sql`](supabase/partidas.sql).
 
+**✉️ Privados.** Mensajes a **una** persona, desde el menú de la mascota o con el
+sobre de cada pato en **Conectados**.
+
+No son el chat, y la diferencia importa: el chat es un canal común, lo ve todo el
+mundo y **no se guarda en ningún servidor**; un privado va a una sola persona y **sí se
+guarda**, porque si no, no le llegaría cuando no está conectada. Va sin cifrar: **quien
+administra el servidor puede leerlos**, y la propia pantalla lo dice antes de que
+escribas nada. Se guardan los 200 últimos de cada conversación y nada de más de 90
+días, y puedes borrar todo lo tuyo de una vez.
+
+Para escribirle a alguien hace falta una dirección, y es el mismo `sha256` del secreto
+que ya te identifica en el marcador, anunciado en la presencia del canal. Es un hash y
+no revela nada, pero te representa **sólo mientras no borres tus ajustes**. Como
+cualquiera puede escribirte, el servidor limita cuántos mensajes por minuto acepta de
+cada remitente y hay lista de bloqueados; bloquear no se nota desde el otro lado. Contra
+una mascota anterior a esto no se puede: el sobre sencillamente no sale. Todo el
+razonamiento está en [`supabase/mensajes.sql`](supabase/mensajes.sql).
+
 **Quién anda por ahí.** La opción **Conectados** del menú (y de la bandeja) abre la
 lista de los patos que están en el canal ahora mismo, con el tuyo el primero. El menú
 lleva la cuenta al lado, y la lista se actualiza sola mientras está abierta según entra

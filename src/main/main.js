@@ -6,6 +6,7 @@ const store = require('./store');
 const marcador = require('./marcador');
 const historial = require('./historial');
 const partidas = require('./partidas');
+const mensajes = require('./mensajes');
 const { createTray } = require('./tray');
 const { initUpdater, configurarAvisos, estadoActualizacion, buscarActualizacion, instalarActualizacion }
   = require('./updater');
@@ -270,6 +271,15 @@ ipcMain.handle('marcador:todos', () => marcador.todos());
 // lado del puente; a diferencia de él, leer también la exige.
 ipcMain.handle('partidas:guardar', (_evt, p) => partidas.guardar(p));
 ipcMain.handle('partidas:mias', () => partidas.mias());
+
+// Mensajes privados. Ni el secreto ni la lista de bloqueados cruzan el puente:
+// el pato pide y este lado firma (ver mensajes.js y supabase/mensajes.sql).
+ipcMain.handle('privados:enviar', (_evt, m) => mensajes.enviar(m || {}));
+ipcMain.handle('privados:leer', (_evt, con, tope) => mensajes.leer(con, tope));
+ipcMain.handle('privados:conversaciones', () => mensajes.conversaciones());
+ipcMain.handle('privados:bloquear', (_evt, a, si) => mensajes.bloquear(a, si));
+ipcMain.handle('privados:bloqueados', () => mensajes.bloqueados());
+ipcMain.handle('privados:borrar-todo', () => mensajes.borrarTodo());
 ipcMain.handle('marcador:guardar', (_evt, record) => marcador.guardar(record));
 ipcMain.on('update:check', () => buscarActualizacion());
 ipcMain.on('update:install', () => instalarActualizacion(() => win));
@@ -320,7 +330,7 @@ if (!gotLock) {
     tray = createTray(() => win, { isDev });
     const ajustes = store.loadSettings();
     applyAutoLaunch(ajustes);
-    chat = initChat(() => win, ajustes.displayName, ajustes.patoId);
+    chat = initChat(() => win, ajustes.displayName, ajustes.patoId, store.direccion());
     if (!isDev) initUpdater(() => win);
 
     app.on('activate', () => {

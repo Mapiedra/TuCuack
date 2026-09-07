@@ -41,6 +41,13 @@ contextBridge.exposeInMainWorld('pato', {
   // Historial de partidas por red.
   partidasGuardar: (p) => ipcRenderer.invoke('partidas:guardar', p),
   partidasMias: () => ipcRenderer.invoke('partidas:mias'),
+  // Mensajes privados.
+  privadosEnviar: (m) => ipcRenderer.invoke('privados:enviar', m),
+  privadosLeer: (con, tope) => ipcRenderer.invoke('privados:leer', con, tope),
+  privadosConversaciones: () => ipcRenderer.invoke('privados:conversaciones'),
+  privadosBloquear: (a, si) => ipcRenderer.invoke('privados:bloquear', a, si),
+  privadosBloqueados: () => ipcRenderer.invoke('privados:bloqueados'),
+  privadosBorrarTodo: () => ipcRenderer.invoke('privados:borrar-todo'),
   marcadorGuardar: (record) => ipcRenderer.invoke('marcador:guardar', record),
   onChatEvent: (cb) => ipcRenderer.on('chat:event', (_e, evt) => cb(evt)),
   setChatName: (name) => ipcRenderer.send('chat:set-name', name),
