@@ -45,7 +45,25 @@ export function buildTalkPanel(handlers) {
   aviso.className = 'muted';
   el.appendChild(aviso);
 
+  // Un chat se lee por abajo: lo último dicho es lo que interesa ver. Pero sólo
+  // se arrastra al fondo a quien YA estaba en el fondo — si has subido a releer
+  // algo, un mensaje nuevo no debe devolverte de un tirón.
+  const HOLGURA = 24;   // píxeles que se dan por buenos como «está al final»
+
+  const estaAlFondo = () => {
+    // Sin montar todavía no hay alturas que medir, y entonces la respuesta es
+    // que sí: al abrir se quiere el final.
+    if (!lista.clientHeight) return true;
+    return lista.scrollHeight - lista.scrollTop - lista.clientHeight <= HOLGURA;
+  };
+  const irAlFondo = () => { lista.scrollTop = lista.scrollHeight; };
+
   const pintar = () => {
+    // Se mira ANTES de vaciar: la lista se reconstruye entera, y al vaciarla el
+    // navegador pierde el scroll y ya no hay forma de saber dónde estabas.
+    const seguirAbajo = estaAlFondo();
+    const donde = lista.scrollTop;
+
     const mensajes = historial.todos();
     lista.textContent = '';
     if (!mensajes.length) {
@@ -56,8 +74,8 @@ export function buildTalkPanel(handlers) {
       return;
     }
     for (const m of mensajes) lista.appendChild(linea(m));
-    // Lo último dicho es lo que interesa ver.
-    lista.scrollTop = lista.scrollHeight;
+    if (seguirAbajo) irAlFondo();
+    else lista.scrollTop = donde;
   };
   pintar();
 
@@ -110,7 +128,11 @@ export function buildTalkPanel(handlers) {
     dejarDeEscuchar();
   }, { once: true });
 
-  setTimeout(() => input.focus(), 0);
+  // El panel se construye ANTES de meterlo en el DOM (lo monta `mountPanel`),
+  // y hasta entonces la lista no tiene alturas: `scrollTop` no se puede mover y
+  // se quedaba callado. Por eso el chat se abría siempre por el primer mensaje
+  // aunque `pintar` mandara ir al fondo. En cuanto está montado, al fondo.
+  setTimeout(() => { irAlFondo(); input.focus(); }, 0);
   return { el };
 }
 

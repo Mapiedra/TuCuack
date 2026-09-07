@@ -408,6 +408,9 @@ export async function arrancarPato(plataforma) {
       verStats: () => { const p = duckAnchor(); openStats(p.x, p.y); },
       verConectados: () => { const p = duckAnchor(); openOnline(p.x, p.y); },
       verHablar: () => { const p = duckAnchor(); openTalk(p.x, p.y); },
+      // Para poder llenar el chat desde una sonda sin red: `sembrar` es lo
+      // mismo que usa el puente de la extensión.
+      historial,
       verAjustes: () => { const p = duckAnchor(); openSettings(p.x, p.y); },
       level,
       // Por `_sumar` y no tocando `level.xp` a pelo: así se emiten los eventos
