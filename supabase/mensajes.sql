@@ -9,6 +9,25 @@
 -- `security definer` donde el dueño se DERIVA del secreto.
 --
 --
+-- Sobre los avisos del panel
+-- --------------------------
+--
+-- El linter de Supabase avisa de que estas funciones son `security definer` y
+-- que las puede ejecutar `anon`. **Sale a propósito**, y es el mismo aviso que
+-- ya explica `records.sql`: estas funciones SON la puerta, y quien llama es el
+-- pato, que se conecta como `anon`. Quitarles el `execute` las deja
+-- inservibles; ponerlas en `security invoker` las deja sin permiso sobre su
+-- propia tabla. Lo que las hace seguras no es quién puede llamarlas, sino que
+-- sin el secreto no devuelven ni tocan nada de nadie.
+--
+-- Lo que NO debe salir es «Function Search Path Mutable». Toda función de este
+-- fichero fija su `search_path`, incluidas las auxiliares de una línea: sin
+-- eso, quien pueda crear objetos en su propio esquema podría secuestrar los
+-- nombres sin cualificar. A las auxiliares se les quita además el `execute`
+-- público, que por defecto lo tienen: sólo las llaman las de aquí dentro, y
+-- ésas corren como el dueño.
+--
+--
 -- Lo que esto cambia, y hay que decirlo en voz alta
 -- -------------------------------------------------
 --
@@ -75,15 +94,18 @@ create extension if not exists pgcrypto with schema extensions;
 
 /** Cuántos mensajes se guardan de cada conversación. */
 create or replace function public.tope_conversacion()
-returns integer language sql immutable as $$ select 200 $$;
+returns integer language sql immutable set search_path = '' as $$ select 200 $$;
+revoke all on function public.tope_conversacion() from public;
 
 /** Cuántos días se guardan. Lo que pase de aquí se borra solo (ver abajo). */
 create or replace function public.dias_de_mensajes()
-returns integer language sql immutable as $$ select 90 $$;
+returns integer language sql immutable set search_path = '' as $$ select 90 $$;
+revoke all on function public.dias_de_mensajes() from public;
 
 /** Cuántos mensajes por minuto puede mandar un remitente, en total. */
 create or replace function public.tope_por_minuto()
-returns integer language sql immutable as $$ select 20 $$;
+returns integer language sql immutable set search_path = '' as $$ select 20 $$;
+revoke all on function public.tope_por_minuto() from public;
 
 
 -- --------------------------------------------------------------- La tabla --
@@ -157,9 +179,17 @@ revoke all on public.bloqueos from anon, authenticated;
 
 /** El hilo de dos direcciones, siempre igual las pongas como las pongas. */
 create or replace function public.hilo_de(a text, b text)
-returns text language sql immutable as $$
+returns text language sql immutable
+-- `search_path` vacío: `least`, `greatest` y `||` salen de `pg_catalog`, que se
+-- busca igualmente, así que no queda ningún nombre que secuestrar.
+set search_path = ''
+as $$
   select least(a, b) || ':' || greatest(a, b)
 $$;
+
+-- Sólo la llaman las funciones de aquí, que corren como el dueño: no tiene por
+-- qué estar publicada como RPC.
+revoke all on function public.hilo_de(text, text) from public;
 
 drop function if exists public.enviar_mensaje(text, text, text, text);
 drop function if exists public.enviar_mensaje(text, text, text, text, text);

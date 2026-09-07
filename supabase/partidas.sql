@@ -10,6 +10,25 @@
 -- lo que cambia.
 --
 --
+-- Sobre los avisos del panel
+-- --------------------------
+--
+-- El linter de Supabase avisa de que estas funciones son `security definer` y
+-- que las puede ejecutar `anon`. **Sale a propósito**, y es el mismo aviso que
+-- ya explica `records.sql`: estas funciones SON la puerta, y quien llama es el
+-- pato, que se conecta como `anon`. Quitarles el `execute` las deja
+-- inservibles; ponerlas en `security invoker` las deja sin permiso sobre su
+-- propia tabla. Lo que las hace seguras no es quién puede llamarlas, sino que
+-- sin el secreto no devuelven ni tocan nada de nadie.
+--
+-- Lo que NO debe salir es «Function Search Path Mutable». Toda función de este
+-- fichero fija su `search_path`, incluidas las auxiliares de una línea: sin
+-- eso, quien pueda crear objetos en su propio esquema podría secuestrar los
+-- nombres sin cualificar. A las auxiliares se les quita además el `execute`
+-- público, que por defecto lo tienen: sólo las llaman las de aquí dentro, y
+-- ésas corren como el dueño.
+--
+--
 -- Qué se guarda, y qué no
 -- -----------------------
 --
@@ -113,7 +132,15 @@ revoke all on public.partidas from anon, authenticated;
 -- Cuántas partidas se le guardan a cada uno. Con veinte por pantalla, cien es
 -- historial de sobra y son unos 15 KB por dueño.
 create or replace function public.tope_historial_partidas()
-returns integer language sql immutable as $$ select 100 $$;
+returns integer language sql immutable
+-- Aunque no devuelva más que un número: sin `search_path` fijo, el linter avisa
+-- con razón. Vacío basta — aquí no se resuelve ningún nombre.
+set search_path = ''
+as $$ select 100 $$;
+
+-- Y sin `execute` para nadie de fuera: sólo la llaman las funciones de este
+-- fichero, que corren como el dueño. Por defecto se crea abierta a todos.
+revoke all on function public.tope_historial_partidas() from public;
 
 drop function if exists public.guardar_partida(text, text, text, text, text, integer);
 
