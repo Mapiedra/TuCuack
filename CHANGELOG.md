@@ -7,6 +7,57 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.31.0] - 2026-09-07
+
+### Añadido
+
+- **✉️ Privados.** Mensajes a **una** persona, desde el menú de la mascota o con
+  el sobre de cada pato en **Conectados**.
+
+  No son el chat, y la diferencia importa lo bastante como para que la propia
+  pantalla la explique antes de que escribas nada: el chat es un canal común, lo
+  ve todo el mundo y **no se guarda en ningún servidor**; un privado va a una
+  sola persona y **sí se guarda**, porque si no, no le llegaría cuando no está
+  conectada.
+
+  Va **sin cifrar**, y quien administra el servidor puede leerlo. No es un
+  descuido: sin intercambio de claves y con identidades que son un fichero de
+  ajustes, el cifrado extremo a extremo daría una sensación de privacidad que el
+  diseño no puede sostener, y eso es peor que no darla. Se guardan los 200
+  últimos de cada conversación y nada de más de 90 días, y puedes borrar todo lo
+  tuyo de una vez —el hilo entero, no tu mitad—.
+
+  Para que te escriban hace falta una dirección, y es el mismo `sha256` del
+  secreto que ya te identifica en el marcador, anunciado ahora en la presencia
+  del canal. Es un hash y no revela nada, pero te representa **sólo mientras no
+  borres tus ajustes**, igual que tus récords.
+
+  Y como cualquiera puede escribirte, el servidor limita a 20 mensajes por
+  minuto y por remitente, y hay lista de bloqueados. Las dos cosas se comprueban
+  en el servidor y no en la mascota, donde serían un adorno. **Bloquear no se
+  nota desde el otro lado**: a quien escribe se le dice «enviado» igual, a
+  propósito.
+
+  Contra una mascota anterior a esta versión no se puede: el sobre sencillamente
+  no sale, en vez de fallar en silencio.
+
+### Corregido
+
+- **Las funciones auxiliares de la base de datos fijan su `search_path`** y
+  dejan de estar publicadas como API. No las llamaba nadie de fuera —sólo las
+  funciones de sus mismos ficheros, que corren como el dueño— así que sobraba
+  tenerlas abiertas.
+
+### Notas
+
+- Esta versión estrena dos tablas en Supabase. Quien tenga su propia instancia
+  tiene que ejecutar [`supabase/mensajes.sql`](supabase/mensajes.sql) en el
+  editor SQL del panel; es idempotente y no toca las tablas que ya haya. Sin
+  ellas, la pantalla dice que no se ha podido consultar y el resto de la app
+  funciona con normalidad.
+- El chat común **no cambia en nada**: los privados van por otro sitio, no por
+  el canal, y una mascota sin actualizar sigue conversando y jugando igual.
+
 ## [0.30.0] - 2026-09-07
 
 ### Añadido
