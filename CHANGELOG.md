@@ -7,6 +7,40 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.30.0] - 2026-09-07
+
+### Añadido
+
+- **⚔️ Tus partidas.** El historial de las partidas jugadas **contra otras
+  mascotas**: contra quién, cómo acabó, la marca de aquel día y cuándo fue. Está
+  en **Juegos**, junto a «Tus récords» y «Marcador global».
+
+  Las partidas contra tu propia mascota no entran: de ésas ya lleva la cuenta
+  «Tus récords», y lo que aquí tiene valor es contra quién jugaste.
+
+  Se guardan en el mismo sitio que el marcador, pero **sólo las ves tú**: el
+  marcador es una tabla de máximas y se lee entera; con quién juegas y cuándo,
+  no. Leer el historial exige el secreto que vive en tus ajustes, así que
+  perderlos es perderlo, igual que pasa con tus récords.
+
+  Cada mascota apunta su propia fila con el nombre de la otra dentro, de modo
+  que no hay una verdad compartida que defender sino el cuaderno de cada cual. Y
+  el servidor recorta a las cien últimas por dueño, así que esto no crece sin
+  fin.
+
+  **Las jugadas no se guardan**, y no es un olvido: está razonado en
+  [`supabase/partidas.sql`](supabase/partidas.sql).
+
+### Notas
+
+- Esta versión estrena una tabla en Supabase. Quien tenga su propia instancia
+  tiene que ejecutar [`supabase/partidas.sql`](supabase/partidas.sql) en el
+  editor SQL del panel; es idempotente y no toca nada de lo que ya haya. Sin
+  ella, el panel dice que no se ha podido consultar y el resto de la app
+  funciona con normalidad.
+- Una mascota con esta versión y otra sin ella siguen jugando entre sí
+  exactamente igual: el historial es cosa de cada una y no viaja por el canal.
+
 ## [0.29.0] - 2026-09-07
 
 ### Añadido
