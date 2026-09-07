@@ -18,6 +18,9 @@ import { crearGestorDeSalas } from './salas.js';
  * @param {number} [opciones.perdida=0]     proporción de mensajes que se tiran (0..1)
  * @param {number} [opciones.jugadas=6]     cuántas jugadas se intercambian
  * @param {boolean} [opciones.revancha]     al acabar, los dos piden otra
+ * @param {boolean} [opciones.rivalAntiguo] B no sabe de canales por sala: ni los
+ *   anuncia ni los abre. Es el pato que no se ha actualizado, y la partida tiene
+ *   que jugarse igual por el canal común.
  * @param {number} [opciones.tope=15000]    ms antes de darlo por colgado
  * @returns {Promise<Object>} informe
  */
@@ -33,6 +36,16 @@ export function probarSalas(opciones = {}) {
   const claveB = 'k-b';
 
   const cuenta = { enviados: 0, perdidos: 0, entregados: 0, reenvios: 0, sincros: 0 };
+  // Por dónde ha salido cada mensaje, y cuántos se han emitido en un canal donde
+  // el otro no estaba. Lo segundo es lo que de verdad hay que vigilar: un canal
+  // por sala mal sincronizado no da error, sencillamente deja la partida
+  // hablando sola.
+  const porCanal = { global: 0, sala: 0, aNadie: 0 };
+  /** Quién mandó qué al vacío, para poder mirarlo cuando no cuadre. */
+  const aNadieDetalle = [];
+  /** En qué sala está cada lado, o null. Es lo que decide por dónde sale y a
+   *  quién le llega, igual que en el transporte de verdad. */
+  const enSala = { A: null, B: null };
   const relojes = [];
   /** Los gestores esperan el `cadaCierto` del pato; aquí se lleva la cuenta para
    *  poder pararlos todos al terminar. */
@@ -46,29 +59,60 @@ export function probarSalas(opciones = {}) {
   let gestorB = null;
 
   // El tubo. Cada mensaje sale con retardo, y a veces no sale.
-  const tubo = (haciaB) => ({
-    enviar(m) {
-      cuenta.enviados++;
-      if (m.t === 'pedir-sincro') cuenta.sincros++;
-      // Un mensaje con la misma secuencia que otro ya enviado es un reenvío.
-      if (m.n && enviadosPorN.has(`${haciaB}:${m.t}:${m.n}`)) cuenta.reenvios++;
-      else if (m.n) enviadosPorN.add(`${haciaB}:${m.t}:${m.n}`);
+  //
+  // Y sale POR UN CANAL: por el de la sala si quien emite está dentro de esa
+  // sala, y por el común si no. Al entregar se comprueba que el destinatario
+  // también esté en ese canal — que es justo lo que no se puede dar por hecho y
+  // lo único capaz de destapar una partida que se ha quedado hablando sola.
+  const tubo = (haciaB) => {
+    const mio = haciaB ? 'A' : 'B';
+    const suyo = haciaB ? 'B' : 'A';
+    return {
+      enviar(m, porSala) {
+        cuenta.enviados++;
+        if (m.t === 'pedir-sincro') cuenta.sincros++;
+        // Un mensaje con la misma secuencia que otro ya enviado es un reenvío.
+        if (m.n && enviadosPorN.has(`${haciaB}:${m.t}:${m.n}`)) cuenta.reenvios++;
+        else if (m.n) enviadosPorN.add(`${haciaB}:${m.t}:${m.n}`);
 
-      if (Math.random() < perdida) { cuenta.perdidos++; return true; }
-      setTimeout(() => {
-        cuenta.entregados++;
-        const destino = haciaB ? gestorB : gestorA;
-        // El transporte real rellena estos tres; aquí se hace lo mismo.
-        const llega = { ...m, deClave: haciaB ? claveA : claveB, de: haciaB ? yoA.id : yoB.id, ts: Date.now() };
-        if (destino) destino.recibir(llega);
-      }, latencia);
-      return true;
-    }
-  });
+        // Por dónde sale lo dice quien manda, igual que en el transporte de
+        // verdad. Y se comprueba que de verdad esté dentro: mandar por el canal
+        // de una sala en la que no se ha entrado es un fallo, no una opción.
+        const canal = (porSala && enSala[mio] === m.sala) ? 'sala' : 'global';
+        porCanal[canal]++;
+
+        if (Math.random() < perdida) { cuenta.perdidos++; return true; }
+        setTimeout(() => {
+          // Emitido en un canal donde el otro no está: nadie lo oye. No es una
+          // pérdida de red, es un fallo de sincronización.
+          if (canal === 'sala' && enSala[suyo] !== m.sala) {
+            porCanal.aNadie++;
+            aNadieDetalle.push(`${mio}:${m.t}`);
+            return;
+          }
+          cuenta.entregados++;
+          const destino = haciaB ? gestorB : gestorA;
+          // El transporte real rellena estos tres; aquí se hace lo mismo.
+          const llega = { ...m, deClave: haciaB ? claveA : claveB, de: haciaB ? yoA.id : yoB.id, ts: Date.now() };
+          if (destino) destino.recibir(llega);
+        }, latencia);
+        return true;
+      },
+      entrar(salaId) { enSala[mio] = String(salaId); },
+      salir() { enSala[mio] = null; },
+      // B con `rivalAntiguo` es un pato sin actualizar: ni sabe abrir canales
+      // ni lo anuncia. Las dos cosas van juntas porque en el pato de verdad
+      // salen del mismo sitio, la carcasa.
+      puedeSala: () => !(opciones.rivalAntiguo && mio === 'B')
+    };
+  };
   const enviadosPorN = new Set();
 
-  const presentesParaA = () => [{ clave: claveB, nombre: yoB.nombre, id: yoB.id }];
-  const presentesParaB = () => [{ clave: claveA, nombre: yoA.nombre, id: yoA.id }];
+  // Lo que cada uno anuncia saber hacer. Es lo que mira el anfitrión para
+  // decidir por dónde se juega, y nunca el número de versión.
+  const capsDeB = opciones.rivalAntiguo ? [] : ['sala'];
+  const presentesParaA = () => [{ clave: claveB, nombre: yoB.nombre, id: yoB.id, caps: capsDeB }];
+  const presentesParaB = () => [{ clave: claveA, nombre: yoA.nombre, id: yoA.id, caps: ['sala'] }];
 
   gestorA = crearGestorDeSalas({
     transporte: tubo(true), yo: () => yoA, rivales: presentesParaA,
@@ -106,6 +150,11 @@ export function probarSalas(opciones = {}) {
         jugadasEnviadas: { A: jugadasA, B: jugadasB },
         jugadasRecibidas: { A: recibidasA, B: recibidasB },
         cuenta,
+        porCanal,
+        aNadieDetalle,
+        // Al terminar los dos tienen que haber soltado el canal de la partida.
+        // Quedarse dentro es una fuga: canales muertos acumulándose.
+        salaAlFinal: { A: enSala.A, B: enSala.B },
         sucesos: sucesos.slice(0, 24)
       });
     };
@@ -124,8 +173,11 @@ export function probarSalas(opciones = {}) {
         // Empieza el anfitrión.
         turno();
       }
-      // El fin llega antes que su motivo: se deja pasar un latido para recogerlo.
-      if (s.tipo === 'fin') setTimeout(comprobar, 20);
+      // El fin llega antes que su motivo: se deja pasar un latido para
+      // recogerlo. Y lo bastante como para que la despedida cruce el tubo: con
+      // 20 ms la prueba terminaba antes de que B se enterara de nada, y por eso
+      // nunca se veía si el otro lado soltaba el canal de la partida.
+      if (s.tipo === 'fin') setTimeout(comprobar, latencia * 3 + 60);
     });
 
     gestorB.alCambiar((s) => {
@@ -195,7 +247,10 @@ export function probarSalas(opciones = {}) {
       });
     }
 
-    gestorA.retar({ clave: claveB, nombre: yoB.nombre, id: yoB.id }, 'tresenraya');
+    // Con `caps`, como el rival de verdad: es lo que mira el anfitrión para
+    // decidir si la partida se va a su propio canal. Sin esto la prueba pasaba
+    // igual... jugando siempre por el común, que es justo lo que no se quería.
+    gestorA.retar({ clave: claveB, nombre: yoB.nombre, id: yoB.id, caps: capsDeB }, 'tresenraya');
     setTimeout(() => terminar({ ok: false, motivo: 'colgada' }), tope);
   });
 }

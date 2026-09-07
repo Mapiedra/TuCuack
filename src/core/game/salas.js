@@ -17,8 +17,28 @@
 import * as P from './protocolo.js';
 
 /**
+ * Los dos mensajes del saludo van SIEMPRE por el canal común.
+ *
+ * No es un detalle: cuando se reta, el invitado todavía no está en ninguna sala,
+ * y cuando contesta, el anfitrión tampoco. Mandar el saludo por el canal de la
+ * partida es hablarle a una habitación vacía — y como el reto y la respuesta se
+ * reintentan hasta que los confirmen, la partida no fallaba: se quedaba colgada
+ * insistiendo.
+ *
+ * Va aquí arriba y no dentro del gestor porque el gestor DEVUELVE su API antes
+ * de llegar al final del fichero: todo lo que hay por debajo son declaraciones
+ * de función, que se izan, y un `const` ahí se queda en la zona muerta para
+ * siempre. Que es exactamente lo que pasó.
+ */
+const SALUDO = [P.TIPOS.RETO, P.TIPOS.RESPUESTA];
+
+/**
  * @param {Object} opciones
- * @param {{enviar:(m:object)=>boolean}} opciones.transporte
+ * @param {{enviar:(m:object)=>boolean, entrar?:(salaId:string)=>void,
+ *          salir?:()=>void, puedeSala?:()=>boolean}} opciones.transporte
+ *   `entrar` y `salir` mueven la partida a un canal propio; `puedeSala` dice si
+ *   esta carcasa sabe hacerlo. Los tres son opcionales: sin ellos se juega por
+ *   el canal común, que es como se ha jugado siempre.
  * @param {() => {id:string, nombre:string}} opciones.yo
  * @param {() => Array<{clave:string, nombre:string, id:string}>} opciones.rivales
  * @param {() => boolean} opciones.hayCanal
@@ -118,9 +138,19 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
     if (sala && sala.fase !== 'terminada') return false;
 
     sala = nuevaSala(P.nuevaSala(), juegoId, rival, true, 'invitando');
+    // Por dónde va la partida se decide AQUÍ y una sola vez, mirando lo que el
+    // rival anuncia saber hacer. Viaja en el reto y el invitado obedece: si se
+    // decidiera en cada punta, uno podría acabar hablando a un canal vacío.
+    sala.via = cabeEnSuCanal(rival) ? 'sala' : 'global';
+    // Y NO se entra todavía: el reto y su respuesta van por el canal común
+    // porque el invitado aún no está en ninguna sala. Se entra al saber que
+    // acepta (ver `recibirRespuesta`).
     mandarSeguro(P.sobre(P.TIPOS.RETO, sala.id, rival.clave, {
       juego: juegoId,
-      nombre: yo().nombre
+      nombre: yo().nombre,
+      // RETIRAR: cuando ningún pato en circulación ignore este campo, el reto
+      // podrá dar por hecho el canal propio y dejar de anunciarlo.
+      via: sala.via
     }));
     sala.caduca = Date.now() + P.RETO_MS;
     avisar({ tipo: 'retando', sala });
@@ -136,6 +166,14 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
     if (sala && sala.fase !== 'terminada') { rechazarPorOcupado(reto); return false; }
 
     sala = nuevaSala(reto.sala, reto.juego, reto.rival, false, 'esperando-inicio');
+    // Lo dicho por el anfitrión, sin volver a decidirlo: él ya miró si los dos
+    // sabemos, y quien reparte tiene que ser uno solo.
+    //
+    // Se entra AHORA, antes de contestar, para estar escuchando cuando llegue
+    // el inicio. La respuesta en sí sale por el común igualmente: el anfitrión
+    // todavía no está dentro.
+    sala.via = reto.via === 'sala' ? 'sala' : 'global';
+    if (sala.via === 'sala') entrarEnSuCanal(sala.id);
     mandarSeguro(P.sobre(P.TIPOS.RESPUESTA, sala.id, reto.rival.clave, {
       ok: true, nombre: yo().nombre
     }));
@@ -210,6 +248,11 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
     sala.n = mensajes.reduce((alto, m) => Math.max(alto, m.n || 0), 0);
     sala.semilla = Number(inicio.d.semilla) || 1;
     sala.jugadores = Array.isArray(inicio.d.jugadores) ? inicio.d.jugadores.slice(0, 8) : [];
+    // Por dónde iba la partida. Sale del inicio y no de preguntárselo a nadie:
+    // quien mantiene el canal es el service worker, que sigue dentro de la sala
+    // desde antes de la mudanza, pero este pato acaba de nacer y no lo sabría.
+    // Sin esto, mandaría sus jugadas al canal común y el rival no las oiría.
+    sala.via = inicio.d.via === 'sala' ? 'sala' : 'global';
 
     // Lo que ya se atendió no se vuelve a atender: el rival lleva reenviando su
     // última jugada desde que nos fuimos —nadie se la ha confirmado— y sin esto
@@ -399,7 +442,8 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
     mandarSeguro(P.sobre(P.TIPOS.INICIO, sala.id, sala.rival.clave, {
       juego: sala.juego,
       jugadores: sala.jugadores,
-      semilla: sala.semilla
+      semilla: sala.semilla,
+      via: sala.via
     }, sala.n));
     avisar({ tipo: 'empieza', sala, revancha: true });
   }
@@ -427,7 +471,39 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
     sala.motivoFin = motivo;
     pendientes.clear();
     cola.length = 0;
+    // Se sale del canal de la partida SIEMPRE, sin mirar `sala.via`: salir de
+    // donde no se estaba no cuesta nada, y así una sala rehecha tras mudarse de
+    // pestaña también deja el canal cerrado aunque se equivocara al deducir por
+    // dónde iba.
+    //
+    // Aquí y no después de avisar porque a estas alturas ya no puede salir nada
+    // más por esta sala: la cola está vacía y la fase es 'terminada'. La
+    // despedida, que es lo único que importaba entregar, ya salió por `mandarYa`.
+    if (transporte.salir) {
+      try { transporte.salir(); } catch (err) { console.warn('[sala] no se pudo salir del canal', err); }
+    }
     avisar({ tipo: 'fin', sala, motivo });
+  }
+
+  // ---- El canal de la partida --------------------------------------------
+
+  /**
+   * ¿Esta partida puede irse a un canal para ella sola?
+   *
+   * Hacen falta las dos puntas: que esta carcasa sepa abrir canales y que el
+   * rival lo anuncie en su presencia. Se pregunta por la capacidad y nunca por
+   * la versión — un pato que no la anuncie juega por el canal común igual que
+   * siempre, sin ninguna rama que lo trate como a un caso raro.
+   */
+  function cabeEnSuCanal(rival) {
+    if (!transporte.entrar || !transporte.puedeSala || !transporte.puedeSala()) return false;
+    return !!rival && Array.isArray(rival.caps) && rival.caps.includes(P.CAP_SALA);
+  }
+
+  function entrarEnSuCanal(salaId) {
+    try { transporte.entrar(salaId); } catch (err) {
+      console.warn('[sala] no se pudo entrar en el canal de la partida', err);
+    }
   }
 
   // ---- Recepción ---------------------------------------------------------
@@ -500,12 +576,21 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
     };
     if (!rival.clave || !rival.id) return true;
 
-    const reto = { sala: m.sala, juego: String(m.d.juego || ''), rival, caduca: Date.now() + P.RETO_MS };
+    const reto = {
+      sala: m.sala,
+      juego: String(m.d.juego || ''),
+      rival,
+      // Un pato anterior a los canales por sala no manda `via`, y entonces esto
+      // queda en 'global': el camino de siempre, sin ningún caso especial.
+      via: (m.d && m.d.via) === 'sala' ? 'sala' : 'global',
+      caduca: Date.now() + P.RETO_MS
+    };
 
     // Retándose a la vez: gana el reto de quien tenga el id menor. Es
     // determinista y lo calculan igual los dos, así que no hace falta negociar.
     if (sala && sala.fase === 'invitando' && sala.rival.id === rival.id) {
       if (rival.id < yo().id) {
+        // No hay canal que soltar: al retar no se entra en ninguno.
         sala = null;
         retos.set(reto.sala, reto);
         avisar({ tipo: 'reto', reto });
@@ -538,10 +623,17 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
     // El anfitrión es `jugadores[0]`: el orden tiene que ser el mismo en los dos
     // lados, y es lo único que se decide una sola vez.
     sala.jugadores = [yo().nombre, sala.rival.nombre];
+    // Ha aceptado: ya hay partida, y a partir de aquí todo va por su canal. El
+    // invitado entró al aceptar, así que a estas alturas ya está dentro.
+    if (sala.via === 'sala') entrarEnSuCanal(sala.id);
     mandarSeguro(P.sobre(P.TIPOS.INICIO, sala.id, sala.rival.clave, {
       juego: sala.juego,
       jugadores: sala.jugadores,
-      semilla: sala.semilla
+      semilla: sala.semilla,
+      // Por dónde va la partida, otra vez. Es lo único que puede decírselo a un
+      // pato que se muda de pestaña y rehace la sala desde los mensajes
+      // guardados (ver `reanudar`), que no estaba cuando se retó.
+      via: sala.via
     }, 1));
     avisar({ tipo: 'empieza', sala });
     return true;
@@ -702,6 +794,12 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
 
   // ---- Salida ------------------------------------------------------------
 
+  /** ¿Este mensaje sale por el canal de la partida? */
+  function porSuCanal(m) {
+    if (!sala || sala.via !== 'sala' || sala.id !== m.sala) return false;
+    return !SALUDO.includes(m.t);
+  }
+
   function mandar(m) {
     cola.push(m);
     vaciarCola();
@@ -722,8 +820,9 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
    */
   function mandarYa(m) {
     rastro('→', m, 'despedida');
+    const porSala = porSuCanal(m);
     for (let i = 0; i < 3; i++) {
-      try { transporte.enviar(m); } catch (err) {
+      try { transporte.enviar(m, porSala); } catch (err) {
         console.warn('[sala] no salió la despedida', err);
         return;
       }
@@ -755,8 +854,11 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
       credito--;
       const m = cola.shift();
       try {
-        const fue = transporte.enviar(m);
-        rastro('→', m, fue === false ? 'NO SALIÓ' : '');
+        // Se decide al salir y no al encolar: entre una cosa y otra la partida
+        // ha podido cambiar de canal (al aceptarse el reto, sin ir más lejos).
+        const porSala = porSuCanal(m);
+        const fue = transporte.enviar(m, porSala);
+        rastro('→', m, (fue === false ? 'NO SALIÓ' : '') + (porSala ? ' [sala]' : ''));
       } catch (err) { console.warn('[sala] no salió', err); }
     }
   }
@@ -764,6 +866,9 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
   function nuevaSala(id, juego, rival, anfitrion, fase) {
     return {
       id, juego, rival, anfitrion, fase,
+      // Por dónde viajan los mensajes de esta partida: 'sala' (canal propio) o
+      // 'global'. Lo decide el anfitrión al retar y el invitado lo obedece.
+      via: 'global',
       n: 0,
       semilla: 0,
       jugadores: [],

@@ -166,7 +166,12 @@ export function conectarChat() {
   return {
     enviar: (msg) => enviarAlWorker({ tipo: 'enviar', msg }),
     enviarVisita: (visita) => enviarAlWorker({ tipo: 'visita', visita }),
-    enviarJuego: (mensaje) => enviarAlWorker({ tipo: 'juego', mensaje }),
+    enviarJuego: (mensaje, porSala) => enviarAlWorker({ tipo: 'juego', mensaje, porSala: !!porSala }),
+    // El canal privado de una partida. Lo abre el worker, que es quien tiene la
+    // conexión y lo único que sobrevive a que el pato se mude de pestaña.
+    entrarEnSala: (sala) => enviarAlWorker({ tipo: 'sala-entrar', sala }),
+    salirDeSala: () => enviarAlWorker({ tipo: 'sala-salir' }),
+    puedeSala: () => true,
     olvidarPartida: () => enviarAlWorker({ tipo: 'olvidar-partida' }),
     ponerNombre: (nombre) => enviarAlWorker({ tipo: 'nombre', nombre }),
     // Histórico: apuntar y decir hasta dónde se ha leído. Va por el puerto

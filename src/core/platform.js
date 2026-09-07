@@ -97,9 +97,25 @@ const CHAT_DESACTIVADO = {
   // Mandar el pato a la pantalla de otro. Va por el mismo canal que el chat,
   // pero en un evento aparte y con destinatario (ver core/visita/).
   enviarVisita: noop,
-  // Jugadas de una partida. Van por el mismo canal, en su propio evento y con
-  // destinatario, exactamente igual que las visitas (ver core/game/salas.js).
+  // Jugadas de una partida. Van en su propio evento y con destinatario,
+  // exactamente igual que las visitas (ver core/game/salas.js).
   enviarJuego: noop,
+
+  // El canal privado de una partida.
+  //
+  // Estando dentro, los mensajes de ESA sala salen por ahí en vez de por el
+  // canal común, y sólo los recibe quien juega. El reto sigue yendo por el
+  // común: hasta que alguien reta no hay sala a la que ir.
+  //
+  // Es cosa de la carcasa porque es cosa de la conexión, y la conexión no vive
+  // en el pato: está en el proceso principal de Electron o en el service worker
+  // de la extensión, que es además lo único que sobrevive a que el pato se mude
+  // de pestaña a mitad de partida.
+  entrarEnSala: noop,
+  salirDeSala: noop,
+  /** ¿Sabe esta carcasa abrir un canal por partida? Sin preguntarlo, el pato lo
+   *  intentaría igual y se quedaría hablándole a un canal en el que no está. */
+  puedeSala: () => false,
   // Sólo donde el canal viva fuera del pato: le dice que ya no hay partida que
   // guardar para la próxima pestaña.
   olvidarPartida: noop,

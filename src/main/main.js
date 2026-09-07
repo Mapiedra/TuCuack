@@ -220,8 +220,17 @@ ipcMain.on('chat:visit', (_evt, visita) => {
 
 // Partidas entre patos. No hace falta canal de vuelta: lo que llega viaja por
 // `chat:event`, como el resto de lo que pasa en el canal.
-ipcMain.on('juego:send', (_evt, mensaje) => {
-  if (chat && mensaje) chat.sendGame(mensaje);
+ipcMain.on('juego:send', (_evt, mensaje, porSala) => {
+  if (chat && mensaje) chat.sendGame(mensaje, porSala);
+});
+
+// El canal privado de una partida. Lo abre y lo cierra el gestor de salas del
+// pato; aquí sólo se le pasa el recado a quien tiene la conexión.
+ipcMain.on('juego:sala-entrar', (_evt, salaId) => {
+  if (chat) chat.entrarEnSala(salaId);
+});
+ipcMain.on('juego:sala-salir', () => {
+  if (chat) chat.salirDeSala();
 });
 
 // Nombre anunciado en la presencia del canal (para la comprobación de unicidad).

@@ -84,7 +84,9 @@ raya** contra el pato, que juega peor cuanto más bajo es tu nivel y deja de fal
 todo a partir del 10. Terminar una partida da experiencia, con un tope diario para que
 jugar en bucle no sea la vía rápida para subir; y jugar cansa al pato, así que uno
 agotado no juega. También se puede **retar a otro pato conectado** y jugar por turnos:
-las jugadas van por el mismo canal que el chat, dirigidas a él. Añadir un juego nuevo
+el reto sale por el canal común y, a partir de ahí, la partida se muda a un canal para
+los dos jugadores solos, de modo que las jugadas no le llegan a nadie más. Contra un
+pato que todavía no sepa hacerlo, se juega por el común como siempre. Añadir un juego nuevo
 son tres pasos y ningún cambio en el resto del código:
 [`docs/MINIJUEGOS.md`](docs/MINIJUEGOS.md).
 

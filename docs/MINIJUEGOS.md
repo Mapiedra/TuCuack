@@ -308,9 +308,21 @@ hacerse. Donde no hay barra (`ground` es 0) esto no hace nada.
 
 ## Partidas por red
 
-Las jugadas viajan por el **mismo canal que el chat**, en su propio evento y
-**dirigidas** a un pato concreto: exactamente igual que las visitas. Lo que va
-para otro se descarta en quien mantiene la conexión, sin llegar al pato.
+Las jugadas viajan en su propio evento y **dirigidas** a un pato concreto:
+exactamente igual que las visitas. Lo que va para otro se descarta en quien
+mantiene la conexión, sin llegar al pato.
+
+Y viajan por **un canal de la partida**, no por el común. El reto y su respuesta
+sí van por el común —al retar, el otro todavía no está en ninguna sala—, pero en
+cuanto acepta, los dos se meten en `sala:<id>` y ahí no hay nadie más. Antes iba
+todo por el canal común: con veinte patos conectados, los veinte recibían cada
+golpe de minigolf de una pareja ajena para descartarlo por su cuenta.
+
+Quién puede hacerlo se sabe por la **capacidad** que cada pato anuncia en la
+presencia (`caps: ['sala']`), nunca por su número de versión. Contra un pato que
+no la anuncie se juega por el canal común exactamente como antes: no hay ninguna
+rama que trate a los antiguos como un caso especial, sencillamente no hay
+capacidad y se toma el camino de siempre.
 
 Un juego no ve nada de eso. Recibe `ctx.sala` con tres cosas:
 

@@ -135,9 +135,12 @@ export class ChatClient {
   /**
    * Manda una jugada, un reto o cualquier otro mensaje de partida.
    * @param {{aClave:string, sala:string}} mensaje  lo compone game/protocolo.js
+   * @param {boolean} [porSala]  por el canal privado de la partida en vez de por
+   *   el común. Lo decide el gestor de salas, que es quien sabe si los dos
+   *   están dentro (ver `porSuCanal` en game/salas.js).
    * @returns {boolean} si ha salido de verdad
    */
-  enviarJuego(mensaje) {
+  enviarJuego(mensaje, porSala) {
     // Callarse aquí era lo peor: una jugada que no sale deja la partida colgada
     // sin que nadie sepa por qué. Si no puede salir, que al menos quede escrito.
     if (!this.connected) {
@@ -148,7 +151,7 @@ export class ChatClient {
       console.warn('[juego] no sale: falta el destinatario', mensaje);
       return false;
     }
-    this.canal.enviarJuego(mensaje);
+    this.canal.enviarJuego(mensaje, porSala);
     return true;
   }
 
@@ -156,6 +159,17 @@ export class ChatClient {
   olvidarPartida() {
     if (this.canal.olvidarPartida) this.canal.olvidarPartida();
   }
+
+  /**
+   * El canal privado de una partida: entrar y salir.
+   *
+   * Quien decide cuándo es el gestor de salas; aquí sólo se le pasa el recado a
+   * la carcasa, que es donde vive la conexión.
+   */
+  entrarEnSala(salaId) { this.canal.entrarEnSala(String(salaId || '')); }
+  salirDeSala() { this.canal.salirDeSala(); }
+  /** ¿Sabe esta carcasa abrir un canal por partida? */
+  puedeSala() { return !!(this.canal.puedeSala && this.canal.puedeSala()); }
 
   /**
    * Los patos con los que se puede jugar: los que anuncian identidad estable.

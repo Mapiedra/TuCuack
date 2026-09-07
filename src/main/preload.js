@@ -23,7 +23,11 @@ contextBridge.exposeInMainWorld('pato', {
   // Mandar el pato a la pantalla de otro.
   sendVisit: (visita) => ipcRenderer.send('chat:visit', visita),
   // Partidas entre patos: lo que llega vuelve por onChatEvent.
-  sendGame: (mensaje) => ipcRenderer.send('juego:send', mensaje),
+  // `porSala` dice si va por el canal privado de la partida o por el común; lo
+  // decide el gestor de salas (ver core/game/salas.js).
+  sendGame: (mensaje, porSala) => ipcRenderer.send('juego:send', mensaje, !!porSala),
+  entrarEnSala: (salaId) => ipcRenderer.send('juego:sala-entrar', salaId),
+  salirDeSala: () => ipcRenderer.send('juego:sala-salir'),
   // Esconder el pato en la bandeja, sin cerrarlo.
   hide: () => ipcRenderer.send('app:hide'),
   // Actualizaciones a mano.

@@ -1489,7 +1489,14 @@ function setupChat() {
 
 function setupSalas() {
   salas = crearGestorDeSalas({
-    transporte: { enviar: (m) => chat.enviarJuego(m) },
+    transporte: {
+      enviar: (m, porSala) => chat.enviarJuego(m, porSala),
+      // El canal privado de la partida. Lo abre y lo cierra la carcasa; aquí
+      // sólo se le dice cuándo (ver `cabeEnSuCanal` en game/salas.js).
+      entrar: (salaId) => chat.entrarEnSala(salaId),
+      salir: () => chat.salirDeSala(),
+      puedeSala: () => chat.puedeSala()
+    },
     yo: () => ({ id: chat.miId, nombre: duckName() }),
     rivales: () => chat.rivales(),
     hayCanal: () => chat.connected,
@@ -1497,9 +1504,13 @@ function setupSalas() {
     traza: !!config.isDev
   });
 
-  // Antes de que el chat suelte el puente: el aviso de abandono tiene que salir
-  // por él. Aun así, el otro extremo no depende de recibirlo.
-  alApagar(() => salas.cerrar());
+  // Cerrar la sala al apagar lo hace `apagar` directamente, y sólo cuando NO es
+  // una mudanza: en la extensión el pato se apaga y se vuelve a montar cada vez
+  // que cambias de pestaña, y ahí la partida sigue viva. Aquí había un
+  // `alApagar(() => salas.cerrar())` de más que se saltaba esa condición: la
+  // despedida no llegaba a salir de milagro —el puente ya estaba cerrado— pero
+  // la sala se daba por terminada igual, y con ella se soltaba el canal de la
+  // partida. Se quita, que lo de arriba ya lo hace y mejor.
 
   salas.alCambiar((s) => {
     if (s.tipo === 'reto') return llegaUnReto(s.reto);

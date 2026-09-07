@@ -68,7 +68,13 @@ export function crearPlataformaElectron() {
     chat: {
       enviar: (msg) => pato.sendChat(msg),
       enviarVisita: (v) => pato.sendVisit(v),
-      enviarJuego: (m) => pato.sendGame(m),
+      enviarJuego: (m, porSala) => pato.sendGame(m, porSala),
+      entrarEnSala: (salaId) => pato.entrarEnSala(salaId),
+      salirDeSala: () => pato.salirDeSala(),
+      // El proceso principal sabe abrir un canal por partida. Se dice aquí y no
+      // preguntándoselo por IPC porque no cambia nunca: es una propiedad de la
+      // carcasa, no un estado.
+      puedeSala: () => true,
       // En el escritorio el canal vive en el proceso main y el pato no se muda
       // a ninguna parte: no hay partida que guardar para nadie.
       ponerNombre: (n) => pato.setChatName(n),

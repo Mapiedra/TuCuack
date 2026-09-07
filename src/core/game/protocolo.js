@@ -39,9 +39,44 @@ export const AUSENTE_MS = 90000;         // sin señales del rival
 export const GRACIA_PRESENCIA_MS = 45000; // desaparecido de la lista de conectados
 export const SUSPENSION_MAX_MS = 180000;  // con el canal caído, se da por perdida
 
-/** Mensajes de juego por segundo que se permite emitir. El cliente Realtime
- *  admite 10 en total; se dejan 6 para el chat, que es lo que hay que proteger. */
+/**
+ * Mensajes de juego por segundo que se permite emitir.
+ *
+ * El presupuesto de emisión es del CLIENTE Realtime, no del canal: se declara al
+ * conectar (`eventsPerSecond`) y lo comparten todos los canales que cuelguen de
+ * esa misma conexión. Darle canal propio a la partida NO amplía el cupo, así que
+ * este número no sube por eso: siguen siendo 4 para el juego y 6 para el chat,
+ * que es lo que hay que proteger.
+ */
 export const RITMO_MAX = 4;
+
+// ---- El canal de la partida ----------------------------------------------
+//
+// Hasta 0.28 todo iba por el canal común: con veinte patos conectados, los
+// veinte recibían cada golpe de minigolf de una pareja ajena y lo descartaban
+// por su cuenta. Ahora los dos jugadores se van a un canal para ellos.
+//
+// El reto sigue saliendo por el común, porque hasta que alguien reta no hay
+// sala a la que ir. Y el nombre del canal se deriva del id de sala, que ya es
+// aleatorio y sólo conocen los dos.
+
+/**
+ * La capacidad que un pato anuncia en la presencia cuando sabe hacer esto.
+ *
+ * Se pregunta por la capacidad y NUNCA por el número de versión: contra un pato
+ * que no la anuncie se juega por el canal común, exactamente igual que antes,
+ * sin ningún caso especial para los antiguos.
+ *
+ * Ojo: las carcasas (src/main/chat.js y src/extension/sw.js) no pueden importar
+ * de aquí —una es CommonJS y la otra un service worker— y llevan esta misma
+ * cadena escrita a mano. Si cambia, cambia en los tres sitios.
+ */
+export const CAP_SALA = 'sala';
+
+/** Cómo se llama el canal de una sala. Lo mismo, a mano, en las dos carcasas. */
+export function canalDeSala(salaId) {
+  return `sala:${salaId}`;
+}
 
 // ---- Tipos de mensaje ----------------------------------------------------
 
@@ -72,6 +107,9 @@ export const TIPOS = {
  * @property {string} [deClave] la pone el transporte
  * @property {string} [de]      identidad estable del emisor; la pone el transporte
  * @property {number} n       secuencia dentro de la sala (0 antes de empezar)
+ * @property {object} [d.via]  sólo en el reto: 'sala' si la partida se juega en
+ *   su propio canal, o nada si va por el común. Es un campo AÑADIDO — un pato
+ *   anterior a esto lo ignora y `esValido` lo deja pasar sin mirarlo.
  * @property {string} mid     id del mensaje, para descartar duplicados
  * @property {object} d       datos propios del tipo
  */

@@ -32,6 +32,41 @@ let myId = '';
 /** Tope de un mensaje de partida. El más gordo previsible —un tablero de 10x10
  *  con su estado— ronda los 600 B, así que sobra por un factor de seis. */
 const TOPE_JUEGO = 4096;
+
+// ---- El canal de la partida ----------------------------------------------
+//
+// Hasta 0.28 las jugadas iban por el canal común: con veinte patos conectados,
+// los veinte recibían cada golpe de minigolf de una pareja ajena y lo
+// descartaban por su cuenta. Ahora, cuando los dos jugadores saben hacerlo, la
+// partida se muda a un canal para ella sola.
+//
+// El reto y su respuesta siguen yendo por el común, y no es un detalle: al
+// retar, el invitado no está todavía en ninguna sala. Quien decide qué sale por
+// dónde es el gestor de salas, que lo dice en cada envío (ver `porSuCanal` en
+// core/game/salas.js); aquí sólo se obedece.
+//
+// El nombre del canal es el mismo que en la extensión y en el núcleo
+// (core/game/protocolo.js, `canalDeSala`). Ese fichero no se puede importar
+// desde aquí —esto es CommonJS— y por eso la cadena está a mano.
+const CANAL_DE_SALA = (salaId) => `sala:${salaId}`;
+
+/** Lo que este pato anuncia saber hacer, para que el otro lo mire ANTES de
+ *  retar. Capacidades, nunca números de versión. */
+const CAPACIDADES = ['sala'];
+
+let canalSala = null;
+let salaActual = '';
+let salaSuscrita = false;
+let reintentoSala = null;
+/**
+ * Jugadas retenidas mientras el canal de la partida termina de suscribirse.
+ *
+ * Suscribirse tarda un viaje de ida y vuelta, y lo primero que se manda al
+ * entrar —el inicio de la partida— sale en el acto. Sin esta cola se perdía y
+ * había que esperar al reenvío: tres segundos de "conectando…" en cada partida.
+ */
+let colaDeSala = [];
+const TOPE_COLA_SALA = 30;
 // Si ya nos hemos anunciado en la presencia con el nombre actual. Repetir el
 // anuncio deja una entrada de más, y el pato sale duplicado en la lista de
 // conectados que ven los demás.
@@ -137,7 +172,7 @@ function initChat(getWin, initialName, patoId) {
      * quepa. Un mensaje de juego que no cabe es un error de programación, no una
      * condición de red, así que se dice en voz alta.
      */
-    sendGame(m) {
+    sendGame(m, porSala) {
       if (!channel || !connected || !m || !m.aClave) return false;
       const payload = { ...m, deClave: myKey, de: myId, ts: Date.now() };
       const bruto = JSON.stringify(payload);
@@ -145,9 +180,20 @@ function initChat(getWin, initialName, patoId) {
         console.warn(`[juego] mensaje descartado por tamaño (${bruto.length} B)`);
         return false;
       }
+      // Por el canal de la partida sólo si de verdad estamos en ESA sala. Si no
+      // cuadra, por el común: es de donde nunca falta nadie.
+      if (porSala && salaActual && m.sala === salaActual) {
+        emitirEnLaSala(payload);
+        return true;
+      }
       channel.send({ type: 'broadcast', event: 'juego', payload });
       return true;
     },
+
+    entrarEnSala: (salaId) => entrarEnSala(getWin, salaId),
+    salirDeSala,
+    /** El escritorio sabe abrir canales por partida. */
+    puedeSala: () => true,
 
     /** Actualiza el nombre anunciado en la presencia. */
     async setName(name) {
@@ -156,7 +202,7 @@ function initChat(getWin, initialName, patoId) {
       myName = nuevo;
       if (channel && connected) {
         try {
-          await channel.track({ name: myName, at: Date.now(), id: myId });
+          await channel.track({ name: myName, at: Date.now(), id: myId, caps: CAPACIDADES });
           anunciado = true;
         } catch (err) {
           console.error('[chat] no se pudo actualizar el nombre:', err);
@@ -316,6 +362,114 @@ function crearCanal(getWin) {
   return ch;
 }
 
+// --- El canal de la partida ----------------------------------------------
+
+/**
+ * Mete al pato en el canal privado de una partida.
+ *
+ * Idempotente: entrar donde ya se está no hace nada. Entrar en otra sala sale
+ * de la anterior, que es lo que hace falta cuando una partida sigue a otra.
+ */
+function entrarEnSala(getWin, salaId) {
+  const id = String(salaId || '').slice(0, 60);
+  if (!id || !supabase) return;
+  if (salaActual === id && canalSala) return;
+  salirDeSala();
+  salaActual = id;
+  canalSala = crearCanalDeSala(getWin, id);
+  suscribirSala(getWin);
+}
+
+/** Deja el canal de la partida. Vale aunque no se estuviera en ninguno. */
+function salirDeSala() {
+  if (reintentoSala) { clearTimeout(reintentoSala); reintentoSala = null; }
+  salaActual = '';
+  salaSuscrita = false;
+  colaDeSala = [];
+  if (!canalSala) return;
+  const iba = canalSala;
+  canalSala = null;
+  try {
+    if (supabase) supabase.removeChannel(iba);
+  } catch (err) {
+    console.warn('[juego] no se pudo soltar el canal de la partida:', err.message);
+  }
+}
+
+/**
+ * El canal de una sala: sólo broadcast, sin presencia.
+ *
+ * La presencia sigue viviendo en el canal común y es la única: la dirección de
+ * un pato (`aClave`) es su clave allí, y aquí se sigue filtrando por ella igual
+ * que en el común. Sólo estamos los dos, así que el filtro no quita casi nada;
+ * se mantiene porque es exactamente el mismo camino que ya se sabe que funciona.
+ */
+function crearCanalDeSala(getWin, salaId) {
+  const ch = supabase.channel(CANAL_DE_SALA(salaId), {
+    config: { broadcast: { self: false } }
+  });
+  ch.on('broadcast', { event: 'juego' }, ({ payload }) => {
+    if (!payload || payload.aClave !== myKey) return;
+    notify(getWin, { type: 'juego', mensaje: payload });
+  });
+  return ch;
+}
+
+function suscribirSala(getWin) {
+  if (!canalSala) return;
+  const mia = salaActual;
+  canalSala.subscribe((status, err) => {
+    // La sala pudo cambiar mientras se suscribía: lo que diga un canal viejo ya
+    // no va con nosotros.
+    if (mia !== salaActual) return;
+    if (status === 'SUBSCRIBED') {
+      salaSuscrita = true;
+      console.log(`[juego] canal de la partida "${mia}": conectado`);
+      vaciarColaDeSala();
+      return;
+    }
+    salaSuscrita = false;
+    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+      console.log(`[juego] canal de la partida: ${status}${err ? ` (${describirError(err)})` : ''}`);
+      // Se reintenta a ritmo fijo y sin rendirse: mientras haya partida, quedarse
+      // fuera del canal es quedarse sin partida. El gestor de salas tiene sus
+      // propios plazos para darla por perdida si esto no se arregla.
+      if (!reintentoSala) {
+        reintentoSala = setTimeout(() => {
+          reintentoSala = null;
+          if (!salaActual || !supabase) return;
+          const id = salaActual;
+          salirDeSala();
+          entrarEnSala(getWin, id);
+        }, 3000);
+      }
+    }
+  });
+}
+
+/** Emite en el canal de la partida, o lo guarda si aún no está suscrito. */
+function emitirEnLaSala(payload) {
+  if (canalSala && salaSuscrita) {
+    canalSala.send({ type: 'broadcast', event: 'juego', payload });
+    return;
+  }
+  colaDeSala.push(payload);
+  if (colaDeSala.length > TOPE_COLA_SALA) colaDeSala.shift();
+}
+
+function vaciarColaDeSala() {
+  if (!canalSala || !salaSuscrita) return;
+  const pendiente = colaDeSala;
+  colaDeSala = [];
+  for (const payload of pendiente) {
+    try {
+      canalSala.send({ type: 'broadcast', event: 'juego', payload });
+    } catch (err) {
+      console.warn('[juego] no salió una jugada retenida:', err.message);
+    }
+  }
+}
+
 // --- Conexión con reintentos ---------------------------------------------
 //
 // El canal puede caerse por algo ajeno a la app (una caída del servicio, la red
@@ -366,7 +520,7 @@ function suscribir(getWin) {
       // en la lista de conectados de todos los demás.
       if (!anunciado) {
         try {
-          await channel.track({ name: myName, at: Date.now(), id: myId });
+          await channel.track({ name: myName, at: Date.now(), id: myId, caps: CAPACIDADES });
           anunciado = true;
         } catch (e) {
           console.error('[chat] no se pudo anunciar la presencia:', e);
@@ -415,6 +569,15 @@ function programarReintento(getWin) {
       }
       channel = crearCanal(getWin);
       suscribir(getWin);
+      // El canal de la partida cuelga del mismo socket: si se ha rehecho el
+      // cliente entero, el suyo se ha ido con él y hay que volver a entrar. Sin
+      // esto, una reconexión a mitad de partida dejaba al pato mandando jugadas
+      // a un canal que ya no existía.
+      if (salaActual) {
+        const id = salaActual;
+        salirDeSala();
+        entrarEnSala(getWin, id);
+      }
     } catch (e) {
       console.error('[chat] fallo al reconectar:', e.message);
       programarReintento(getWin);
@@ -427,6 +590,9 @@ function disabledChat() {
     send() { return false; },
     sendVisit() { return false; },
     sendGame() { return false; },
+    entrarEnSala() {},
+    salirDeSala() {},
+    puedeSala: () => false,
     async setName() {},
     names: () => [],
     presentes: () => [],
@@ -462,7 +628,15 @@ function presentes() {
         // versión que se anunciaba de más.
         if (!m || !m.name || vistos.has(key)) continue;
         vistos.add(key);
-        out.push({ clave: String(key), nombre: String(m.name), id: String(m.id || '') });
+        out.push({
+          clave: String(key),
+          nombre: String(m.name),
+          id: String(m.id || ''),
+          // Lo que ese pato dice saber hacer. Viene vacío si es de una versión
+          // anterior a las capacidades, y una lista vacía significa "el camino
+          // de siempre": ni un `if` especial para los antiguos.
+          caps: Array.isArray(m.caps) ? m.caps.slice(0, 8).map(String) : []
+        });
       }
     }
     return out;
