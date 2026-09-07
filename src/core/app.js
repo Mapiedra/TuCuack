@@ -18,7 +18,6 @@ import { showStatsTooltip, hideStatsTooltip } from './ui/tooltip.js';
 import { buildStatsView } from './ui/statsView.js';
 import { buildSkinsPanel } from './ui/skinsPanel.js';
 import { buildOnlinePanel } from './ui/onlinePanel.js';
-import { buildPrivadosPanel } from './ui/privadosPanel.js';
 import { Level } from './game/Level.js';
 import { SKINS, skinPorId, estaDesbloqueada, SKIN_POR_DEFECTO } from './game/skins.js';
 import { MINIJUEGOS, minijuegoPorId, nombreDeJuego, juegosDisponibles } from './game/minijuegos/index.js';
@@ -119,17 +118,49 @@ function enLaBarraDeTareas() {
   return raton.y >= window.innerHeight - duck.ground;
 }
 
+/**
+ * ¿Hace falta el ratón?
+ *
+ * Si arrastramos, si hay un panel abierto, o si el cursor está sobre el pato o
+ * una zona interactiva. En el overlay de escritorio eso decide si los clics
+ * atraviesan la ventana; donde el pato tiene documento propio, la plataforma lo
+ * ignora y sólo queda el cursor.
+ *
+ * Con una excepción por encima de todo lo demás: la barra de tareas. Arrastrar
+ * sí la mantiene —si no, soltar al pato sobre la barra sería soltarlo en el
+ * vacío—, pero un panel o una partida, no.
+ */
+function haceFaltaElRaton() {
+  return dragging || (!enLaBarraDeTareas() && (openOverlays.size > 0 || overHot));
+}
+
+/**
+ * Soltar el ratón se aplaza un tic; pedirlo, no.
+ *
+ * Ir de un panel a otro cierra el primero y abre el segundo en el mismo suspiro,
+ * y en ese hueco el conjunto de paneles se queda vacío. Soltando de inmediato,
+ * la ventana suelta el ratón y lo recupera un instante después — y al
+ * recuperarlo el sistema entrega un clic que el panel recién abierto lee como
+ * «han pulsado fuera» y se cierra solo. Se veía yendo de Conectados al chat: el
+ * panel aparecía y desaparecía, sin ningún error, una de cada cuatro veces.
+ *
+ * Un parpadeo de captura no es una transición: no significa nada y sí hace daño.
+ * Así que si en el mismo tic vuelve a hacer falta, no se suelta en ningún
+ * momento.
+ */
+let soltarElRaton = 0;
+
 function updateMouseCapture() {
-  // Hace falta el ratón si: arrastramos, hay un panel abierto, o el cursor está
-  // sobre el pato o una zona interactiva. En el overlay de escritorio eso decide
-  // si los clics atraviesan la ventana; donde el pato tiene documento propio, la
-  // plataforma lo ignora y sólo queda el cursor.
-  //
-  // Con una excepción por encima de todo lo demás: la barra de tareas. Arrastrar
-  // sí la mantiene —si no, soltar al pato sobre la barra sería soltarlo en el
-  // vacío—, pero un panel o una partida, no.
-  const capture = dragging || (!enLaBarraDeTareas() && (openOverlays.size > 0 || overHot));
-  api.capturarRaton(capture);
+  if (haceFaltaElRaton()) {
+    if (soltarElRaton) { clearTimeout(soltarElRaton); soltarElRaton = 0; }
+    api.capturarRaton(true);
+  } else if (!soltarElRaton) {
+    soltarElRaton = setTimeout(() => {
+      soltarElRaton = 0;
+      // Se vuelve a mirar: entre medias ha podido abrirse otro panel.
+      if (!haceFaltaElRaton()) api.capturarRaton(false);
+    }, 0);
+  }
   updateCursor();
 }
 
@@ -728,11 +759,6 @@ function openDuckMenu(x, y) {
   );
   // Y abajo, tras la raya, las dos que son sobre el pato y no con él. Van juntas
   // para que la última fila quede completa: Ajustes solo dejaba un hueco.
-  // Los privados van con las de "sobre el pato" y no con las de "con el pato":
-  // no es una cosa que hagas CON tu mascota, es tu correspondencia.
-  if (api.capacidades.privados) {
-    items.push({ label: '✉️ Privados', onClick: () => openPrivados(x, y) });
-  }
   items.push({ sep: true }, { label: '⚙️ Ajustes…', onClick: () => openSettings(x, y) });
   if (api.capacidades.ocultar) {
     // Esconderse, no cerrarse: vuelve desde la bandeja del sistema o desde el
@@ -910,7 +936,7 @@ function openOnline(x, y) {
     hayPrivados: !!api.capacidades.privados,
     onPrivado: (destino) => {
       unregisterOverlay(el);
-      openPrivados(x, y, destino.dir);
+      openTalk(x, y, { abrirEn: 'privados', abrirCon: destino.dir });
     },
     onBack: () => volverAlMenu(el, x, y),
     onClose: () => unregisterOverlay(el)
@@ -1411,38 +1437,49 @@ function avisoNivel(html) {
 }
 
 /**
- * Los privados. `dirInicial` abre directamente la conversación con alguien, que
- * es como se entra desde Conectados.
+ * El chat: el canal común y los privados, en dos pestañas del mismo panel.
+ *
+ * Son las dos formas de decirle algo a alguien, así que van juntas. Lo que es
+ * otra cosa es Conectados, que es gente y no mensajes — de ahí se entra aquí,
+ * con `abrirCon`, ya metido en la conversación con esa persona.
+ *
+ * @param {{abrirEn?:'todos'|'privados', abrirCon?:string}} [opciones]
  */
-function openPrivados(x, y, dirInicial) {
-  const { el } = buildPrivadosPanel({
-    abrirCon: dirInicial || null,
+function openTalk(x, y, opciones = {}) {
+  const { el } = buildTalkPanel({
+    onSend: (text) => sendChat(text),
+    abrirEn: opciones.abrirEn,
+    abrirCon: opciones.abrirCon,
+
+    hayPrivados: !!api.capacidades.privados,
     // El nombre de una dirección sale de quién esté a la vista ahora mismo.
     presentes: () => (chat && chat.presentes) || [],
     onConversaciones: () => api.privados.conversaciones(),
     onLeer: (con) => api.privados.leer(con),
-    onEnviar: ({ para, texto }) => api.privados.enviar({
-      para,
-      texto,
-      // El mismo identificador que usa el chat: reenviar no deja dos filas.
-      mid: historial.nuevoMid(),
-      // Con qué nombre firmas, para que al otro no le salga un hash.
-      nombre: duckName()
-    }),
+    onEnviarPrivado: ({ para, texto }) => enviarPrivado(para, texto),
     onBloquear: (a, si) => api.privados.bloquear(a, si),
+
     onBack: () => volverAlMenu(el, x, y),
     onClose: () => unregisterOverlay(el)
   });
   mountPanel(el, x, y);
 }
 
-function openTalk(x, y) {
-  const { el } = buildTalkPanel({
-    onSend: (text) => sendChat(text),
-    onBack: () => volverAlMenu(el, x, y),
-    onClose: () => unregisterOverlay(el)
+/**
+ * Manda un privado.
+ *
+ * Un solo sitio, porque hay dos caminos que llegan aquí: escribir en la pestaña
+ * de privados, y el recado que acompaña al pato cuando se lo mandas a alguien.
+ */
+function enviarPrivado(para, texto) {
+  return api.privados.enviar({
+    para,
+    texto,
+    // El mismo identificador que usa el chat: reenviar no deja dos filas.
+    mid: historial.nuevoMid(),
+    // Con qué nombre firmas, para que al otro no le salga un hash.
+    nombre: duckName()
   });
-  mountPanel(el, x, y);
 }
 
 // Añade un panel al DOM, lo centra sobre el punto indicado y por encima de él
@@ -1795,13 +1832,31 @@ function enviarVisita(destino, texto) {
   // apuntar en el histórico un viaje que no va a llegar.
   if (esperaParaVisitar(destino.clave) > 0) return false;
 
+  const recado = (texto || '').trim();
   const salio = chat.enviarVisita({
     aClave: destino.clave,
     de: duckName(),
     skin: duck.skinId,
     gesto: 'saludo',
-    texto: (texto || '').trim()
+    texto: recado
   });
+
+  // El pato es el GESTO; las palabras son un mensaje, y los mensajes se guardan.
+  //
+  // El recado viajaba sólo con la visita, que es un broadcast: si el otro no
+  // estaba mirando, se perdía —«llegar tarde a una visita es no haberla
+  // tenido»—, no se podía contestar y acababa como una línea suelta en el
+  // histórico. Era una mensajería paralela y peor. Ahora el pato sigue yendo, y
+  // lo dicho queda en vuestra conversación, donde se relee y se responde.
+  //
+  // Contra un pato que no anuncie dirección no hay a dónde guardarlo, y entonces
+  // el recado es lo que era: efímero. Capacidades, no versiones.
+  if (salio && recado && api.capacidades.privados && destino.dir) {
+    Promise.resolve(enviarPrivado(destino.dir, recado)).then((res) => {
+      if (!res || res.ok) return;
+      console.warn('[privados] el recado no se pudo guardar:', res.error);
+    }).catch((err) => console.warn('[privados] el recado no se pudo guardar:', err));
+  }
   historial.anadir({
     mid: historial.nuevoMid(),
     from: duckName(),

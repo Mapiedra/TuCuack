@@ -128,8 +128,10 @@ sino el cuaderno de cada cual, y el servidor recorta a las cien últimas por due
 que la tabla no crezca sin fin. **Las jugadas no se guardan**, y no es un olvido: el
 porqué está en [`supabase/partidas.sql`](supabase/partidas.sql).
 
-**✉️ Privados.** Mensajes a **una** persona, desde el menú de la mascota o con el
-sobre de cada pato en **Conectados**.
+**✉️ Privados.** Mensajes a **una** persona. Están dentro de **Chat**, en su propia
+pestaña junto a «Todos», porque las dos son formas de decirle algo a alguien; lo que
+es otra cosa es **Conectados**, que es gente. Desde ahí, el sobre de cada pato te lleva
+directo a la conversación con él.
 
 No son el chat, y la diferencia importa: el chat es un canal común, lo ve todo el
 mundo y **no se guarda en ningún servidor**; un privado va a una sola persona y **sí se
@@ -159,8 +161,13 @@ del suyo, saluda con el ala, dice lo que traiga y se marcha por donde vino. El t
 mientras, sale corriendo a llevarlo y vuelve. Va por el mismo canal, en un evento
 aparte con destinatario, así que las versiones anteriores lo ignoran solas.
 
-> El recado **no es una conversación privada**: viaja por el canal común y lo que hacen
-> los demás patos es descartarlo. El panel lo dice antes de enviar.
+> **El pato es el gesto; el recado es un mensaje.** Antes el texto viajaba sólo con la
+> visita —un broadcast— y se perdía si el otro no estaba mirando, no se podía contestar
+> y acababa como una línea suelta en el histórico: era una mensajería paralela y peor.
+> Ahora el pato sigue yendo y **lo que escribes se guarda en vuestra conversación
+> privada**, donde se relee y se responde. Contra una mascota que no anuncie dirección
+> no hay dónde guardarlo y el recado es lo que era, efímero; el panel lo dice antes de
+> enviar.
 
 Como el canal es de todo el mundo, quien recibe manda: hay un interruptor de **visitas**
 en Ajustes para cerrar la puerta sin renunciar al chat, no se admite más de una visita

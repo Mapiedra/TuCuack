@@ -231,10 +231,15 @@ export function buildOnlinePanel(inicial, handlers) {
 
     const aviso = document.createElement('div');
     aviso.className = 'muted recado-aviso';
-    // Que nadie mande por aquí lo que no mandaría por un grupo: el canal es
-    // compartido y el recado pasa por él aunque sólo lo enseñe el destinatario.
-    aviso.textContent = 'El recado viaja por el canal común: lo enseña sólo '
-      + `${destino.nombre}, pero no es una conversación privada.`;
+    // El pato es el gesto y el recado son palabras, y las palabras se guardan
+    // donde se pueden releer y contestar. Contra quien no tenga dirección no hay
+    // dónde guardarlas y el recado es lo que era: pasa por el canal común y se
+    // pierde si no está mirando. Decirlo es la diferencia entre dos productos.
+    aviso.textContent = (handlers.hayPrivados && destino.dir)
+      ? `El pato va ahora; el recado se guarda en vuestra conversación privada, `
+        + `así que ${destino.nombre} puede leerlo luego y contestarte.`
+      : 'El recado viaja por el canal común: lo enseña sólo '
+        + `${destino.nombre}, y se pierde si no está mirando.`;
 
     const mandar = () => {
       enviar.disabled = true;

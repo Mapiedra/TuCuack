@@ -389,7 +389,9 @@ html, body {
 }
 
 /* ---- Panel de Chat: histórico + caja de escribir ------------------------- */
-.panel-hablar { width: 296px; }
+/* Un poco más ancho que antes: ahora el panel aloja también la lista de
+   conversaciones privadas, con nombre, último mensaje y hora en la misma fila. */
+.panel-hablar { width: 316px; }
 
 .chat-historial {
   max-height: 190px;
@@ -1123,8 +1125,32 @@ html, body {
 
 /* El resultado de una partida del historial. El color hace el trabajo: la lista
    se lee de un vistazo buscando las ganadas. */
+/* ---- Chat: las dos pestañas ---------------------------------------------- */
+.chat-pestanas {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 9px;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+}
+.chat-pestana {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: #8a8a95;
+  padding: 5px 8px 6px;
+  margin-bottom: -2px;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+.chat-pestana:hover { color: var(--ink); }
+/* La activa se marca con la raya de abajo y no con un fondo: el panel ya tiene
+   suficiente color y dos cajas rellenas competirían con los mensajes. */
+.chat-pestana.activa { color: var(--ink); border-bottom-color: var(--accent); }
+
 /* ---- Privados ------------------------------------------------------------ */
-.panel-privados { width: 320px; }
 /* El aviso de dónde se guardan los privados. Va arriba, se lee, y no se
    disimula: el chat común no toca ningún servidor y esto sí. */
 .privados-aviso {

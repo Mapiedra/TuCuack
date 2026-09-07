@@ -1,22 +1,26 @@
-// Panel de Chat: el histórico y la caja para escribir.
+// Panel de Chat: dos pestañas, «Todos» y «Privados».
 //
-// Antes era una barrita suelta con un cuadro de texto, y se llamaba «Hablar»
-// porque eso era todo lo que hacía. Se ha hecho panel como los demás por dos
-// motivos: para tener el "volver" al menú que tienen todos, y porque los
-// mensajes recibidos duraban lo que dura un bocadillo y no había forma de
-// releerlos. Con el histórico guardado y los no leídos ya es un chat de verdad,
-// y por eso el menú lo llama así. La clase CSS sigue siendo `panel-hablar`: es
-// un nombre interno y renombrarlo no le arregla nada a nadie.
+// Antes eran una barrita para soltar una frase, luego un panel con histórico, y
+// durante un rato los privados vivieron en un panel aparte con su propia entrada
+// en el menú. Eso último era un error de organización: el canal común y los
+// privados son las dos formas de decirle algo a alguien, así que van juntos.
+// Lo que es distinto es CONECTADOS, que es gente, no mensajes.
 //
-// El histórico no lo guarda este panel: vive en chat/historial.js, que sigue
-// apuntando mensajes aunque el panel esté cerrado (que es cuando más falta
-// hace) y ahora además los guarda en disco. Aquí sólo se decide qué trozo se
-// pinta: con miles de mensajes apuntados, montarlos todos sería tirar cientos
-// de nodos al DOM para enseñar los cuatro últimos.
+// La diferencia entre las dos pestañas no es de forma, es de fondo, y por eso
+// cada una lo dice en su sitio: en «Todos» lo que escribes lo ve todo el mundo y
+// no se guarda en ningún servidor; en «Privados» va a una sola persona y sí se
+// guarda, porque si no, no le llegaría cuando no está conectada.
+//
+// El histórico de «Todos» no lo guarda este panel: vive en chat/historial.js,
+// que sigue apuntando mensajes aunque el panel esté cerrado (que es cuando más
+// falta hace). Aquí sólo se decide qué trozo se pinta: con miles de mensajes
+// apuntados, montarlos todos sería tirar cientos de nodos al DOM para enseñar
+// los cuatro últimos.
 
 import { panelHeader } from './panelHeader.js';
 import { objetivoReal } from '../stage.js';
 import * as historial from '../chat/historial.js';
+import { crearVistaPrivados } from './privadosPanel.js';
 
 /** Cuántos mensajes se pintan de entrada, y cuántos se añaden al subir. */
 const VENTANA = 40;
@@ -30,19 +34,45 @@ const CONTEXTO = 10;
 const VENTANA_MAX = 150;
 
 /**
- * @param {{onSend:(text:string)=>boolean, onClose:Function, onBack?:Function}} handlers
- *   `onSend` devuelve si el mensaje ha salido de verdad.
+ * @param {Object} handlers
+ * @param {(text:string)=>boolean} handlers.onSend  del canal común; devuelve si
+ *   el mensaje ha salido de verdad.
+ * @param {boolean} [handlers.hayPrivados]  si esta carcasa los tiene. Sin ellos
+ *   no hay pestañas: el panel es lo que era.
+ * @param {'todos'|'privados'} [handlers.abrirEn]
+ * @param {string} [handlers.abrirCon]  dirección con la que abrir directamente
+ *   una conversación, que es como se entra desde Conectados.
+ * @param {Function} [handlers.onBack]
+ * @param {Function} handlers.onClose
  * @returns {{el:HTMLElement}}
  */
 export function buildTalkPanel(handlers) {
   const el = document.createElement('div');
   el.className = 'panel panel-hablar hot';
 
-  el.appendChild(panelHeader('Chat', handlers));
+  const conPrivados = !!(handlers.hayPrivados && handlers.onConversaciones);
+  let pestaña = (conPrivados && handlers.abrirEn === 'privados') ? 'privados' : 'todos';
+
+  let cabecera = null;
+  const tiras = document.createElement('div');
+  tiras.className = 'chat-pestanas';
+  const cuerpo = document.createElement('div');
+  cuerpo.className = 'chat-cuerpo';
+  el.append(tiras, cuerpo);
+
+  // ---- «Todos»: el canal común -------------------------------------------
+  //
+  // Se construye una vez y se esconde al cambiar de pestaña, en vez de
+  // rehacerse: lleva estado que no se puede perder —dónde estaba el scroll,
+  // hasta dónde estaba leído, cuántos mensajes viejos se han traído— y volver
+  // a montarlo lo tiraría todo.
+
+  const todos = document.createElement('div');
+  cuerpo.appendChild(todos);
 
   const lista = document.createElement('div');
   lista.className = 'chat-historial';
-  el.appendChild(lista);
+  todos.appendChild(lista);
 
   const fila = document.createElement('div');
   fila.className = 'chat-escribir';
@@ -55,11 +85,11 @@ export function buildTalkPanel(handlers) {
   enviar.type = 'button';
   enviar.textContent = 'Enviar';
   fila.append(input, enviar);
-  el.appendChild(fila);
+  todos.appendChild(fila);
 
   const aviso = document.createElement('div');
   aviso.className = 'muted';
-  el.appendChild(aviso);
+  todos.appendChild(aviso);
 
   // Hasta dónde estaba leído CUANDO se abrió el panel. Se pregunta una sola vez
   // a propósito: abrir el panel marca todo como leído, y si la raya mirara el
@@ -68,8 +98,6 @@ export function buildTalkPanel(handlers) {
   // Cuántos mensajes se pintan. Empieza cubriendo todo lo que quedaba sin leer:
   // de nada sirve avisar de doce mensajes nuevos y enseñar sólo los últimos.
   let mostrados = Math.min(VENTANA_MAX, Math.max(VENTANA, historial.noLeidos() + CONTEXTO));
-  // Dónde ir la primera vez que se pinta: a la raya de "nuevos" si la hay, y si
-  // no al final, que es por donde se lee un chat.
   let primeraVez = true;
   let separador = null;
 
@@ -79,8 +107,6 @@ export function buildTalkPanel(handlers) {
   const HOLGURA = 24;   // píxeles que se dan por buenos como «está al final»
 
   const estaAlFondo = () => {
-    // Sin montar todavía no hay alturas que medir, y entonces la respuesta es
-    // que sí: al abrir se quiere el final.
     if (!lista.clientHeight) return true;
     return lista.scrollHeight - lista.scrollTop - lista.clientHeight <= HOLGURA;
   };
@@ -94,7 +120,7 @@ export function buildTalkPanel(handlers) {
     // se quedaría clavada en el mismo punto y el texto se iría hacia abajo.
     const altoAntes = lista.scrollHeight;
     const dondeAntes = lista.scrollTop;
-    pintar();
+    pintarTodos();
     lista.scrollTop = dondeAntes + (lista.scrollHeight - altoAntes);
   };
 
@@ -107,7 +133,7 @@ export function buildTalkPanel(handlers) {
     return btn;
   }
 
-  function pintar() {
+  function pintarTodos() {
     // Se mira ANTES de vaciar: la lista se reconstruye entera, y al vaciarla el
     // navegador pierde el scroll y ya no hay forma de saber dónde estabas.
     const seguirAbajo = estaAlFondo();
@@ -141,22 +167,17 @@ export function buildTalkPanel(handlers) {
     else lista.scrollTop = donde;
   }
 
-  pintar();
+  pintarTodos();
 
-  // Con el panel delante, lo que llega se da por leído. `marcarTodoLeido` avisa
-  // del cambio y vuelve a entrar aquí una vez más; la segunda ya no tiene nada
-  // que marcar y para.
+  // Con la pestaña de «Todos» delante, lo que llega se da por leído. Con la de
+  // privados NO: no lo estás mirando, y darlo por leído sería mentir.
   const alCambiarHistorial = () => {
-    pintar();
-    historial.marcarTodoLeido();
+    pintarTodos();
+    if (pestaña === 'todos') historial.marcarTodoLeido();
   };
   const dejarDeEscuchar = historial.alCambiar(alCambiarHistorial);
-  // Abrir el panel es leer: lo que quedaba pendiente deja de estarlo. La raya
-  // ya está pintada con el corte de antes, así que sigue viéndose.
-  historial.marcarTodoLeido();
+  if (pestaña === 'todos') historial.marcarTodoLeido();
 
-  // Llegar arriba del todo trae lo anterior, que es el gesto natural para
-  // seguir tirando del hilo. El botón está para que además se vea que se puede.
   lista.addEventListener('scroll', () => {
     if (lista.scrollTop <= 0) verAnteriores();
   });
@@ -180,15 +201,104 @@ export function buildTalkPanel(handlers) {
     if (e.key === 'Enter') enviarTexto();
   });
 
+  // ---- «Privados» ---------------------------------------------------------
+  //
+  // Se monta sólo si la carcasa los tiene, y se monta ya (no al entrar en la
+  // pestaña) para que su lista esté pedida cuando llegues.
+
+  const privados = conPrivados ? crearVistaPrivados({
+    onConversaciones: handlers.onConversaciones,
+    onLeer: handlers.onLeer,
+    onEnviar: handlers.onEnviarPrivado,
+    onBloquear: handlers.onBloquear,
+    presentes: handlers.presentes,
+    // Entrar y salir de una conversación cambia el título y a dónde va el
+    // «volver», así que la cabecera se rehace.
+    alCambiarVista: () => { rehacerCabecera(); pintarPestanas(); }
+  }) : null;
+  if (privados) cuerpo.appendChild(privados.el);
+
+  // ---- El marco ------------------------------------------------------------
+
+  function enConversacion() {
+    return !!(privados && privados.enConversacion());
+  }
+
+  function rehacerCabecera() {
+    if (cabecera) cabecera.remove();
+    cabecera = panelHeader(
+      enConversacion() ? (privados.nombreAbierto() || 'Privado') : 'Chat',
+      {
+        // Dentro de una conversación, el «volver» vuelve a la lista y no al
+        // menú: perder la pantalla entera por querer salir de un hilo es de las
+        // cosas que más molestan.
+        onBack: enConversacion() ? () => privados.volverALaLista() : handlers.onBack,
+        onClose: handlers.onClose
+      }
+    );
+    el.prepend(cabecera);
+  }
+
+  function pintarPestanas() {
+    tiras.textContent = '';
+    // Dentro de una conversación no hay pestañas: estás en un sitio concreto y
+    // el camino de vuelta es el «volver» de arriba.
+    if (!conPrivados || enConversacion()) {
+      tiras.hidden = true;
+      return;
+    }
+    tiras.hidden = false;
+    for (const [id, texto] of [['todos', 'Todos'], ['privados', 'Privados']]) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chat-pestana' + (pestaña === id ? ' activa' : '');
+      b.textContent = texto;
+      b.addEventListener('click', () => irA(id));
+      tiras.appendChild(b);
+    }
+  }
+
+  function irA(id) {
+    if (pestaña === id) return;
+    pestaña = id;
+    aplicarPestaña();
+    pintarPestanas();
+    // Volver a «Todos» es volver a mirarlo: lo que llegara mientras estabas en
+    // privados deja de estar pendiente.
+    if (pestaña === 'todos') {
+      historial.marcarTodoLeido();
+      setTimeout(() => input.focus(), 0);
+    }
+  }
+
+  function aplicarPestaña() {
+    todos.hidden = pestaña !== 'todos';
+    if (privados) privados.el.hidden = pestaña !== 'privados';
+  }
+
+  rehacerCabecera();
+  pintarPestanas();
+  aplicarPestaña();
+
+  // Se abre directamente en una conversación cuando se entra desde Conectados.
+  if (privados && handlers.abrirCon) {
+    pestaña = 'privados';
+    aplicarPestaña();
+    privados.abrirCon(handlers.abrirCon);
+  }
+
+  // ---- Cierre --------------------------------------------------------------
+
   // Escape en todo el documento, no sólo dentro de la caja: el foco puede
   // haberse ido a cualquier parte. Y un clic fuera cierra, como en el menú.
   // Quedarse encerrado en un cuadro de texto es de las cosas más molestas que
   // puede hacer un pato.
   const alPulsarTecla = (e) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      handlers.onClose();
-    }
+    if (e.key !== 'Escape') return;
+    e.preventDefault();
+    // Igual que el «volver»: dentro de un hilo, Escape sale del hilo.
+    if (enConversacion()) { privados.volverALaLista(); return; }
+    handlers.onClose();
   };
   const alPulsarFuera = (e) => {
     if (!el.contains(objetivoReal(e))) handlers.onClose();
@@ -211,9 +321,9 @@ export function buildTalkPanel(handlers) {
   // El panel se construye ANTES de meterlo en el DOM (lo monta `mountPanel`),
   // y hasta entonces la lista no tiene alturas: `scrollTop` no se puede mover y
   // se quedaba callado. Por eso el chat se abría siempre por el primer mensaje
-  // aunque `pintar` mandara ir al fondo. En cuanto está montado, a su sitio.
+  // aunque `pintarTodos` mandara ir al fondo. En cuanto está montado, a su sitio.
   setTimeout(() => {
-    if (primeraVez) {
+    if (primeraVez && pestaña === 'todos') {
       primeraVez = false;
       if (separador) {
         // Un pelín por encima de la raya, para que se vea que empieza ahí.
@@ -221,8 +331,8 @@ export function buildTalkPanel(handlers) {
       } else {
         irAlFondo();
       }
+      input.focus();
     }
-    input.focus();
   }, 0);
   return { el };
 }
