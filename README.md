@@ -117,6 +117,17 @@ eso no se puede verificar, y por eso el marcador enseña siempre el nombre de qu
 declara. Cómo se protege la tabla —el dueño de una fila es el hash de un secreto que no
 sale de tu disco— está explicado en [`supabase/records.sql`](supabase/records.sql).
 
+**⚔️ Tus partidas.** El historial de las partidas jugadas **contra otras mascotas**:
+contra quién, cómo acabó, la marca de aquel día y cuándo fue. Las de un jugador no
+entran, que de ésas ya lleva la cuenta «Tus récords».
+
+Se guardan en el mismo Supabase que el chat y **sólo las ves tú**: a diferencia del
+marcador, que es público, leer el historial exige el secreto que vive en tus ajustes.
+Cada mascota apunta su propia fila, así que no hay una verdad compartida que defender
+sino el cuaderno de cada cual, y el servidor recorta a las cien últimas por dueño para
+que la tabla no crezca sin fin. **Las jugadas no se guardan**, y no es un olvido: el
+porqué está en [`supabase/partidas.sql`](supabase/partidas.sql).
+
 **Quién anda por ahí.** La opción **Conectados** del menú (y de la bandeja) abre la
 lista de los patos que están en el canal ahora mismo, con el tuyo el primero. El menú
 lleva la cuenta al lado, y la lista se actualiza sola mientras está abierta según entra

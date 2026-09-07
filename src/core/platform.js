@@ -48,7 +48,12 @@ const CAPACIDADES_POR_DEFECTO = {
   // documento, así que sólo donde la carcasa puede: el escritorio y la
   // extensión. En el banco de pruebas no, y por eso se pregunta antes de
   // ofrecerlo en vez de dar por hecho que existe.
-  marcadorGlobal: false
+  marcadorGlobal: false,
+  // ¿Se guardan las partidas por red para poder mirarlas luego? Necesita lo
+  // mismo que el marcador, pero se pregunta aparte a propósito: son dos tablas
+  // distintas y una carcasa puede llegar a una y no a la otra mientras se está
+  // desplegando.
+  historialDePartidas: false
 };
 
 const CONFIG_POR_DEFECTO = { version: '0.0.0', isDev: false, ground: 0, sprites: {} };
@@ -93,6 +98,25 @@ const HISTORIAL_SIN_GUARDAR = {
   anotar: noop,
   /** Guarda hasta qué instante está leído el histórico. */
   marcarLeido: noop
+};
+
+/**
+ * El historial de partidas, cuando no lo hay.
+ *
+ * Mismo reparto que el marcador y por el mismo motivo: el núcleo nunca ve la
+ * firma con la que se escribe. Pide «apunta esta partida» y quien la firma es la
+ * carcasa. Y aquí LEER también la exige —un historial es de quien lo juega, no
+ * una tabla pública—, así que `mias` tampoco recibe identidad ninguna: la
+ * carcasa ya sabe de quién es.
+ *
+ * Las dos devuelven `{ok, datos?, error?}` y no lanzan.
+ */
+const PARTIDAS_DESACTIVADAS = {
+  /** @type {(p:{id:string, juego:string, rival:string, resultado:string,
+   *              marca:number|null}) => Promise<object>} */
+  guardar: async () => ({ ok: false, error: 'sin-historial' }),
+  /** @type {() => Promise<object>} */
+  mias: async () => ({ ok: false, error: 'sin-historial' })
 };
 
 const CHAT_DESACTIVADO = {
@@ -196,7 +220,10 @@ export function normalizarPlataforma(p = {}) {
     historial: { ...HISTORIAL_SIN_GUARDAR, ...(p.historial || {}) },
 
     // ---- Marcador global -------------------------------------------------
-    marcador: { ...MARCADOR_DESACTIVADO, ...(p.marcador || {}) }
+    marcador: { ...MARCADOR_DESACTIVADO, ...(p.marcador || {}) },
+
+    // ---- Historial de partidas por red -----------------------------------
+    partidas: { ...PARTIDAS_DESACTIVADAS, ...(p.partidas || {}) }
   };
 }
 

@@ -1116,8 +1116,16 @@ html, body {
 
 /* Los dos botones del pie de la rejilla: lo tuyo y lo de todos, a la misma
    altura. En dos columnas iguales para que ninguno parezca el principal. */
-.juegos-botonera { display: flex; gap: 6px; }
-.juegos-botonera .btn { flex: 1; min-width: 0; }
+.juegos-botonera { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Con `flex-basis` al 40 % caben dos por fila y la tercera se va abajo ocupando
+   el ancho entero, en vez de encogerse las tres hasta que no se lea ninguna. */
+.juegos-botonera .btn { flex: 1 1 40%; min-width: 0; }
+
+/* El resultado de una partida del historial. El color hace el trabajo: la lista
+   se lee de un vistazo buscando las ganadas. */
+.partida-ganada { color: #2a7d2e; }
+.partida-perdida { color: #c1121f; }
+.partida-empate { color: #8a8a95; }
 
 .records-lista { list-style: none; margin: 0; padding: 0; }
 .records-fila {

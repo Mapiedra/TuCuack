@@ -22,7 +22,8 @@ export function crearPlataformaElectron() {
       actualizaciones: true,
       comandosExternos: true,
       juegosDeEscenario: true,
-      marcadorGlobal: true
+      marcadorGlobal: true,
+      historialDePartidas: true
     },
 
     config: () => pato.getConfig(),
@@ -55,6 +56,11 @@ export function crearPlataformaElectron() {
       mejores: (juego, mejorEs) => pato.marcadorMejores(juego, mejorEs),
       todos: () => pato.marcadorTodos(),
       guardar: (record) => pato.marcadorGuardar(record)
+    },
+
+    partidas: {
+      guardar: (p) => pato.partidasGuardar(p),
+      mias: () => pato.partidasMias()
     },
 
     // El histórico del chat se guarda al otro lado del puente, en un fichero

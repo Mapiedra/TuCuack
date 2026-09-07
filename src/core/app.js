@@ -922,6 +922,8 @@ function openJuegos(x, y) {
     onMarcador: (juego) => api.marcador.mejores(juego.id, juego.marca.mejor),
     // Todo el marcador de una vez, para la vista de conjunto.
     onMarcadorGlobal: () => api.marcador.todos(),
+    hayHistorialDePartidas: !!api.capacidades.historialDePartidas,
+    onPartidas: () => api.partidas.mias(),
     onJugar: (juego, modo, opciones) => {
       unregisterOverlay(el);
       openPartida(juego, modo, opciones, x, y);
@@ -1194,7 +1196,45 @@ function anotarPartida(juego, r, enRed) {
   const cuacks = cartera.ingresar(pagoDePartida(juego, r.resultado, { enRed: !!enRed }));
   saveNow();     // un récord no se pierde por cerrar antes del guardado
   contarloFuera(juego, antes);
+  if (enRed) apuntarLaPartida(juego, r);
   return { xp, cuacks };
+}
+
+/**
+ * Apunta una partida por red en el historial.
+ *
+ * Sólo las de red, y no es un recorte: contra la mascota juegas contigo mismo, y
+ * de eso ya lleva la cuenta el progreso local. Lo que aquí tiene valor es contra
+ * QUIÉN jugaste.
+ *
+ * No se espera a la respuesta, igual que con el marcador: esto pasa justo cuando
+ * se enseña el resultado, y colgar eso de una petición de red sería pagar el
+ * historial con la única parte que el jugador está mirando.
+ *
+ * El identificador junta la sala con la secuencia en la que empezó la partida.
+ * Hace falta lo segundo porque una revancha se juega en la MISMA sala: sin ello,
+ * la segunda partida pisaría a la primera y el historial contaría una donde hubo
+ * tres.
+ */
+function apuntarLaPartida(juego, r) {
+  if (!api.capacidades.historialDePartidas) return;
+  const sala = salas && salas.sala();
+  // Sin sala o sin inicio no hubo partida por red que apuntar: pasa si el rival
+  // se fue antes de empezar.
+  if (!sala || !sala.inicioN) return;
+
+  Promise.resolve(api.partidas.guardar({
+    id: `${sala.id}:${sala.inicioN}`,
+    juego: juego.id,
+    rival: (sala.rival && sala.rival.nombre) || 'Pato',
+    resultado: r.resultado,
+    // La marca de ESTA partida, no el récord: el historial cuenta lo que pasó
+    // aquel día, y para lo mejor de siempre ya está el marcador.
+    marca: (juego.marca && typeof r.puntos === 'number') ? r.puntos : null
+  })).then((res) => {
+    if (!res || res.ok) return;
+    console.warn('[partidas] no se pudo apuntar:', res.error);
+  }).catch((err) => console.warn('[partidas] no se pudo apuntar:', err));
 }
 
 /**

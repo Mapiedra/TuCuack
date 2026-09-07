@@ -291,8 +291,14 @@ async function secretoDelMarcador() {
   }
 }
 
-/** Llama y se rinde a tiempo. Devuelve `{ok, datos, error}`; no lanza. */
-async function pedirAlMarcador(ruta, opciones) {
+/**
+ * Llama a Supabase por HTTP y se rinde a tiempo. Devuelve `{ok, datos, error}`
+ * y no lanza: quien llama es el pato en mitad de una partida.
+ *
+ * Lo usan el marcador y el historial de partidas. Es el gemelo de
+ * `pedir` en src/main/supabaseRest.js.
+ */
+async function pedirASupabase(ruta, opciones) {
   const cred = await leerCredenciales();
   if (!cred) return { ok: false, error: 'sin-credenciales' };
 
@@ -327,7 +333,7 @@ async function pedirAlMarcador(ruta, opciones) {
  * en el pato sale mucho más barato que una por cada juego con marca.
  */
 function todoElMarcador() {
-  return pedirAlMarcador(
+  return pedirASupabase(
     '/rest/v1/records_publicos'
     + '?select=juego,nombre,marca,mejor_es,actualizado'
     + `&order=actualizado.desc&limit=${TOPE_TODOS}`,
@@ -335,9 +341,50 @@ function todoElMarcador() {
   );
 }
 
+// ---- Historial de partidas por red ---------------------------------------
+//
+// El gemelo de src/main/partidas.js. Una fila por partida terminada; las
+// jugadas NO se guardan (el porqué, en supabase/partidas.sql). Como el
+// marcador, la firma se queda aquí; a diferencia de él, leer también la exige.
+
+/** Cuántas se piden para el panel. El servidor recorta a su propio tope. */
+const TOPE_PARTIDAS = 40;
+const RESULTADOS = ['victoria', 'derrota', 'empate'];
+
+async function guardarPartida(p) {
+  const secreto = await secretoDelMarcador();
+  if (!secreto) return { ok: false, error: 'sin-firma' };
+  if (!p || !p.id || !p.juego || !RESULTADOS.includes(p.resultado)) {
+    return { ok: false, error: 'partida-mala' };
+  }
+  const marca = (typeof p.marca === 'number' && Number.isFinite(p.marca))
+    ? Math.max(0, Math.round(p.marca))
+    : null;
+  return pedirASupabase('/rest/v1/rpc/guardar_partida', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_secreto: secreto,
+      p_id: String(p.id).slice(0, 80),
+      p_juego: String(p.juego).slice(0, 40),
+      p_rival: String(p.rival || 'Pato').slice(0, 40),
+      p_resultado: p.resultado,
+      p_marca: marca
+    })
+  });
+}
+
+async function misPartidas() {
+  const secreto = await secretoDelMarcador();
+  if (!secreto) return { ok: false, error: 'sin-firma' };
+  return pedirASupabase('/rest/v1/rpc/mis_partidas', {
+    method: 'POST',
+    body: JSON.stringify({ p_secreto: secreto, p_tope: TOPE_PARTIDAS })
+  });
+}
+
 function mejoresDelMarcador(juego, mejorEs) {
   const orden = mejorEs === 'menos' ? 'marca.asc' : 'marca.desc';
-  return pedirAlMarcador(
+  return pedirASupabase(
     `/rest/v1/records_publicos?juego=eq.${encodeURIComponent(juego)}`
     + `&order=${orden}&limit=${TOPE_FILAS}&select=nombre,marca,actualizado`,
     { method: 'GET' }
@@ -350,7 +397,7 @@ async function guardarEnElMarcador(r) {
   if (!r || !r.juego || typeof r.marca !== 'number' || !Number.isFinite(r.marca)) {
     return { ok: false, error: 'marca-mala' };
   }
-  return pedirAlMarcador('/rest/v1/rpc/guardar_record', {
+  return pedirASupabase('/rest/v1/rpc/guardar_record', {
     method: 'POST',
     body: JSON.stringify({
       p_secreto: secreto,
@@ -912,6 +959,16 @@ chrome.runtime.onMessage.addListener((msg, _emisor, responder) => {
 
   if (msg.tipo === 'marcador-todos') {
     todoElMarcador().then(responder);
+    return true;
+  }
+
+  if (msg.tipo === 'partidas-guardar') {
+    guardarPartida(msg.partida).then(responder);
+    return true;
+  }
+
+  if (msg.tipo === 'partidas-mias') {
+    misPartidas().then(responder);
     return true;
   }
 

@@ -248,6 +248,7 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
       nombre: nombreDelRival(mensajes, yoId)
     }, anfitrion, 'jugando');
     sala.n = mensajes.reduce((alto, m) => Math.max(alto, m.n || 0), 0);
+    sala.inicioN = inicio.n;
     sala.semilla = Number(inicio.d.semilla) || 1;
     sala.jugadores = Array.isArray(inicio.d.jugadores) ? inicio.d.jugadores.slice(0, 8) : [];
     // Por dónde iba la partida. Sale del inicio y no de preguntárselo a nadie:
@@ -440,6 +441,7 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
       return;   // el invitado espera el inicio del anfitrión
     }
     sala.n++;
+    sala.inicioN = sala.n;
     sala.semilla = (Math.random() * 2 ** 31) | 0;
     mandarSeguro(P.sobre(P.TIPOS.INICIO, sala.id, sala.rival.clave, {
       juego: sala.juego,
@@ -621,6 +623,7 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
     sala.rival.nombre = String(m.d.nombre || sala.rival.nombre).slice(0, 40);
     sala.fase = 'jugando';
     sala.n = 1;
+    sala.inicioN = 1;
     sala.semilla = (Math.random() * 2 ** 31) | 0;
     // El anfitrión es `jugadores[0]`: el orden tiene que ser el mismo en los dos
     // lados, y es lo único que se decide una sola vez.
@@ -652,6 +655,7 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
     olvidarTipo(P.TIPOS.RESPUESTA);   // el inicio ES la confirmación de la respuesta
     sala.fase = 'jugando';
     sala.n = m.n;
+    sala.inicioN = m.n;
     sala.semilla = Number(m.d.semilla) || 1;
     sala.jugadores = Array.isArray(m.d.jugadores) ? m.d.jugadores.slice(0, 8) : [];
     sala.quieroRevancha = false;
@@ -872,6 +876,12 @@ export function crearGestorDeSalas({ transporte, yo, rivales, hayCanal, cadaCier
       // 'global'. Lo decide el anfitrión al retar y el invitado lo obedece.
       via: 'global',
       n: 0,
+      // La secuencia con la que empezó la partida que se está jugando ahora
+      // mismo. La sala sobrevive a las revanchas y `n` no se reinicia, así que
+      // esto es lo único que distingue una partida de la siguiente dentro de la
+      // misma sala — y es de lo que sale su identificador en el historial (ver
+      // `apuntarLaPartida` en core/app.js).
+      inicioN: 0,
       semilla: 0,
       jugadores: [],
       ultimoContacto: Date.now(),

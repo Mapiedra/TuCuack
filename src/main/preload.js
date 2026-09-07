@@ -38,6 +38,9 @@ contextBridge.exposeInMainWorld('pato', {
   // la firma con la que se escribe se queda al otro lado del puente.
   marcadorMejores: (juego, mejorEs) => ipcRenderer.invoke('marcador:mejores', juego, mejorEs),
   marcadorTodos: () => ipcRenderer.invoke('marcador:todos'),
+  // Historial de partidas por red.
+  partidasGuardar: (p) => ipcRenderer.invoke('partidas:guardar', p),
+  partidasMias: () => ipcRenderer.invoke('partidas:mias'),
   marcadorGuardar: (record) => ipcRenderer.invoke('marcador:guardar', record),
   onChatEvent: (cb) => ipcRenderer.on('chat:event', (_e, evt) => cb(evt)),
   setChatName: (name) => ipcRenderer.send('chat:set-name', name),

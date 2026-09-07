@@ -24,6 +24,8 @@ import { panelHeader } from './panelHeader.js';
  *   este panel: aquí no se guarda en disco.
  * @param {() => Promise<object>} [handlers.onMarcadorGlobal]
  *   Todo el marcador de una vez, para la vista de conjunto.
+ * @param {() => Promise<object>} [handlers.onPartidas]
+ *   Las partidas por red ya jugadas, de la más reciente a la más antigua.
  * @param {Function} [handlers.onBack]
  * @param {Function} handlers.onClose
  * @returns {{el:HTMLElement, actualizar:(p:object)=>void}}
@@ -40,6 +42,8 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
   let marcadorDesde = 'records';
   /** Si se está viendo el marcador de todos los juegos a la vez. */
   let enGlobal = false;
+  /** Si se está viendo el historial de partidas por red. */
+  let enPartidas = false;
   /** Juego que se está mirando para comprarlo, o null. */
   let enTienda = null;
 
@@ -65,7 +69,7 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
 
   function pintar() {
     if (cabecera) cabecera.remove();
-    const dentro = elegido || enRecords || enMarcador || enTienda || enGlobal;
+    const dentro = elegido || enRecords || enMarcador || enTienda || enGlobal || enPartidas;
     cabecera = panelHeader(titulo(), {
       // El botón de volver cambia de destino según la vista. Desde el marcador
       // de un juego se vuelve a la lista de récords, que es de donde se entró;
@@ -83,7 +87,10 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
           pintar();
         }
         : (dentro
-          ? () => { elegido = null; enRecords = false; enTienda = null; enGlobal = false; pintar(); }
+          ? () => {
+            elegido = null; enRecords = false; enTienda = null;
+            enGlobal = false; enPartidas = false; pintar();
+          }
           : handlers.onBack),
       onClose: handlers.onClose
     });
@@ -92,6 +99,7 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
     cuerpo.textContent = '';
     if (enMarcador) pintarMarcador(enMarcador);
     else if (enGlobal) pintarGlobal();
+    else if (enPartidas) pintarPartidas();
     else if (enTienda) pintarTienda(enTienda);
     else if (elegido) pintarModos(elegido);
     else if (enRecords) pintarRecords();
@@ -103,6 +111,7 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
     if (enTienda) return nombreDeJuego(enTienda, estado.yo);
     if (elegido) return nombreDeJuego(elegido, estado.yo);
     if (enGlobal) return 'Marcador global';
+    if (enPartidas) return 'Tus partidas';
     return enRecords ? 'Tus récords' : 'Juegos';
   }
 
@@ -214,6 +223,14 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
       verGlobal.textContent = '🌐 Marcador global';
       verGlobal.addEventListener('click', () => { enGlobal = true; pintar(); });
       fila.appendChild(verGlobal);
+    }
+    if (handlers.hayHistorialDePartidas && handlers.onPartidas) {
+      const verPartidas = document.createElement('button');
+      verPartidas.className = 'btn';
+      verPartidas.type = 'button';
+      verPartidas.textContent = '⚔️ Tus partidas';
+      verPartidas.addEventListener('click', () => { enPartidas = true; pintar(); });
+      fila.appendChild(verPartidas);
     }
     cuerpo.appendChild(fila);
 
@@ -523,6 +540,106 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
 
     li.append(icono, medio, marca, flecha);
     return li;
+  }
+
+  /**
+   * Las partidas por red que has jugado, de la más reciente a la más antigua.
+   *
+   * Sólo las de red: contra tu mascota juegas contigo mismo, y de eso ya lleva
+   * la cuenta «Tus récords». Lo que aquí tiene valor es contra quién jugaste.
+   *
+   * Se piden al abrirlo, como el marcador, y por lo mismo: la mayoría de las
+   * veces que se abre este panel no se viene a esto.
+   */
+  function pintarPartidas() {
+    const lista = document.createElement('ul');
+    lista.className = 'records-lista';
+    const cargando = document.createElement('li');
+    cargando.className = 'muted';
+    cargando.textContent = 'Preguntando…';
+    lista.appendChild(cargando);
+    cuerpo.appendChild(lista);
+
+    const nota = document.createElement('p');
+    nota.className = 'muted';
+    // Se dice, y no en letra pequeña: esto se guarda fuera del equipo. Que el
+    // usuario se entere aquí y no el día que lo descubra por su cuenta.
+    nota.textContent = 'Sólo las partidas contra otras mascotas. Se guardan en el '
+      + 'servidor del chat y sólo las ves tú.';
+    cuerpo.appendChild(nota);
+
+    handlers.onPartidas().then((res) => {
+      if (!enPartidas || !lista.isConnected) return;
+      lista.textContent = '';
+      if (!res || !res.ok) {
+        const mal = document.createElement('li');
+        mal.className = 'muted';
+        mal.textContent = 'No se ha podido consultar. ¿Hay conexión?';
+        lista.appendChild(mal);
+        return;
+      }
+      const filas = Array.isArray(res.datos) ? res.datos : [];
+      if (!filas.length) {
+        const vacio = document.createElement('li');
+        vacio.className = 'muted';
+        vacio.textContent = 'Todavía no has jugado ninguna partida contra otra mascota.';
+        lista.appendChild(vacio);
+        return;
+      }
+      for (const f of filas) lista.appendChild(filaDePartida(f));
+    });
+  }
+
+  function filaDePartida(f) {
+    // El juego puede no estar en el catálogo: una partida vieja de algo que ya
+    // no existe. Se enseña igual, con lo que se sabe, en vez de esconderla.
+    const juego = MINIJUEGOS.find((j) => j.id === f.juego) || null;
+
+    const li = document.createElement('li');
+    li.className = 'records-fila';
+
+    const icono = document.createElement('span');
+    icono.className = 'records-icono';
+    icono.textContent = juego ? juego.icono : '🎮';
+
+    const medio = document.createElement('div');
+    const nom = document.createElement('b');
+    // El nombre del rival lo escribe otra persona: `textContent`, siempre.
+    nom.textContent = `${juego ? nombreDeJuego(juego, estado.yo) : f.juego} · ${f.rival}`;
+    const bajo = document.createElement('span');
+    bajo.className = 'records-detalle';
+    bajo.textContent = cuando(f.jugada_el);
+    medio.append(nom, bajo);
+
+    const resultado = document.createElement('span');
+    resultado.className = 'records-marca partida-' + (
+      f.resultado === 'victoria' ? 'ganada' : f.resultado === 'derrota' ? 'perdida' : 'empate'
+    );
+    const marca = (typeof f.marca === 'number' && juego && juego.marca)
+      ? ` · ${f.marca} ${juego.marca.etiqueta}`
+      : '';
+    resultado.textContent = (
+      f.resultado === 'victoria' ? 'Ganaste' : f.resultado === 'derrota' ? 'Perdiste' : 'Empate'
+    ) + marca;
+
+    li.append(icono, medio, resultado);
+    return li;
+  }
+
+  /**
+   * Cuándo fue, en cristiano.
+   *
+   * En días y no con la hora exacta: de una partida de la semana pasada lo que
+   * dice algo es «hace 6 días», no que fueran las siete y cuarto.
+   */
+  function cuando(iso) {
+    const t = Date.parse(iso || '');
+    if (!Number.isFinite(t)) return '';
+    const dias = Math.floor((Date.now() - t) / 86400000);
+    if (dias <= 0) return 'hoy';
+    if (dias === 1) return 'ayer';
+    if (dias < 30) return `hace ${dias} días`;
+    return new Date(t).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' });
   }
 
   function filaDelMarcador(fila, juego) {

@@ -324,6 +324,13 @@ no la anuncie se juega por el canal común exactamente como antes: no hay ningun
 rama que trate a los antiguos como un caso especial, sencillamente no hay
 capacidad y se toma el camino de siempre.
 
+Al terminar, una partida por red deja **una fila en el historial** —el juego,
+contra quién, el resultado, la marca y cuándo— que sólo ve quien la jugó. Las
+jugadas no se guardan; el porqué está en
+[`supabase/partidas.sql`](../supabase/partidas.sql). Un juego no tiene que hacer
+nada para eso: lo apunta `anotarPartida` en core/app.js, por donde ya pasan los
+dos finales posibles.
+
 Un juego no ve nada de eso. Recibe `ctx.sala` con tres cosas:
 
 ```js

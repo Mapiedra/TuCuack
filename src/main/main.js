@@ -5,6 +5,7 @@ const path = require('path');
 const store = require('./store');
 const marcador = require('./marcador');
 const historial = require('./historial');
+const partidas = require('./partidas');
 const { createTray } = require('./tray');
 const { initUpdater, configurarAvisos, estadoActualizacion, buscarActualizacion, instalarActualizacion }
   = require('./updater');
@@ -264,6 +265,11 @@ ipcMain.handle('update:status', () => estadoActualizacion());
 // pide «guarda esta marca» y no sabe con qué se firma. Ver main/marcador.js.
 ipcMain.handle('marcador:mejores', (_evt, juego, mejorEs) => marcador.mejores(juego, mejorEs));
 ipcMain.handle('marcador:todos', () => marcador.todos());
+
+// Historial de partidas por red. Como el marcador, la firma se queda a este
+// lado del puente; a diferencia de él, leer también la exige.
+ipcMain.handle('partidas:guardar', (_evt, p) => partidas.guardar(p));
+ipcMain.handle('partidas:mias', () => partidas.mias());
 ipcMain.handle('marcador:guardar', (_evt, record) => marcador.guardar(record));
 ipcMain.on('update:check', () => buscarActualizacion());
 ipcMain.on('update:install', () => instalarActualizacion(() => win));

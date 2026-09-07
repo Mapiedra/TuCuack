@@ -108,6 +108,18 @@ export async function leerHistorial() {
  *
  * Devuelven `{ok, datos?, error?}` y no lanzan, como el gemelo del escritorio.
  */
+/**
+ * El historial de partidas por red, preguntándoselo al worker.
+ *
+ * Por ahí y no directamente por lo mismo que el marcador: la firma vive allí, y
+ * este código corre dentro de la página web de cualquiera. Aquí LEER también la
+ * exige, así que `mias` no lleva identidad ninguna — el worker ya sabe de quién.
+ */
+export const partidas = {
+  guardar: (partida) => preguntarAlWorker({ tipo: 'partidas-guardar', partida }),
+  mias: () => preguntarAlWorker({ tipo: 'partidas-mias' })
+};
+
 export const marcador = {
   mejores: (juego, mejorEs) => preguntarAlWorker({ tipo: 'marcador-mejores', juego, mejorEs }),
   todos: () => preguntarAlWorker({ tipo: 'marcador-todos' }),

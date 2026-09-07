@@ -2,26 +2,15 @@
 
 // El marcador global, por el lado del escritorio.
 //
-// Dos llamadas HTTP y nada más, así que va con `fetch` a pelo y no con
-// `supabase-js`: ese paquete exige un WebSocket para construirse aunque no se
-// use Realtime, y en el proceso principal eso obliga a arrastrar `ws` y a
-// esperar a los certificados del sistema (ver main/chat.js). Para leer una vista
-// y llamar a una función eso sobra.
-//
-// Vive AQUÍ y no en el núcleo por una razón de fondo: la firma con la que se
-// escribe en el marcador no puede salir de la carcasa. El pato pide «guarda esta
-// marca» y quien la firma es este fichero. Si el secreto viajara al renderer
-// estaría también en la extensión, dentro de la página web de cualquiera.
+// Cómo se habla con Supabase desde aquí —y por qué el secreto no sale de este
+// lado— está en `supabaseRest.js`. Esto es sólo lo que el marcador pide.
 //
 // Su gemelo en la extensión está en `extension/sw.js`, por el mismo motivo por
 // el que el chat está duplicado: cada carcasa habla con Supabase desde donde
 // puede.
 
-const config = require('./config.js');
+const { pedir } = require('./supabaseRest.js');
 const store = require('./store.js');
-
-/** Lo que se espera a que conteste. Un marcador no puede colgar la partida. */
-const TOPE_MS = 8000;
 
 /** Cuántos se piden para la tabla de un juego. */
 const TOPE_FILAS = 20;
@@ -36,42 +25,6 @@ const TOPE_FILAS = 20;
  * ha movido—, y ahí tocará una consulta que devuelva sólo el líder de cada uno.
  */
 const TOPE_TODOS = 500;
-
-function cabeceras() {
-  return {
-    apikey: config.SUPABASE_KEY,
-    Authorization: `Bearer ${config.SUPABASE_KEY}`,
-    'Content-Type': 'application/json'
-  };
-}
-
-/**
- * Llama y se rinde a tiempo.
- *
- * Devuelve `{ok, datos, error}` en vez de lanzar: quien lo llama es el pato en
- * mitad de una partida, y ahí una excepción sin dueño se lleva por delante algo
- * que sí importaba.
- */
-async function pedir(ruta, opciones) {
-  if (!config.isConfigured()) return { ok: false, error: 'sin-credenciales' };
-
-  const corta = new AbortController();
-  const reloj = setTimeout(() => corta.abort(), TOPE_MS);
-  try {
-    const res = await fetch(`${config.SUPABASE_URL}${ruta}`, {
-      ...opciones,
-      headers: cabeceras(),
-      signal: corta.signal
-    });
-    const texto = await res.text();
-    if (!res.ok) return { ok: false, error: `${res.status} ${texto.slice(0, 120)}` };
-    return { ok: true, datos: texto ? JSON.parse(texto) : null };
-  } catch (err) {
-    return { ok: false, error: err.name === 'AbortError' ? 'sin respuesta' : String(err.message || err) };
-  } finally {
-    clearTimeout(reloj);
-  }
-}
 
 /**
  * Los mejores de un juego.
