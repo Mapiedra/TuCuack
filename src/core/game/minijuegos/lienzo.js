@@ -54,6 +54,26 @@ export function crearLienzo() {
 }
 
 /**
+ * Dónde acaba el marcador, en píxeles desde el borde de arriba de la pantalla.
+ *
+ * Lo exporta este fichero porque es este el que crea el trasto: `.juego-hud` va
+ * a 12 píxeles del borde y ocupa 51, así que su última fila es la 63. **Medido
+ * en la app**, no calculado a ojo —a ojo salen 52 y se queda corto—.
+ *
+ * Lo necesita cualquier juego de escenario que pinte algo pegado arriba: el
+ * marcador va POR ENCIMA del lienzo y le tapa lo que haya debajo. Le pasó a la
+ * mesa de billar, donde se comía la tronera central, y al minigolf, donde
+ * esconde la franja de arriba del campo.
+ *
+ * Si alguien toca `.juego-hud` en styles.css, este número hay que volver a
+ * medirlo.
+ */
+export const MARCADOR_ABAJO = 63;
+
+/** Y el aire que conviene dejarle debajo, para que no se toquen. */
+export const AIRE_MARCADOR = 10;
+
+/**
  * El marcador: el nombre del juego, un hueco para el tanteo y el botón de
  * salir. Va aparte del lienzo porque es texto y porque tiene que poder pulsarse.
  *

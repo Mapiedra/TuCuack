@@ -59,6 +59,7 @@
 // vea el recorrido, y al acabar clava la bola donde diga el mensaje.
 
 import { sembrar } from './azar.js';
+import { MARCADOR_ABAJO, AIRE_MARCADOR } from './lienzo.js';
 
 const HOYOS = 10;
 
@@ -86,6 +87,9 @@ const ALCANCE = 0.28;
  * siempre el más fuerte.
  */
 const ENTRADA_MAX = 620;
+
+/** El trazo del borde del campo. Se pinta a caballo de la línea, mitad fuera. */
+const GROSOR_BORDE = 6;
 
 /** Lo que se enseña de la salida al apuntar: el principio, no el final. */
 const PREVIO_S = 0.42;
@@ -790,7 +794,7 @@ export function crearPartida(ctx) {
     // un rectángulo opaco a pantalla completa da un susto que no toca.
     g.fillStyle = 'rgba(41, 122, 74, 0.88)';
     g.fillRect(campo.x0, campo.y0, campo.ancho, campo.alto);
-    g.lineWidth = 6;
+    g.lineWidth = GROSOR_BORDE;
     g.strokeStyle = '#2b2b3a';
     g.strokeRect(campo.x0, campo.y0, campo.ancho, campo.alto);
     g.restore();
@@ -1144,7 +1148,12 @@ export function medirCampo(medidas, aPantalla) {
   const margen = Math.max(14, Math.min(40, medidas.ancho * 0.02));
   const x0 = margen;
   const x1 = Math.max(x0 + 200, medidas.ancho - margen);
-  const y0 = margen;
+  // Debajo del marcador, que va POR ENCIMA del lienzo: con el margen a secas se
+  // le montaba encima y escondía la franja de arriba del campo. Ahí puede caer
+  // un muro, un tope o el propio hoyo, así que no era sólo feo. Los tres de la
+  // suma: donde acaba el marcador, el aire, y la mitad del trazo del borde, que
+  // se pinta a caballo de `y0`.
+  const y0 = Math.max(margen, MARCADOR_ABAJO + AIRE_MARCADOR + GROSOR_BORDE / 2);
   // El borde de abajo lo marca la mascota: se queda FUERA del campo, en su
   // suelo de siempre, mirando. Meterla dentro de una vista cenital sería
   // pintarla tumbada en medio del césped.

@@ -64,6 +64,7 @@
 // segura de acabar con dos partidas distintas.
 
 import { sembrar } from './azar.js';
+import { MARCADOR_ABAJO, AIRE_MARCADOR } from './lienzo.js';
 
 /** Las numeradas. Más la blanca, dieciséis en la mesa. */
 const BOLAS = 15;
@@ -1209,21 +1210,6 @@ export function montarLasBolas(orden, campo, radio) {
 }
 
 // ---- Medidas de la mesa ---------------------------------------------------
-
-/**
- * Dónde acaba el marcador, contado desde el borde de la pantalla.
- *
- * El marcador —«8 Pool · te toca · Salir»— es DOM, no lienzo: `.juego-hud` va a
- * 12 píxeles del borde y ocupa 51, así que su última fila es la 63. **Medido en
- * la app**, no calculado a ojo: a ojo me salió 52 y la primera corrección se
- * quedó corta.
- *
- * Si alguien toca `.juego-hud` en styles.css, este número hay que volver a
- * medirlo.
- */
-const MARCADOR_ABAJO = 63;
-/** Y el aire que se le deja debajo, para que no se toquen. */
-const AIRE_MARCADOR = 10;
 
 /**
  * La mesa: dos a uno, centrada en lo que quede.
