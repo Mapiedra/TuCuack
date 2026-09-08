@@ -17,6 +17,7 @@
     "ext": "node tools/build-extension.js",
     "marcador": "node tools/probar-marcador.js",
     "juegos:check": "node tools/comprobar-juegos.js",
+    "salas:check": "node tools/probar-salas.mjs",
     "ext:watch": "node tools/build-extension.js --watch",
     "sprites": "python tools/pack_sprites.py",
     "pack": "electron-builder --dir",

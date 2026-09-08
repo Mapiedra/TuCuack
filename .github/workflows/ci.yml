@@ -22,8 +22,17 @@ jobs:
 
       - name: Check JavaScript syntax
         run: |
-          find src tools -name '*.js' -print0 | xargs -0 -n1 node --check
+          find src tools \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n1 node --check
           echo "OK"
+
+      # El gestor de salas es lo que sostiene una partida entre dos ordenadores, y
+      # lo que hace cuando algo va mal —el rival callado, el pato mudándose de
+      # pestaña, la conexión cayéndose— no lo prueba nadie, porque la red no falla
+      # cuando uno quiere. Estas comprobaciones sí, y sin red: son JavaScript puro
+      # y tardan un segundo. Aquí encontraron un canal que reconectaba y se caía
+      # cada cinco segundos para siempre.
+      - name: Comprobar el gestor de salas
+        run: npm run salas:check
 
       # Sólo las de producción: aquí no se compila nada de Electron.
       - name: Install dependencies
