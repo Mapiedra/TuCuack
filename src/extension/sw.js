@@ -18,6 +18,9 @@ importScripts('vendor/supabase.js');
 const CANAL = 'patos-global';
 
 let cliente = null;
+/** Cómo se construye el cliente, para poder rehacerlo entero al reconectar.
+ *  El gemelo de `crearCliente` en src/main/chat.js. */
+let crearCliente = null;
 let canal = null;
 let conectado = false;
 let miNombre = '';
@@ -523,10 +526,13 @@ async function conectar() {
 
   console.log(`[chat] conectando a ${cred.url} · canal "${CANAL}" · como "${miNombre || '(sin nombre)'}"`);
 
-  cliente = supabase.createClient(cred.url, cred.clave, {
+  // Se guarda cómo se construye para poder rehacerlo si la reconexión se atasca
+  // (ver `programarReintento`).
+  crearCliente = () => supabase.createClient(cred.url, cred.clave, {
     auth: { persistSession: false, autoRefreshToken: false },
     realtime: { params: { eventsPerSecond: 10 } }
   });
+  cliente = crearCliente();
 
   canal = crearCanal();
   suscribir();
@@ -687,15 +693,48 @@ function programarReintento() {
   if (temporizador) return;
   const espera = Math.min(ESPERA_MAX, ESPERA_MIN * Math.pow(2, reintentos));
   reintentos++;
-  console.log(`[chat] reintentando en ${Math.round(espera / 1000)}s (intento ${reintentos})`);
+  // A partir del tercer intento no basta con rehacer el canal: se rehace el
+  // cliente entero. Es lo mismo que hace el escritorio y por el mismo motivo —
+  // quitar el último canal deja al socket programando su propia desconexión, y
+  // el canal nuevo puede quedarse esperando a un socket que se está yendo, con
+  // lo que los reintentos fallan uno tras otro aunque la red ya haya vuelto.
+  //
+  // Hasta ahora la extensión no tenía esta salida: se quedaba rehaciendo el
+  // canal para siempre, con la espera creciendo pero sin llegar a arreglarse.
+  const desdeCero = reintentos >= 3;
+  console.log(`[chat] reintentando en ${Math.round(espera / 1000)}s `
+    + `(intento ${reintentos}${desdeCero ? ', reconectando desde cero' : ''})`);
+
   temporizador = setTimeout(() => {
     temporizador = null;
-    if (!cliente || !canal) return;
+    if (!cliente) return;
     try {
-      // Se rehace el canal: reutilizar uno que ya falló no vuelve a conectar.
-      cliente.removeChannel(canal);
+      if (desdeCero && crearCliente) {
+        try {
+          cliente.removeAllChannels();
+          if (cliente.realtime && typeof cliente.realtime.disconnect === 'function') {
+            cliente.realtime.disconnect();
+          }
+        } catch { /* el cliente viejo ya estaba para el arrastre */ }
+        cliente = crearCliente();
+        // Los canales del cliente anterior ya no valen para nada.
+        canalSala = null;
+        salaSuscrita = false;
+      } else if (canal) {
+        // Reutilizar un canal que ya falló no vuelve a conectar.
+        cliente.removeChannel(canal);
+      }
       canal = crearCanal();
       suscribir();
+      // El canal de la partida cuelga del mismo socket: si se ha rehecho el
+      // cliente, el suyo se fue con él. Y aunque no, volver a entrar es
+      // idempotente. Sin esto, una reconexión a mitad de partida dejaba al pato
+      // mandando jugadas a un canal que ya no existía.
+      if (salaActual) {
+        const id = salaActual;
+        salirDeSala({ recordar: false });
+        entrarEnSala(id);
+      }
     } catch (e) {
       console.error('[chat] fallo al reconectar:', e.message);
       programarReintento();
@@ -874,12 +913,18 @@ function crearCanalDeSala(salaId) {
 function suscribirSala() {
   if (!canalSala) return;
   const mia = salaActual;
+  const mio = canalSala;
   canalSala.subscribe((estado, err) => {
-    // La sala pudo cambiar mientras se suscribía: lo que diga un canal viejo ya
-    // no va con nosotros.
-    if (mia !== salaActual) return;
+    // La escucha es de ESTE canal, no del que haya en cada momento. Un canal al
+    // que ya se ha renunciado —porque se cambió de sala, o porque se rehizo tras
+    // un fallo— no tiene nada que decir: su despedida no es un fallo nuevo.
+    if (mio !== canalSala) return;
     if (estado === 'SUBSCRIBED') {
       salaSuscrita = true;
+      // Y se cancela el reintento en camino: un canal conectado no necesita
+      // que lo reconecten, y el reintento lo tiraría para rehacerlo. Es el
+      // mismo bucle que se comía el canal común.
+      if (reintentoSala) { clearTimeout(reintentoSala); reintentoSala = null; }
       console.log(`[juego] canal de la partida "${mia}": conectado`);
       vaciarColaDeSala();
       return;

@@ -460,12 +460,18 @@ function crearCanalDeSala(getWin, salaId) {
 function suscribirSala(getWin) {
   if (!canalSala) return;
   const mia = salaActual;
+  const mio = canalSala;
   canalSala.subscribe((status, err) => {
-    // La sala pudo cambiar mientras se suscribía: lo que diga un canal viejo ya
-    // no va con nosotros.
-    if (mia !== salaActual) return;
+    // La escucha es de ESTE canal, no del que haya en cada momento. Un canal al
+    // que ya se ha renunciado —porque se cambió de sala, o porque se rehizo tras
+    // un fallo— no tiene nada que decir: su despedida no es un fallo nuevo.
+    if (mio !== canalSala) return;
     if (status === 'SUBSCRIBED') {
       salaSuscrita = true;
+      // Y se cancela el reintento en camino: un canal conectado no necesita
+      // que lo reconecten, y el reintento lo tiraría para rehacerlo. Es el
+      // mismo bucle que se comía el canal común.
+      if (reintentoSala) { clearTimeout(reintentoSala); reintentoSala = null; }
       console.log(`[juego] canal de la partida "${mia}": conectado`);
       vaciarColaDeSala();
       return;
