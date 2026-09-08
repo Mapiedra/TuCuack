@@ -362,6 +362,10 @@ export async function arrancarPato(plataforma) {
                        deBienvenida: cartera.deBienvenida }),
       /** Para probar la tienda sin esperar a que exista un juego de pago. */
       darCuacks: (n) => cartera.ingresar(n),
+      // El gemelo del anterior: sin esto se pueden dar cuacks desde una sonda
+      // pero no gastarlos, y un juego de escenario de pago no hay forma de
+      // abrirlo para probarlo.
+      comprarJuego: (id) => cartera.comprar(minijuegoPorId(id)),
       salas: () => salas,
       /** Un vistazo a la partida por red, para ver dónde se ha atascado. */
       estadoDeJuego: () => {

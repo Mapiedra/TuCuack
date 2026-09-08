@@ -318,6 +318,24 @@ export const MINIJUEGOS = [
     // flota.js: el contrato permite omitir `puntos`.
     marca: { etiqueta: 'disparos', mejor: 'menos' },
     cargar: () => import('./flota.js')
+  },
+  {
+    id: 'pool',
+    nombre: '8 Pool',
+    icono: '🎱',
+    descripcion: 'Lisas o rayadas, y la negra la última. Si metes, sigues.',
+    nivel: 55,
+    precio: 2475,
+    modos: ['solo', 'turnos'],
+    jugadores: { min: 2, max: 2 },
+    superficie: 'escenario',
+    // La serie más larga sin perder el turno. Tiene techo —ocho, que es la
+    // partida entera de una tacada— y eso está bien: llegar ahí es una carambola
+    // que casi nadie va a ver. Y a diferencia de los disparos de la flota, una
+    // serie larga sigue siendo un logro aunque acabes perdiendo, así que se
+    // apunta siempre.
+    marca: { etiqueta: 'seguidas', mejor: 'mas' },
+    cargar: () => import('./pool.js')
   }
 ];
 

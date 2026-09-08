@@ -22,6 +22,7 @@ abren desde `🎮 Juegos` en el menú del pato.
 | 👾 Invasores | 38 | solo | escenario |
 | 🔤 Ahorcado | 43 | solo · red (2) | panel |
 | 🚢 Hundir la flota | 49 | solo · red (2) | panel |
+| 🎱 8 Pool | 55 | solo · red (2) | escenario |
 
 La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
 segundo, después los de pensar, y al final los que piden pulso. Los huecos están
@@ -568,6 +569,7 @@ global—.
 | 38 | 👾 Invasores | oleada · más | bates tu récord |
 | 43 | 🔤 Ahorcado | palabras · más | bates tu récord — o **la sacas con menos fallos**, en red |
 | 49 | 🚢 Hundir la flota | disparos · **menos**, y sólo al ganar | hundes su flota antes |
+| 55 | 🎱 8 Pool | seguidas · más | metes la negra con tu grupo limpio |
 
 Dos excepciones que merecen la pena:
 
@@ -759,6 +761,102 @@ El préstamo del escenario corta a los diez minutos y lo hace **sin resultado**
 partida entera. El juego se da a sí mismo **ocho minutos y medio**: al llegar,
 cierra él, da por perdidos los hoyos que falten y apunta la marca. Perder por
 lento es una derrota; perderlo todo, un fallo.
+
+---
+
+## 8 Pool: el único sitio donde la física exacta sale bien
+
+### Por qué aquí sí
+
+En este proyecto la física de cuerpo contra cuerpo ha dado siempre problemas.
+[The Hole](#amontonarse) tiembla porque la gravedad empuja el montón unos contra
+otros indefinidamente. Por eso el minigolf tiene UNA bola y no hay ningún juego
+de apilar.
+
+El billar es la excepción, y conviene saber por qué antes de copiarlo a ningún
+sitio: son círculos **del mismo tamaño**, **sin gravedad**, en un plano y **sin
+contactos en reposo**. En esas condiciones el choque elástico entre dos discos
+iguales no necesita solucionador: se descompone la velocidad en la línea que une
+los centros, se intercambian las componentes normales —masas iguales— y las
+tangenciales se quedan como estaban. Son cuatro líneas, y son exactas.
+
+Todo lo que hace difícil un motor de física de verdad —masas distintas, gravedad,
+pilas que se sostienen, fricción de contacto— aquí no existe.
+
+### El banco de pruebas, que es la mitad del trabajo
+
+La física **no vive dentro de `crearPartida`**: está en funciones de módulo puras
+que reciben las bolas, el campo y las troneras y no saben nada de la partida. No
+es manía de orden. Encerrada en el cierre no habría forma de medirla sin abrir
+una ventana, y con dieciocho constantes que ajustar eso son tardes de mirar.
+
+Con ellas fuera se corren quinientas aperturas en Node en unos segundos, y aún
+mejor: el contrato de un juego de escenario es tan pequeño que **se puede cumplir
+a mano**. Una pista de mentira con un pintor que no pinta y un ratón que se mueve
+por programa, y ya se juegan partidas enteras sin ventana —incluidas **dos
+instancias en red, una contra otra**, que es algo que hasta ahora no se había
+probado nunca de principio a fin en este proyecto—.
+
+Lo que sacó esa medición, y que jugando no se habría encontrado en semanas:
+
+| Lo medido | Lo que salió |
+|---|---|
+| Bolas fuera de la mesa | **214 fugas en 300 aperturas** con el paño rápido |
+| Aperturas secas, ápice en 0,68 | 98 % |
+| Aperturas secas, ápice en 0,79 | **89 %** |
+| Lo que tarda en pararse la mesa más revuelta | 5,8 s (el tope de repetición son 8) |
+| Tiros a toda velocidad que atraviesan una bola | 0 de 300 |
+
+**Las fugas eran un fallo de verdad.** Venían de apagar la banda cerca de la
+boca, por miedo a que la bola rebotara justo antes de colarse. Y el truco
+sobraba: la captura se mira ANTES que la banda y la boca es más ancha que el
+radio de la bola, así que rodando pegada a la banda hacia la esquina el centro
+entra en la boca cuando todavía le faltan once píxeles para tocar la otra. Con la
+banda puesta se gana además la mandíbula: la bola que llega abierta rebota y se
+queda ahí, que es lo que hace en un billar.
+
+**Y el triángulo al fondo no es adorno**: es la banda corta la que devuelve las
+bolas hacia las troneras, que es exactamente por lo que en una mesa de verdad el
+triángulo se pone donde se pone.
+
+### La cuesta, que aquí es un rival
+
+Como en el Pong: en un juego de dos no hay «más ladrillos», hay alguien que falla
+menos. La mascota busca la **bola fantasma** —dónde tiene que estar la blanca en
+el momento del contacto para que la suya salga hacia la tronera—, descarta los
+cortes de más de 72° y los caminos con algo por medio, y lo que la hace fallar es
+el desvío, no el cálculo: 0,075 radianes al nivel 55 y 0,012 al 100. Nunca cero.
+Una mascota que no falla jamás no es un rival, es un muro.
+
+Medido contra un jugador que tira al azar: al nivel 55 baja hasta una o cinco
+bolas por meter; al 100 **limpia su grupo entero** y cierra con la negra.
+
+### El tiempo agotado, en red, es empate
+
+Contra la mascota gana quien lleve menos bolas por meter. En red, no: es empate.
+
+Los dos lados no cuentan el reloj a la vez, así que uno puede cerrar con la
+última tacada del otro todavía viajando —medido: dos tableros separados por una
+bola—. Contar las que quedan daría victoria en una pantalla y empate en la otra,
+y **un resultado que no cuadra entre las dos es peor que un empate romo**.
+Arreglarlo de verdad pediría un apretón de manos al final que el protocolo no
+tiene, y no lo merece un caso que sólo pasa cuando los dos han jugado ocho
+minutos y medio sin llegar a la negra.
+
+Lo que sí se arregló: el reloj **no corta a mitad de una tacada**. Espera a que la
+mesa esté quieta y no quede nada del rival por aplicar. Con eso, los tableros de
+los dos lados coinciden bola a bola —doce partidas de doce, y con pantallas de
+tamaños distintos—.
+
+### Las reglas que se quedaron fuera
+
+- **Bola en mano.** Es lo que manda el reglamento tras una falta, y costaría una
+  interfaz para colocarla y —peor— enseñarle a la mascota a usarla. La blanca
+  vuelve a la cabecera, que es variante de billar de toda la vida y castiga igual.
+- **La banda obligatoria tras el contacto.** Existe para que no se pueda jugar a
+  no hacer nada, y contra una mascota que siempre intenta meter no hace falta.
+- **Cantar la tronera.** Es un paso más en cada tiro de un juego que ya tiene
+  bastantes.
 
 ---
 
@@ -1057,8 +1155,8 @@ que son una línea en un array.
 | 20 | 68 | 💥 Artillería | todo junto | 49 | 3050 |
 
 Los días son de uso normal —unas 736 XP diarias entre convivencia, cuidados,
-racha, chat y el tope de partidas—. Los diecisiete primeros están **hechos**; del
-18 en adelante, [por hacer](#los-que-faltan).
+racha, chat y el tope de partidas—. Los dieciocho primeros están **hechos**; del
+19 en adelante, [por hacer](#los-que-faltan).
 
 El nivel ABRE un juego y el precio lo COMPRA. Quien ya lo tuviera abierto el día
 que llegó la moneda no paga por él —ver [Los cuacks](#los-cuacks)—.
@@ -1082,7 +1180,6 @@ para todos: ninguno pide ampliarlo.
 
 | Juego | Nivel | Modos | Superficie | Lo que estrena |
 |---|---|---|---|---|
-| 🎱 8 Pool | 55 | solo · red (2) | escenario | choques entre bolas: el único caso donde la física exacta sale bien |
 | 🏹 «Angry {mascota}» | 61 | solo | escenario | estructuras que se vienen abajo |
 | 💥 Artillería | 68 | red (2) | escenario | terreno destructible y turnos con física compartida |
 
@@ -1090,31 +1187,11 @@ Los dos últimos estaban en el tintero y **están confirmados**: se hacen, y se
 hacen al final. El [ranking entre patos](#-ranking-entre-patos--hecho-en-la-0170)
 no está en esta tabla porque no es un juego, y además ya está hecho.
 
-### 🎱 8 Pool
-
-Billar americano: la mesa, las bolas, las troneras. Un tiro son dos números
-—ángulo y fuerza—, así que **encaja en la sala por turnos** exactamente igual que
-la [artillería](#-artillería-tipo-worms--nivel-50): se manda la jugada y los dos
-lados simulan lo mismo.
-
-Y aquí sí hace falta física de cuerpo contra cuerpo, pero es **el único caso del
-proyecto donde sale bien**, y conviene entender por qué: son círculos del MISMO
-tamaño, sin gravedad, en un plano y sin contactos en reposo. El choque elástico
-entre dos discos iguales es exacto en una línea de código y no necesita
-solucionador. Es justo lo contrario del montón de [The
-Hole](#amontonarse), que temblaba porque la gravedad los empujaba unos contra
-otros indefinidamente.
-
-- **Superficie:** escenario. Una mesa de billar en 280 × 300 px no se ve.
-- **Riesgo:** la deriva numérica en red, el mismo de la artillería. Se ataja
-  mandando también dónde acabó cada bola, con el anfitrión de árbitro.
-
----
-
 ## Los cuacks: la moneda
 
-**Propuesta, no implementada.** Se apunta entera porque la decisión de fondo ya
-está tomada y conviene que no se pierda.
+**Hecha, en la 0.18.0**, y la regla de no quitarle nada a nadie en la 0.19.0.
+Se deja escrito el razonamiento entero porque es lo que gobierna el precio de
+cada juego nuevo.
 
 Además del nivel, los juegos se **compran**. Así jugar da algo más que un número
 y hay que jugar para poder jugar más; y como cada juego paga según su nivel,
