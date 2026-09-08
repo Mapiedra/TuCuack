@@ -1206,21 +1206,35 @@ export function montarLasBolas(orden, campo, radio) {
 // ---- Medidas de la mesa ---------------------------------------------------
 
 /**
- * La mesa: dos a uno, centrada en lo que deje la pantalla.
+ * Lo que hay que dejar libre arriba, contado desde el borde de la pantalla.
  *
- * El borde de abajo lo marca la mascota, que se queda FUERA con su suelo de
- * siempre, y además hay que dejarle sitio a la fila de bolas metidas.
+ * El marcador —«8 Pool · te toca · Salir»— es DOM, no lienzo: va pegado arriba
+ * en el centro, a 12 píxeles y con unos 40 de alto (`.juego-hud`). Y la mesa
+ * dibuja su banda de madera POR FUERA del campo, así que el borde de arriba está
+ * más alto de lo que dice `y0`. Sin contar las dos cosas, el marcador se monta
+ * sobre la mesa y tapa la tronera central de arriba —que es justo donde cae—.
+ */
+const HUECO_MARCADOR = 78;
+
+/**
+ * La mesa: dos a uno, centrada en lo que quede.
+ *
+ * Arriba manda el marcador; abajo, la mascota, que se queda FUERA con su suelo
+ * de siempre y a la que hay que dejarle sitio para la fila de bolas metidas.
  */
 export function medirCampo(medidas, aPantalla) {
   const margen = Math.max(16, Math.min(46, medidas.ancho * 0.022));
   const anchoLibre = Math.max(300, medidas.ancho - margen * 2);
+  const arriba = Math.max(margen, HUECO_MARCADOR);
   const abajo = aPantalla(medidas.suelo) - medidas.patoAlto - 34;
-  const altoLibre = Math.max(150, abajo - margen);
+  const altoLibre = Math.max(150, abajo - arriba);
 
   const ancho = Math.min(anchoLibre, altoLibre * 2);
   const alto = ancho / 2;
   const x0 = (medidas.ancho - ancho) / 2;
-  const y0 = Math.max(margen, (abajo - alto) / 2);
+  // Centrada en la franja que queda, no en la pantalla: si sobra sitio, que
+  // sobre por los dos lados.
+  const y0 = arriba + Math.max(0, (abajo - arriba - alto) / 2);
   return { x0, y0, x1: x0 + ancho, y1: y0 + alto, ancho, alto };
 }
 
