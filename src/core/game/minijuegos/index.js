@@ -336,6 +336,22 @@ export const MINIJUEGOS = [
     // apunta siempre.
     marca: { etiqueta: 'seguidas', mejor: 'mas' },
     cargar: () => import('./pool.js')
+  },
+  {
+    id: 'angry',
+    nombre: 'Angry {mascota}',
+    icono: '🏹',
+    descripcion: 'Derriba la estructura. Lo que cae, aplasta.',
+    nivel: 61,
+    precio: 2750,
+    modos: ['solo'],
+    jugadores: { min: 1, max: 1 },
+    superficie: 'escenario',
+    // Estructuras derribadas del tirón. Diez están dibujadas a mano y a partir
+    // de ahí se generan, así que la marca no tiene techo: los ladrillos ya
+    // enseñaron que un juego con techo se acaba.
+    marca: { etiqueta: 'estructuras', mejor: 'mas' },
+    cargar: () => import('./angry.js')
   }
 ];
 

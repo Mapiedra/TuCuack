@@ -23,6 +23,7 @@ abren desde `🎮 Juegos` en el menú del pato.
 | 🔤 Ahorcado | 43 | solo · red (2) | panel |
 | 🚢 Hundir la flota | 49 | solo · red (2) | panel |
 | 🎱 8 Pool | 55 | solo · red (2) | escenario |
+| 🏹 «Angry {mascota}» | 61 | solo | escenario |
 
 La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
 segundo, después los de pensar, y al final los que piden pulso. Los huecos están
@@ -570,6 +571,7 @@ global—.
 | 43 | 🔤 Ahorcado | palabras · más | bates tu récord — o **la sacas con menos fallos**, en red |
 | 49 | 🚢 Hundir la flota | disparos · **menos**, y sólo al ganar | hundes su flota antes |
 | 55 | 🎱 8 Pool | seguidas · más | metes la negra con tu grupo limpio |
+| 61 | 🏹 «Angry {mascota}» | estructuras · más | bates tu récord de estructuras derribadas |
 
 Dos excepciones que merecen la pena:
 
@@ -761,6 +763,80 @@ El préstamo del escenario corta a los diez minutos y lo hace **sin resultado**
 partida entera. El juego se da a sí mismo **ocho minutos y medio**: al llegar,
 cierra él, da por perdidos los hoyos que falten y apunta la marca. Perder por
 lento es una derrota; perderlo todo, un fallo.
+
+---
+
+## «Angry {mascota}»: una viga sin apoyo no se vence, se parte
+
+### El riesgo estaba escrito antes de empezar
+
+El catálogo avisaba: «que se parezca demasiado a Pato Hook. Si los derrumbes no
+se disfrutan, es Pato Hook con decorado». Y el lanzamiento es, literalmente, el
+de [Pato Hook](#-pato-hook): mismo `limitarLanzamiento`, mismo `arrancarVuelo`,
+misma forma de apuntar. Eso es a propósito —quien sabe lanzar a su mascota ya
+sabe jugar— pero obliga a que lo nuevo esté entero en la otra mitad:
+
+> **En «Pato Hook» el tiro ES el juego. Aquí el tiro es la mitad: lo que cuenta
+> pasa DESPUÉS de que la mascota se pare.**
+
+De ahí sale todo. Las gaviotas están metidas en la estructura, casi nunca a tiro
+directo, y la mayoría caen porque les cae encima lo que sostenía la columna que
+has roto. La decisión no es «dónde está el bicho» sino «qué quito para que se le
+venga el techo».
+
+### El problema que no se ve hasta que dibujas el primer nivel
+
+El plan era el del catálogo: rejilla de cajas, sin rotación, y lo que se queda
+sin apoyo cae a plomo. Y no basta:
+
+> **Una viga apoyada en dos columnas no puede caer nunca.** Le quitas una columna
+> y la otra sigue justo debajo, así que no tiene sitio donde caer. En un motor de
+> cuerpos rígidos se vencería hacia el lado vacío; sin rotación se queda ahí
+> colgada y el derrumbe no ocurre.
+
+La salida no es añadir rotación —eso es el motor entero que se decidió no
+escribir en [§Amontonarse](#amontonarse)— sino cambiar qué hace una viga cuando
+se queda sin apoyo: **se parte**. Una pieza de más de una casilla se rompe en
+trozos de una, y cada trozo cae por su cuenta: los que estaban sobre el hueco se
+van abajo y aplastan lo que haya, los que quedaban sobre la columna que aguanta
+se quedan. Es lo que hace una viga de verdad, se lee de un vistazo, y da la
+cadena entera sin un solo iterador de impulsos.
+
+### Y la regla de apoyo, que se equivocó primero
+
+**El centro de la pieza tiene que caer entre el apoyo más a la izquierda y el
+más a la derecha.** Es la condición de verdad de una viga —si el centro de masas
+se sale de los apoyos, vuelca— y con piezas uniformes no hace falta nada más.
+
+La primera versión decía «por el centro, o por los dos extremos». Suena parecido
+y no lo es: con eso una viga larga sobre varias columnas no se venía abajo por
+mucho que le quitaras, porque siempre le quedaba el centro o los dos extremos.
+
+### Medido, que es como se encontró
+
+El derrumbe vive **fuera** de `crearPartida`, en funciones puras, por lo mismo que
+la física del [billar](#8-pool-el-único-sitio-donde-la-física-exacta-sale-bien):
+dentro del cierre no se puede comprobar sin abrir una ventana, y mirar no es
+medir. Montando las diez estructuras en Node y rompiendo cada pieza de madera una
+por una salieron tres fallos que jugando habrían tardado semanas:
+
+| Con la regla vieja | Con la nueva |
+|---|---|
+| Dos estructuras se derrumbaban **solas**, sin tocarlas | Ninguna |
+| En dos, romper madera no derribaba **ni una** gaviota | En nueve de diez, un solo golpe las derriba todas |
+| Las generadas: **más grandes eran más fáciles** | Crecen en torres sueltas, y cada una pide su tiro |
+
+Lo último merece explicación. El generador subía la dificultad haciendo torres
+más altas, y una torre alta es un castillo de naipes: un golpe en la columna de
+abajo se llevaba las nueve gaviotas. La cuesta iba hacia abajo. Ahora lo que
+crece es **cuántas torres separadas hay**: con cuatro tiros por estructura y tres
+torres, hay que acertar tres veces.
+
+### La cuesta
+
+Diez estructuras dibujadas a mano y, a partir de ahí, generadas. Los ladrillos ya
+enseñaron que un juego con techo se acaba, y una marca con tope de diez la empata
+todo el mundo. Las de a mano enseñan; las generadas no se acaban.
 
 ---
 
@@ -1155,8 +1231,8 @@ que son una línea en un array.
 | 20 | 68 | 💥 Artillería | todo junto | 49 | 3050 |
 
 Los días son de uso normal —unas 736 XP diarias entre convivencia, cuidados,
-racha, chat y el tope de partidas—. Los dieciocho primeros están **hechos**; del
-19 en adelante, [por hacer](#los-que-faltan).
+racha, chat y el tope de partidas—. Los diecinueve primeros están **hechos**; del
+20 en adelante, [por hacer](#los-que-faltan).
 
 El nivel ABRE un juego y el precio lo COMPRA. Quien ya lo tuviera abierto el día
 que llegó la moneda no paga por él —ver [Los cuacks](#los-cuacks)—.
@@ -1180,12 +1256,15 @@ para todos: ninguno pide ampliarlo.
 
 | Juego | Nivel | Modos | Superficie | Lo que estrena |
 |---|---|---|---|---|
-| 🏹 «Angry {mascota}» | 61 | solo | escenario | estructuras que se vienen abajo |
 | 💥 Artillería | 68 | red (2) | escenario | terreno destructible y turnos con física compartida |
 
-Los dos últimos estaban en el tintero y **están confirmados**: se hacen, y se
-hacen al final. El [ranking entre patos](#-ranking-entre-patos--hecho-en-la-0170)
-no está en esta tabla porque no es un juego, y además ya está hecho.
+Queda **uno**, y va el último a propósito: es el que más pide del contrato —física
+compartida por turnos— y ahora llega con medio camino hecho, porque el billar ya
+resolvió cómo se reparte una simulación entre dos pantallas: el que tira manda
+dónde acabó todo, y también el veredicto.
+
+El [ranking entre patos](#-ranking-entre-patos--hecho-en-la-0170) no está en esta
+tabla porque no es un juego, y además ya está hecho.
 
 ## Los cuacks: la moneda
 
@@ -1425,30 +1504,6 @@ un servidor que juegue la partida.
 
 Aprobados, y los últimos de la escalera. Se apuntan con lo que costarían, que es
 la mitad de la decisión.
-
-### 🏹 «Angry {mascota}» (tipo Angry Birds) — nivel 61
-
-Lanzas a la mascota contra **estructuras que se vienen abajo**. Ojo, porque el
-lanzamiento ya lo tenemos: **eso es «Pato Hook»**. Lo único que aportaría de nuevo
-es justo la cara del juego, que lo golpeado se derrumbe.
-
-Y ahí está el problema. El derrumbe de verdad —cajas que giran, se apoyan unas en
-otras y se vencen de lado— es un motor de cuerpos rígidos: contactos en reposo,
-rotación, fricción y un solucionador iterativo. Es exactamente lo que se decidió
-NO escribir en [§Amontonarse](#amontonarse), y por los mismos motivos.
-
-**La versión que sí se puede hacer** es un derrumbe *por bloques*: la estructura
-es una rejilla de cajas, un impacto quita las que pilla en un radio, y las que se
-quedan sin nada debajo caen **en vertical**, sin girar. Se ve bien, se lee bien y
-no hace falta motor ninguno. A cambio, no habrá torres que se venzan hacia un
-lado: caen a plomo.
-
-- **Coste:** medio-alto. La física de tiro está hecha; lo nuevo son los bloques,
-  la propagación del derrumbe y unos cuantos niveles dibujados a mano.
-- **Riesgo:** que se parezca demasiado a «Pato Hook». Si los derrumbes no se
-  disfrutan, es «Pato Hook» con decorado.
-- **Orden:** después del de artillería. Los dos están aprobados; éste va el
-  penúltimo porque es el que más se parece a algo que ya se puede jugar.
 
 ### 💥 Artillería (tipo Worms) — nivel 68
 
