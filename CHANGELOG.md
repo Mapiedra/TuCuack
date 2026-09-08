@@ -7,6 +7,23 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.35.0] - 2026-09-09
+
+### Añadido
+
+- **💥 Artillería.** Nivel 68, 3050 cuacks. Dos mascotas, una en cada punta,
+  terreno que se va gastando a cada impacto y viento que cambia cada turno. Contra
+  tu mascota o contra otro pato. Gana quien deje al otro sin vida; la marca son
+  los disparos —a menos— y sólo se apunta si ganas.
+
+  La mascota rival juega como jugarías tú: tira, ve dónde ha caído y **corrige**.
+  Lo que mejora con el nivel es lo rápido que se ajusta, no el pulso: nunca deja
+  de temblar.
+
+  **Con esto están los veinte juegos del catálogo.** La escalera va del
+  ✌️ piedra-papel-tijera de nivel 1 a esto, y el contrato de un minijuego
+  aguantó los veinte sin ampliarse ni una vez.
+
 ## [0.34.0] - 2026-09-08
 
 ### Añadido
