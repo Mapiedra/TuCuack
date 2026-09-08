@@ -352,6 +352,21 @@ export const MINIJUEGOS = [
     // enseñaron que un juego con techo se acaba.
     marca: { etiqueta: 'estructuras', mejor: 'mas' },
     cargar: () => import('./angry.js')
+  },
+  {
+    id: 'artilleria',
+    nombre: 'Artillería',
+    icono: '💥',
+    descripcion: 'Por turnos, con viento, y el suelo se va gastando.',
+    nivel: 68,
+    precio: 3050,
+    modos: ['solo', 'turnos'],
+    jugadores: { min: 2, max: 2 },
+    superficie: 'escenario',
+    // Los disparos, y **sólo si ganas**: perder en tres tiros no es un récord de
+    // puntería, es que te han acertado antes. Igual que los disparos de la flota.
+    marca: { etiqueta: 'disparos', mejor: 'menos' },
+    cargar: () => import('./artilleria.js')
   }
 ];
 

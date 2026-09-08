@@ -24,6 +24,7 @@ abren desde `🎮 Juegos` en el menú del pato.
 | 🚢 Hundir la flota | 49 | solo · red (2) | panel |
 | 🎱 8 Pool | 55 | solo · red (2) | escenario |
 | 🏹 «Angry {mascota}» | 61 | solo | escenario |
+| 💥 Artillería | 68 | solo · red (2) | escenario |
 
 La lista va de menos a más, y el nivel acompaña: primero los de decidir en un
 segundo, después los de pensar, y al final los que piden pulso. Los huecos están
@@ -572,6 +573,7 @@ global—.
 | 49 | 🚢 Hundir la flota | disparos · **menos**, y sólo al ganar | hundes su flota antes |
 | 55 | 🎱 8 Pool | seguidas · más | metes la negra con tu grupo limpio |
 | 61 | 🏹 «Angry {mascota}» | estructuras · más | bates tu récord de estructuras derribadas |
+| 68 | 💥 Artillería | disparos · **menos**, y sólo al ganar | dejas al otro sin vida |
 
 Dos excepciones que merecen la pena:
 
@@ -763,6 +765,74 @@ El préstamo del escenario corta a los diez minutos y lo hace **sin resultado**
 partida entera. El juego se da a sí mismo **ocho minutos y medio**: al llegar,
 cierra él, da por perdidos los hoyos que falten y apunta la marca. Perder por
 lento es una derrota; perderlo todo, un fallo.
+
+---
+
+## Artillería: el que dispara manda, también el viento
+
+El último de la escalera, y el que el catálogo señalaba como mejor candidato
+porque traía un modo que no existía —por turnos con física compartida— y porque
+las tres piezas que necesitaba ya estaban escritas: `salas.js` para los turnos,
+`ctx.semilla` para que los dos vean lo mismo, y el mapa de alturas de [The
+Hole](#amontonarse) para el terreno.
+
+### La deriva numérica ya estaba resuelta
+
+Era el riesgo apuntado: si los dos lados simulan por separado y uno redondea
+distinto, los cráteres acaban en sitios distintos y la partida se parte sin que
+nadie se entere.
+
+No hizo falta inventar nada, porque **lo había resuelto el billar**: el que
+dispara manda dónde cayó el huevo y cuánto daño hizo, igual que allí manda dónde
+acabó cada bola. El otro repite el tiro para verlo —adorno— y luego cava el
+cráter donde diga el mensaje. No hay dos simulaciones que comparar: hay una y una
+repetición.
+
+**El viento va por el mismo camino.** Sortearlo cada uno con la semilla
+funcionaría mientras los dos lados gasten los mismos números en el mismo orden,
+que es una promesa que se rompe el día que alguien meta un sorteo en medio. Lo
+manda quien dispara, junto con el resultado.
+
+### La mascota aprende, y eso hubo que arreglarlo
+
+La idea era que jugara como juega una persona: tira, ve dónde ha caído y corrige.
+La primera versión **sorteaba un fallo nuevo en cada disparo y luego lo
+«corregía»**, que es corregir ruido: no converge. Medido, salía *peor* con tres
+correcciones que con ninguna.
+
+Lo que sí se puede aprender es un **sesgo**: se sortea uno al empezar la partida
+y baja con cada tiro. Es además lo que le pasa a una persona —no sabes cuánto
+empuja el viento hasta que ves caer el primero—. Encima queda un temblor que no
+se corrige nunca, y que baja poco con el nivel: lo que mejora es el sesgo, no el
+pulso.
+
+| nivel | fallo del 1.er tiro | del 2.º | del 3.º | del 4.º | tiros que hacen daño |
+|---|---|---|---|---|---|
+| 68 | 188 px | 121 | 93 | 81 | 54 % |
+| 80 | 160 | 92 | 75 | 72 | 61 % |
+| 95 | 108 | 69 | 71 | 74 | 67 % |
+| 110 | 72 | 66 | 69 | 74 | 74 % |
+
+### Y un número que no era un número de dificultad
+
+Con el disparo más fuerte a 1150 píxeles por segundo, el alcance de la parábola
+—`v²/g`— eran 1469 píxeles y las dos mascotas están a 1460. Justo, justo. Con
+viento de cara **no llegaba ningún disparo**, y la búsqueda de la mascota daba
+248 píxeles de error medio: parecía que apuntaba mal y lo que pasaba es que no
+existía un tiro bueno. Con 1450 el alcance sube a 2336 y el error medio baja a
+**15 píxeles**.
+
+Es el tipo de cosa que se ve en una tabla y no jugando: jugando sólo se nota que
+«la mascota es un poco tonta».
+
+### Probado a dos, de principio a fin
+
+Diez duelos con dos instancias de verdad hablándose por una sala de mentira, y
+con **pantallas de tamaños distintos**: diez de diez coherentes, las vidas
+reflejadas exactas y el viento idéntico en las dos. De ahí salieron dos
+descuadres que no se ven de otra forma: el marcador se quedaba una jugada
+retrasado al acabar, y el que disparaba cambiaba el viento *después* de mirar si
+alguien había muerto mientras el que recibía lo cambiaba *antes*.
 
 ---
 
@@ -1231,8 +1301,8 @@ que son una línea en un array.
 | 20 | 68 | 💥 Artillería | todo junto | 49 | 3050 |
 
 Los días son de uso normal —unas 736 XP diarias entre convivencia, cuidados,
-racha, chat y el tope de partidas—. Los diecinueve primeros están **hechos**; del
-20 en adelante, [por hacer](#los-que-faltan).
+racha, chat y el tope de partidas—. **Están los veinte.** La escalera se cerró con
+la artillería en la 0.35.0.
 
 El nivel ABRE un juego y el precio lo COMPRA. Quien ya lo tuviera abierto el día
 que llegó la moneda no paga por él —ver [Los cuacks](#los-cuacks)—.
@@ -1249,22 +1319,19 @@ seguir una pelota con el ratón, y estaban al revés.
 > El progreso guardado no se pierde en ningún caso: `ProgresoJuegos.toJSON` no
 > filtra por catálogo.
 
-## Los que faltan
+## Los que faltan: ninguno
 
-Aprobados y por hacer, cada uno su propia tarea. El contrato está dimensionado
-para todos: ninguno pide ampliarlo.
+**La escalera está completa.** Los veinte juegos aprobados están hechos, del
+piedra-papel-tijera de nivel 1 a la artillería del 68, y el contrato aguantó los
+veinte sin ampliarse: sigue siendo `crearPartida(ctx)` devolviendo `{el, destroy}`
+o `{actualizar, destroy}`, como el primer día.
 
-| Juego | Nivel | Modos | Superficie | Lo que estrena |
-|---|---|---|---|---|
-| 💥 Artillería | 68 | red (2) | escenario | terreno destructible y turnos con física compartida |
-
-Queda **uno**, y va el último a propósito: es el que más pide del contrato —física
-compartida por turnos— y ahora llega con medio camino hecho, porque el billar ya
-resolvió cómo se reparte una simulación entre dos pantallas: el que tira manda
-dónde acabó todo, y también el veredicto.
+Lo único que se le añadió por el camino fue una **regla**, no una capacidad: la
+cuarta, la de no declarar nada después del `return` (ver arriba), que salió de
+haberse pegado el mismo tortazo tres veces.
 
 El [ranking entre patos](#-ranking-entre-patos--hecho-en-la-0170) no está en esta
-tabla porque no es un juego, y además ya está hecho.
+cuenta porque no es un juego, y además ya está hecho.
 
 ## Los cuacks: la moneda
 
