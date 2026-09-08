@@ -106,6 +106,11 @@ const FUERZA_MINIMA = 90;
 /** Píxeles como mucho por subpaso: una bola rápida no puede saltarse otra. */
 const PASO_MAX = 3;
 
+/** Lo más gorda que se pinta una bola, por grande que sea la pantalla. */
+const RADIO_MAX = 20;
+/** Y la boca de una tronera, en radios de bola. */
+const BOCA = 1.85;
+
 /**
  * Lo que el juego se da a sí mismo antes de cerrar.
  *
@@ -1206,15 +1211,19 @@ export function montarLasBolas(orden, campo, radio) {
 // ---- Medidas de la mesa ---------------------------------------------------
 
 /**
- * Lo que hay que dejar libre arriba, contado desde el borde de la pantalla.
+ * Dónde acaba el marcador, contado desde el borde de la pantalla.
  *
- * El marcador —«8 Pool · te toca · Salir»— es DOM, no lienzo: va pegado arriba
- * en el centro, a 12 píxeles y con unos 40 de alto (`.juego-hud`). Y la mesa
- * dibuja su banda de madera POR FUERA del campo, así que el borde de arriba está
- * más alto de lo que dice `y0`. Sin contar las dos cosas, el marcador se monta
- * sobre la mesa y tapa la tronera central de arriba —que es justo donde cae—.
+ * El marcador —«8 Pool · te toca · Salir»— es DOM, no lienzo: `.juego-hud` va a
+ * 12 píxeles del borde y ocupa 51, así que su última fila es la 63. **Medido en
+ * la app**, no calculado a ojo: a ojo me salió 52 y la primera corrección se
+ * quedó corta.
+ *
+ * Si alguien toca `.juego-hud` en styles.css, este número hay que volver a
+ * medirlo.
  */
-const HUECO_MARCADOR = 78;
+const MARCADOR_ABAJO = 63;
+/** Y el aire que se le deja debajo, para que no se toquen. */
+const AIRE_MARCADOR = 10;
 
 /**
  * La mesa: dos a uno, centrada en lo que quede.
@@ -1225,7 +1234,10 @@ const HUECO_MARCADOR = 78;
 export function medirCampo(medidas, aPantalla) {
   const margen = Math.max(16, Math.min(46, medidas.ancho * 0.022));
   const anchoLibre = Math.max(300, medidas.ancho - margen * 2);
-  const arriba = Math.max(margen, HUECO_MARCADOR);
+  // La tronera se pinta CENTRADA en la esquina, así que sobresale una boca
+  // entera por encima de `y0`: el borde de arriba de lo que se ve no es `y0`,
+  // es `y0 - boca`. Eso es lo que se me olvidó la primera vez.
+  const arriba = Math.max(margen, MARCADOR_ABAJO + AIRE_MARCADOR + RADIO_MAX * BOCA);
   const abajo = aPantalla(medidas.suelo) - medidas.patoAlto - 34;
   const altoLibre = Math.max(150, abajo - arriba);
 
@@ -1240,12 +1252,12 @@ export function medirCampo(medidas, aPantalla) {
 
 /** Una bola es más o menos un treinta y seisavo del largo de la mesa. */
 export function radioDeBola(campo) {
-  return Math.max(6, Math.min(20, campo.ancho / 72));
+  return Math.max(6, Math.min(RADIO_MAX, campo.ancho / 72));
 }
 
 /** Las seis: cuatro esquinas y dos en medio de las bandas largas. */
 export function troneraDelCampo(campo, radio) {
-  const r = radio * 1.85;
+  const r = radio * BOCA;
   const cx = campo.x0 + campo.ancho / 2;
   return [
     { x: campo.x0, y: campo.y0, radio: r },
