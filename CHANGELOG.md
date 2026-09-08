@@ -7,6 +7,26 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.34.0] - 2026-09-08
+
+### Añadido
+
+- **🏹 «Angry {mascota}».** Nivel 61, 2750 cuacks. Lanzas a tu mascota contra
+  estructuras de madera, piedra y hielo con gaviotas metidas dentro. Cuatro tiros
+  por estructura, y los que te sobren cuentan para la siguiente.
+
+  Se lanza igual que en 🎯 «{mascota} Hook» —quien sabe lanzar a su mascota ya
+  sabe jugar— pero ahí acaba el parecido: **las gaviotas casi nunca caen del
+  golpe, caen porque les cae encima lo que sostenía la columna que has roto**. La
+  decisión no es dónde está el bicho, es qué quitas para que se le venga el techo.
+
+  Las piezas no giran —eso sería un motor de cuerpos rígidos— pero una viga que se
+  queda sin apoyo **se parte**, y los trozos caen sueltos. Eso es lo que hace que
+  un derrumbe encadene sin simular nada.
+
+  Diez estructuras dibujadas a mano y, a partir de ahí, generadas: la marca son
+  las que derribas del tirón, y no tiene techo.
+
 ## [0.33.0] - 2026-09-08
 
 ### Añadido
