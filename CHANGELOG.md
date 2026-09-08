@@ -7,6 +7,35 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.33.0] - 2026-09-08
+
+### Añadido
+
+- **🎱 8 Pool.** Nivel 55, 2475 cuacks. Quince bolas, seis troneras, lisas y
+  rayadas y la negra la última. La mesa está abierta hasta que alguien mete, y
+  mientras metas de las tuyas sigues tirando. Falta es colar la blanca, no tocar
+  nada, o tocar primero una que no es tuya —y entonces la blanca vuelve a la
+  cabecera—.
+
+  Contra tu mascota, que busca la bola fantasma y falla menos según tu nivel; o
+  contra otro pato, donde el que tira manda dónde acabó todo **y también el
+  veredicto**. La marca es tu **serie más larga** sin perder el turno.
+
+  Es el único sitio del proyecto donde la física de cuerpo contra cuerpo sale
+  bien, y por una razón concreta: círculos del mismo tamaño, sin gravedad, en un
+  plano y sin contactos en reposo. Ahí el choque elástico entre dos discos
+  iguales son cuatro líneas exactas, sin solucionador.
+
+### Corregido
+
+- **El marcador de los juegos ya no se monta sobre el tablero.** Va pegado arriba
+  y por encima del lienzo, y tapaba la tronera central de la mesa de billar y la
+  franja de arriba del campo del ⛳ minigolf, donde puede caer un muro, un tope o
+  el propio hoyo. Los dos se corren hacia abajo lo justo.
+
+  El recorrido del minigolf **no cambia**: va en proporciones, no en píxeles, así
+  que un campo más bajo lo recoloca sin rehacerlo y los récords siguen valiendo.
+
 ## [0.32.2] - 2026-09-08
 
 ### Corregido
