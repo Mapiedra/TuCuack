@@ -610,16 +610,50 @@ function crearCanal() {
 let reintentos = 0;
 let temporizador = null;
 const ESPERA_MIN = 5000;
+/** Cuánto tiene que AGUANTAR el canal para darlo por bueno. El gemelo de lo
+ *  mismo en src/main/chat.js, y por el mismo motivo: un canal que conecta y se
+ *  cae al segundo ponía la cuenta a cero cada vez, así que la espera nunca
+ *  crecía y se quedaba reconectando cada cinco segundos para siempre. */
+const ESTABLE_MS = 30000;
+let estable = null;
 const ESPERA_MAX = 5 * 60 * 1000;
 
 function suscribir() {
   if (!canal) return;
+  // La escucha es DE ESTE canal, no del que haya en cada momento.
+  //
+  // Al reconectar se quita el canal anterior, y quitarlo dispara su propio
+  // `CLOSED` — que llegaba aquí como si fuera un fallo nuevo y programaba otro
+  // reintento, que a su vez quitaba el canal recién creado. El canal conectaba y
+  // se caía cada cinco segundos para siempre: la presencia parpadeando para todo
+  // el mundo, la partida suspendiéndose sin parar y los mensajes de los huecos
+  // perdidos.
+  //
+  // Un canal al que ya se ha renunciado no tiene nada que decir: su despedida no
+  // es un fallo. Es la misma comprobación que ya hacía el canal de la sala.
+  const mio = canal;
   canal.subscribe(async (status, err) => {
+    if (mio !== canal) return;
     const antes = conectado;
     conectado = status === 'SUBSCRIBED';
 
     if (conectado) {
-      reintentos = 0;
+      // Y se cancela el reintento que hubiera en camino.
+      //
+      // Sin esto no había forma de salir del bucle: un canal recién creado pasa
+      // por CLOSED mientras se une, eso se tomaba por un fallo y programaba otro
+      // reintento, y ese reintento llegaba cuando el canal YA estaba conectado y
+      // lo tiraba para rehacerlo. Conectaba y se caía cada cinco segundos para
+      // siempre, con la presencia parpadeando para todo el mundo y la partida
+      // suspendiéndose sin parar.
+      //
+      // Un canal conectado no necesita que lo reconecten. Si vuelve a caerse, su
+      // propia escucha programará otro.
+      if (temporizador) { clearTimeout(temporizador); temporizador = null; }
+      // El contador todavía no se perdona: hay que aguantar (ver ESTABLE_MS).
+      if (!estable) {
+        estable = setTimeout(() => { estable = null; reintentos = 0; }, ESTABLE_MS);
+      }
       if (!antes) console.log('[chat] canal: conectado');
       avisar({ type: 'status', connected: true, reason: status });
       // Sólo una vez por canal: repetir el anuncio no reemplaza la entrada
@@ -639,6 +673,8 @@ function suscribir() {
       return;
     }
 
+    // Se ha caído antes de aguantar: el intento no cuenta como bueno.
+    if (estable) { clearTimeout(estable); estable = null; }
     console.log(`[chat] canal: ${status}${err ? ` (${err.message || err})` : ''}`);
     avisar({ type: 'status', connected: false, reason: status });
     if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {

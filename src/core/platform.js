@@ -174,6 +174,9 @@ const CHAT_DESACTIVADO = {
   /** ¿Sabe esta carcasa abrir un canal por partida? Sin preguntarlo, el pato lo
    *  intentaría igual y se quedaría hablándole a un canal en el que no está. */
   puedeSala: () => false,
+  /** Tira el canal a propósito, para poder ver la reconexión. Sólo hace algo en
+   *  desarrollo; ver `caerAdrede` en src/main/chat.js. */
+  caerAdrede: noop,
   // Sólo donde el canal viva fuera del pato: le dice que ya no hay partida que
   // guardar para la próxima pestaña.
   olvidarPartida: noop,

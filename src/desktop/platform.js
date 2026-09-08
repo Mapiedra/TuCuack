@@ -92,6 +92,8 @@ export function crearPlataformaElectron() {
       // preguntándoselo por IPC porque no cambia nunca: es una propiedad de la
       // carcasa, no un estado.
       puedeSala: () => true,
+      // Sólo en desarrollo; fuera de `--dev` el IPC no está registrado.
+      caerAdrede: () => pato.chatCaer(),
       // En el escritorio el canal vive en el proceso main y el pato no se muda
       // a ninguna parte: no hay partida que guardar para nadie.
       ponerNombre: (n) => pato.setChatName(n),

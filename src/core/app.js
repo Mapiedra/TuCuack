@@ -466,6 +466,8 @@ export async function arrancarPato(plataforma) {
       verPaseo: () => hacerElPaseo(),
       paseo: () => paseo,
       chat,
+      /** Tira el canal como si se cayera la red. Sólo hace algo en desarrollo. */
+      caerElCanal: () => api.chat.caerAdrede(),
       // Para llenar el chat desde una sonda sin levantar la red: `anadir` apunta
       // un mensaje como si hubiera llegado (y lo guarda), y `sembrar` mete una
       // tanda de golpe sin escribir nada.

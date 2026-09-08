@@ -235,6 +235,15 @@ ipcMain.on('juego:sala-salir', () => {
   if (chat) chat.salirDeSala();
 });
 
+// Tirar el canal a propósito, para poder ver la reconexión a mitad de partida.
+// Sólo en desarrollo: fuera de `--dev` este canal IPC no existe, así que desde
+// una app instalada no hay forma de llamarlo.
+if (isDev) {
+  ipcMain.on('chat:caer', () => {
+    if (chat && chat.caerAdrede) chat.caerAdrede();
+  });
+}
+
 // Nombre anunciado en la presencia del canal (para la comprobación de unicidad).
 ipcMain.on('chat:set-name', (_evt, name) => {
   if (chat) chat.setName(name);

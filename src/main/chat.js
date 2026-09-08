@@ -230,6 +230,28 @@ function initChat(getWin, initialName, patoId, direccion) {
       }
     },
 
+    /**
+     * Tira el canal a propósito, como si se hubiera caído la red.
+     *
+     * SÓLO en desarrollo: main.js no registra su IPC fuera de `--dev`. Existe
+     * porque una caída a mitad de partida es de las cosas que más daño hacen y
+     * de las que menos se pueden probar — la red no falla cuando uno quiere—, y
+     * hasta que esto existió, el camino de reconexión estaba escrito y razonado
+     * pero nunca visto funcionar.
+     *
+     * Hace exactamente lo que hace un fallo de verdad: dar el canal por caído,
+     * avisar al pato —que suspende la partida— y programar el reintento, que es
+     * quien rehace el canal común Y el de la sala.
+     */
+    caerAdrede() {
+      if (!channel) return false;
+      console.log('[chat] caída provocada a mano (sólo en --dev)');
+      connected = false;
+      notify(getWin, { type: 'status', connected: false, reason: 'CAIDA_DE_PRUEBA' });
+      programarReintento(getWin);
+      return true;
+    },
+
     names: () => presentNames(),
     presentes: () => presentes(),
     /** Nuestra clave de presencia: es la dirección de vuelta de las visitas. */
@@ -499,6 +521,25 @@ function vaciarColaDeSala() {
 let reintentos = 0;
 let temporizador = null;
 const ESPERA_MIN = 5000;
+/**
+ * Cuánto tiene que AGUANTAR el canal para darlo por bueno.
+ *
+ * El contador de reintentos no se pone a cero al conectar, sino cuando la
+ * conexión se sostiene. Parece un matiz y no lo es: un canal que conecta y se
+ * cae un segundo después ponía el contador a cero cada vez, así que nunca
+ * llegaba al tercer intento — que es el único que rehace el cliente entero, y
+ * justo la salida que existe para este caso.
+ *
+ * El resultado era un canal que conectaba y se caía cada cinco segundos para
+ * siempre: la partida suspendiéndose y reanudándose sin parar, los mensajes
+ * enviados en los huecos perdidos, y el pato entrando y saliendo de la lista de
+ * conectados de todos los demás. Se descubrió pudiendo tirar el canal a
+ * voluntad (ver `caerAdrede`); antes no había forma de verlo.
+ */
+const ESTABLE_MS = 30000;
+/** El temporizador que dará la conexión por buena, si llega a cumplirse. */
+let estable = null;
+
 const ESPERA_MAX = 5 * 60 * 1000;
 
 /**
@@ -526,12 +567,40 @@ function describirError(err) {
 
 function suscribir(getWin) {
   if (!channel) return;
+  // La escucha es DE ESTE canal, no del que haya en cada momento.
+  //
+  // Al reconectar se quita el canal anterior, y quitarlo dispara su propio
+  // `CLOSED` — que llegaba aquí como si fuera un fallo nuevo y programaba otro
+  // reintento, que a su vez quitaba el canal recién creado. El canal conectaba y
+  // se caía cada cinco segundos para siempre: la presencia parpadeando para todo
+  // el mundo, la partida suspendiéndose sin parar y los mensajes de los huecos
+  // perdidos.
+  //
+  // Un canal al que ya se ha renunciado no tiene nada que decir: su despedida no
+  // es un fallo. Es la misma comprobación que ya hacía el canal de la sala.
+  const mio = channel;
   channel.subscribe(async (status, err) => {
+    if (mio !== channel) return;
     const antes = connected;
     connected = status === 'SUBSCRIBED';
     const detalle = err ? ` (${describirError(err)})` : '';
     if (connected) {
-      reintentos = 0;
+      // Y se cancela el reintento que hubiera en camino.
+      //
+      // Sin esto no había forma de salir del bucle: un canal recién creado pasa
+      // por CLOSED mientras se une, eso se tomaba por un fallo y programaba otro
+      // reintento, y ese reintento llegaba cuando el canal YA estaba conectado y
+      // lo tiraba para rehacerlo. Conectaba y se caía cada cinco segundos para
+      // siempre, con la presencia parpadeando para todo el mundo y la partida
+      // suspendiéndose sin parar.
+      //
+      // Un canal conectado no necesita que lo reconecten. Si vuelve a caerse, su
+      // propia escucha programará otro.
+      if (temporizador) { clearTimeout(temporizador); temporizador = null; }
+      // El contador todavía NO se perdona: hay que aguantar (ver ESTABLE_MS).
+      if (!estable) {
+        estable = setTimeout(() => { estable = null; reintentos = 0; }, ESTABLE_MS);
+      }
       if (!antes) console.log('[chat] canal: conectado');
       notify(getWin, { type: 'status', connected: true, reason: status });
       // Sólo una vez por canal. Supabase puede avisar de SUBSCRIBED más de una
@@ -553,6 +622,8 @@ function suscribir(getWin) {
       return;
     }
 
+    // Se ha caído antes de aguantar: el intento no cuenta como bueno.
+    if (estable) { clearTimeout(estable); estable = null; }
     console.log(`[chat] canal: ${status}${detalle}`);
     notify(getWin, { type: 'status', connected: false, reason: status });
     if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
@@ -617,6 +688,7 @@ function disabledChat() {
     salirDeSala() {},
     puedeSala: () => false,
     direccion: () => '',
+    caerAdrede: () => false,
     async setName() {},
     names: () => [],
     presentes: () => [],

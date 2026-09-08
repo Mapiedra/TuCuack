@@ -28,6 +28,8 @@ contextBridge.exposeInMainWorld('pato', {
   sendGame: (mensaje, porSala) => ipcRenderer.send('juego:send', mensaje, !!porSala),
   entrarEnSala: (salaId) => ipcRenderer.send('juego:sala-entrar', salaId),
   salirDeSala: () => ipcRenderer.send('juego:sala-salir'),
+  // Sólo en desarrollo: tira el canal para ver la reconexión (ver main.js).
+  chatCaer: () => ipcRenderer.send('chat:caer'),
   // Esconder el pato en la bandeja, sin cerrarlo.
   hide: () => ipcRenderer.send('app:hide'),
   // Actualizaciones a mano.
