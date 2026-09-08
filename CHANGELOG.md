@@ -7,6 +7,32 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.32.1] - 2026-09-08
+
+### Corregido
+
+- **Al caerse la conexión, el pato reconectaba… y se volvía a caer. Y otra vez.
+  Cada cinco segundos, para siempre.** Con la partida suspendiéndose y
+  reanudándose sin parar, los mensajes escritos en los huecos perdidos, y tu
+  mascota entrando y saliendo de la lista de conectados de todos los demás.
+
+  Funcionaba lo justo para que no se notara —la partida sobrevivía— y por eso
+  llevaba ahí desde siempre sin que nadie lo mirara.
+
+  Un canal recién creado pasa por «cerrado» mientras se une; eso se tomaba por
+  un fallo y programaba otra reconexión, que llegaba cuando el canal ya estaba
+  bien y lo tiraba para rehacerlo. El bucle se alimentaba solo. Ahora conectar
+  cancela la reconexión que hubiera en camino, la cuenta de intentos sólo se
+  perdona si la conexión aguanta medio minuto, y un canal al que ya se renunció
+  deja de dar noticias.
+
+  Medido antes y después con una caída provocada: de seis suspensiones en
+  cuarenta segundos, a una sola reconexión y silencio.
+
+- Y con eso comprobado por fin lo que hasta ahora estaba escrito pero no visto:
+  que **una partida por red sobrevive a que se te caiga la conexión a mitad**.
+  Las jugadas que mandes mientras está caída llegan cuando vuelve.
+
 ## [0.32.0] - 2026-09-07
 
 ### Cambiado
