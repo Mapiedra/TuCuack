@@ -43,11 +43,17 @@
 // Es lo que hace una viga de verdad cuando le quitas medio apoyo, se lee de un
 // vistazo, y da la cadena de derrumbes entera sin un solo iterador de impulsos.
 //
-// Y el apoyo se mira así: **por el centro, o por los dos extremos**. Una viga
-// sobre dos columnas se sostiene por los extremos; si cae una, ya no tiene ni
-// centro ni los dos extremos, y se parte. Una pieza de una casilla tiene el
-// centro y los extremos en el mismo sitio, así que para ella la regla es la de
-// siempre: si no hay nada debajo, cae.
+// Y el apoyo se mira así: **el centro de la pieza tiene que caer entre el apoyo
+// más a la izquierda y el más a la derecha**. Es la condición de verdad de una
+// viga —si el centro de masas se sale de los apoyos, vuelca— y con piezas
+// uniformes no hace falta nada más. Una de una casilla tiene un solo apoyo
+// posible, así que para ella se reduce a «¿hay algo debajo?».
+//
+// La primera versión decía «por el centro, o por los dos extremos». Suena
+// parecido y no lo es: con eso, una viga larga sobre varias columnas no se venía
+// abajo por mucho que le quitaras, porque siempre le quedaba el centro o los dos
+// extremos. Dos de las diez estructuras eran imposibles y otras dos se
+// derrumbaban solas. Se vio midiendo, no jugando (ver `soportada`).
 //
 // ---- Los materiales ---------------------------------------------------------
 //

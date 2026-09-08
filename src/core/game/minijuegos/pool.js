@@ -25,9 +25,15 @@
 // arriba y meterla dentro sería pintarla tumbada sobre el paño.
 //
 // Las troneras son huecos, no adornos: antes de mirar si la bola rebota en la
-// banda se mira si ha entrado en una tronera, y cerca de la boca la banda deja
-// de existir. Sin eso, una bola que va a la esquina rebota justo antes de
-// entrar y nunca se cuela.
+// banda se mira si ha **entrado** en una tronera. Con ese orden basta, y la
+// banda se queda puesta hasta en las bocas: la boca es más ancha que el radio de
+// la bola, así que rodando pegada a la banda hacia la esquina el centro entra en
+// la tronera cuando todavía le faltan once píxeles para tocar la otra banda.
+//
+// La primera versión sí apagaba la banda cerca de la boca, por miedo a que la
+// bola rebotara justo antes de colarse. Sobraba, y abría un agujero por el que
+// la bola salía despedida fuera de la mesa: 214 fugas en 300 aperturas con el
+// paño rápido (ver `chocarConLasBandas`).
 //
 // ---- Las reglas que se quedan y las que no --------------------------------
 //
