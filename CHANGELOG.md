@@ -7,6 +7,31 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.32.2] - 2026-09-08
+
+### Corregido
+
+- **La extensión de Chrome ya sabe reconectar desde cero.** La app de escritorio,
+  cuando la reconexión se atasca, rehace la conexión entera en vez de insistir
+  con la misma; la extensión no tenía esa salida y se quedaba reintentando para
+  siempre, con la espera creciendo pero sin llegar a arreglarse nunca. Y al
+  volver, ahora también vuelve a entrar en el canal de la partida.
+
+- **El canal de una partida arrastraba el mismo fallo que se arregló en el chat
+  en la 0.32.1**, en las dos versiones: al rehacerlo, la despedida del canal
+  anterior se leía como un fallo nuevo, y una reconexión ya programada llegaba a
+  destiempo y tiraba un canal que ya estaba bien.
+
+  Es el tercer sitio donde aparecía el mismo patrón. La regla, escrita ya en los
+  tres: una escucha se guarda contra el canal al que pertenece, y conectar
+  cancela lo que se hubiera programado para arreglarlo.
+
+### Notas
+
+- Lo de la extensión no se ha podido ejecutar en Chrome: allí no hay forma de
+  provocar una caída de conexión. Lo comprobado es el camino equivalente en el
+  escritorio, que es el mismo código escrito dos veces.
+
 ## [0.32.1] - 2026-09-08
 
 ### Corregido
