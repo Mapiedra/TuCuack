@@ -146,8 +146,20 @@ export function crearPartida(ctx) {
 
   verSuyo.addEventListener('click', () => { vista = 'suyo'; pintar(); });
   verMio.addEventListener('click', () => { vista = 'mio'; pintar(); });
-  girar.addEventListener('click', () => { horizontal = !horizontal; pintar(); });
-  barajar.addEventListener('click', () => { colocarAlAzar(); pintar(); });
+  // Con la guarda de fase, y no es de adorno: «Barajar» llama a `colocarAlAzar`,
+  // que VACÍA el mar y vuelve a repartir. Sin guarda se podía pulsar con la
+  // partida en marcha y la flota se movía debajo de los disparos del rival, con
+  // los tocados ya anotados dentro. Lo cazó el banco de pruebas a dos.
+  girar.addEventListener('click', () => {
+    if (fase !== 'colocando') return;
+    horizontal = !horizontal;
+    pintar();
+  });
+  barajar.addEventListener('click', () => {
+    if (fase !== 'colocando') return;
+    colocarAlAzar();
+    pintar();
+  });
 
   if (ctx.sala) {
     ctx.alDestruir(ctx.sala.alRecibir((msg) => { recibir(msg); }));
@@ -255,9 +267,15 @@ export function crearPartida(ctx) {
 
   async function listo() {
     if (misBarcos.length !== FLOTA.length) return;
+    // Ya se confirmó: el botón vive en el pie y no se iba solo, así que seguía
+    // ahí toda la partida y cada clic sorteaba una sal nueva y mandaba otra
+    // promesa. El de enfrente ya las ignora, pero mandarlas tampoco está bien.
+    if (fase !== 'colocando') return;
     miSal = Math.random().toString(36).slice(2, 10);
     miPrometido = await compromiso(`${miSal}:${comoTexto()}`);
     if (terminada) return;
+
+    cerrarColocacion();
 
     if (contraLaMascota) {
       prepararMascota();
@@ -414,6 +432,16 @@ export function crearPartida(ctx) {
     if (!msg || terminada) return;
 
     if (msg.t === 'flota') {
+      // **Sólo la primera.** Sobrescribir aquí vaciaba el compromiso de todo su
+      // sentido: el rival podía mandar una flota, jugar, ver dónde le tiras y
+      // mandar OTRA promesa de un tablero que esquiva tus disparos, revelarla al
+      // final y cuadrar. Prometer antes de tirar es justo lo único que aporta
+      // este mecanismo, y una promesa que se puede cambiar después no es una
+      // promesa.
+      //
+      // Lo cazó el banco de pruebas a dos, no jugando: el bot pulsaba «Listo»
+      // en cada vuelta y aquí entraba un compromiso nuevo por turno.
+      if (suPrometido) return;
       suPrometido = String(msg.prometido || '');
       if (fase === 'esperando' && miPrometido) empezarPartida();
       return;
@@ -561,6 +589,17 @@ export function crearPartida(ctx) {
     const celdas = huecoPara(FLOTA[porColocar], origen, horizontal);
     if (celdas) { for (const i of celdas) casillas[i].classList.add('cabe'); return; }
     casillas[origen].classList.add('nocabe');
+  }
+
+  /**
+   * La fila de colocar se va entera en cuanto la flota está confirmada.
+   *
+   * Girar, barajar y confirmar sólo sirven para colocar. Dejándolos ahí toda la
+   * partida, además de confundir, invitan a pulsarlos: y pulsarlos era mover la
+   * flota o mandar otra promesa.
+   */
+  function cerrarColocacion() {
+    pie.remove();
   }
 
   /** El botón de «Listo» sólo existe cuando hay algo que confirmar. */
