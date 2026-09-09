@@ -282,6 +282,12 @@ function limpiarVisita(v) {
     skin: String(v.skin || '').slice(0, 24),
     gesto: GESTOS.includes(v.gesto) ? v.gesto : 'saludo',
     texto: String(v.texto || '').slice(0, 280),
+    // Si la visita es el aviso de un privado. El contenido NO viaja aquí —el
+    // privado sigue yendo a su tabla—: esto sólo dice «tienes correo», para
+    // que el pato entre a avisar en vez de que te enteres al abrir el panel.
+    // Campo añadido: un pato de una versión anterior lo recorta y ve una
+    // visita normal, que es exactamente lo que debe pasar.
+    privado: !!v.privado,
     ts: Number(v.ts) || Date.now()
   };
 }

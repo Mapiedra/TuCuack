@@ -142,6 +142,19 @@ html, body {
 .status-bubbles .emo { animation: pop 0.3s ease; }
 @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
 
+/* La marca de lo pendiente late despacio, y despacio es la palabra: tiene que
+   llamar la atención de reojo y quedarse ahí un buen rato sin cansar, porque
+   dura hasta que abras el chat y no unos segundos como el ánimo. */
+.status-bubbles .pendiente { animation: pop 0.3s ease, latido 2.4s ease-in-out 0.3s infinite; }
+@keyframes latido {
+  0%, 70%, 100% { transform: scale(1); }
+  80% { transform: scale(1.18); }
+  90% { transform: scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .status-bubbles .pendiente { animation: none; }
+}
+
 /* ---- Bocadillo de cómic (chat) ------------------------------------------ */
 .speech-layer {
   position: absolute;

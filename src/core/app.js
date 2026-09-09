@@ -454,7 +454,9 @@ export async function arrancarPato(plataforma) {
       darXp: (n) => { level._sumar(n, 'depuración'); return level.nivel; },
       act: doAction,
       /** Simula un pato de visita sin tocar la red. */
-      verVisita: (opciones = {}) => visitas.recibir({
+      // Por `recibirVisita` y no por `visitas.recibir`: así la sonda pasa por el
+      // mismo sitio que una visita de verdad, línea en el chat incluida.
+      verVisita: (opciones = {}) => recibirVisita({
         id: `local-${Date.now()}`,
         de: opciones.de || 'Vecino',
         // Sin clave repetida, para que el límite por remitente no bloquee las
@@ -463,6 +465,7 @@ export async function arrancarPato(plataforma) {
         skin: opciones.skin || 'duro',
         gesto: opciones.gesto || 'saludo',
         texto: opciones.texto != null ? opciones.texto : '¡Buenas! Vengo a saludar.',
+        privado: !!opciones.privado,
         ts: Date.now()
       }),
       visitas: () => visitas,
@@ -568,10 +571,18 @@ function startLoops(statusBubbles) {
 
   // Burbuja de ánimo (2 s). Durante una partida de escenario estorba: el pato
   // está haciendo otra cosa y el globo taparía el juego.
-  cadaCierto(() => {
-    if (!dragging && !escena) updateBubbles(statusBubbles, tam.mood());
-  }, 2000);
-  updateBubbles(statusBubbles, tam.mood());
+  cadaCierto(() => { repintarBurbujas(); }, 2000);
+  repintarBurbujas();
+
+  // Y lo pendiente se repinta EN CUANTO cambia el histórico, sin esperar al
+  // turno de los dos segundos: al abrir el chat, la marca tiene que irse en el
+  // acto o parece que no se ha enterado.
+  alApagar(historial.alCambiar(() => repintarBurbujas()));
+
+  function repintarBurbujas() {
+    if (dragging || escena) return;
+    updateBubbles(statusBubbles, tam.mood(), historial.noLeidos());
+  }
 
   // Guardado periódico (15 s). En mitad de una partida de escenario la posición
   // del pato es la de la pelota, no la suya: se guarda al devolverlo.
@@ -1472,13 +1483,30 @@ function openTalk(x, y, opciones = {}) {
 }
 
 /**
+ * Un pato que viene a la pantalla.
+ *
+ * Con nombre y fuera de `setupChat` porque por aquí pasan DOS caminos: el canal
+ * y la sonda de pruebas. Que la sonda entrara por otro lado —como hacía— es
+ * justo lo que hace que una prueba no valga: enseñaba el pato y se saltaba todo
+ * lo demás. Es la misma razón por la que `simularReto` entra por `salas.recibir`.
+ */
+function recibirVisita(v) {
+  visitas.recibir(v);
+  // La línea del chat NO se pone aquí: la pone `alAnotar`, que es de quien
+  // depende que se apunte al ADMITIR la visita y no al verla entrar. Aquí sólo
+  // queda lo que la visita no sabe hacer: si viene a avisar de un privado, ir a
+  // mirar la tabla, que es donde está el mensaje de verdad.
+  if (v && v.privado) revisarPrivados();
+}
+
+/**
  * Manda un privado.
  *
  * Un solo sitio, porque hay dos caminos que llegan aquí: escribir en la pestaña
  * de privados, y el recado que acompaña al pato cuando se lo mandas a alguien.
  */
 function enviarPrivado(para, texto) {
-  return api.privados.enviar({
+  const envio = api.privados.enviar({
     para,
     texto,
     // El mismo identificador que usa el chat: reenviar no deja dos filas.
@@ -1486,6 +1514,73 @@ function enviarPrivado(para, texto) {
     // Con qué nombre firmas, para que al otro no le salga un hash.
     nombre: duckName()
   });
+  Promise.resolve(envio).then((res) => { if (!res || res.ok) llamarALaPuerta(para); });
+  return envio;
+}
+
+/**
+ * El toc-toc: avisar de que hay un privado esperando.
+ *
+ * Un privado va a una tabla y ahí se queda calladito hasta que alguien la
+ * pregunta. Sin esto, el otro no se entera hasta que abre el panel a ver, que es
+ * justo lo que no se puede pedir.
+ *
+ * **Y el toc-toc es una VISITA**, no un evento nuevo. No es un atajo: una visita
+ * ya va dirigida, ya trae el nombre y el diseño de quien la manda, ya hace que
+ * el pato entre andando y ya tiene su propia espera entre una y otra —que aquí
+ * hace de freno para que cinco privados seguidos no sean cinco patos en fila—.
+ * Lo único que se le añade es un `privado: true` para poder decirlo con otras
+ * palabras al llegar.
+ *
+ * NO viaja el texto. El privado sigue yendo por su tabla; esto sólo dice que lo
+ * hay. Y si el otro no está conectado no se manda nada: se enterará al arrancar,
+ * cuando `revisarPrivados` pregunte por las conversaciones.
+ */
+function llamarALaPuerta(dir) {
+  if (!chat || !chat.connected || !dir) return;
+  const quien = (chat.presentes || []).find((p) => p && p.dir === dir);
+  if (!quien || !quien.clave) return;
+  chat.enviarVisita({
+    aClave: quien.clave,
+    de: duckName(),
+    skin: duck.skinId,
+    gesto: 'saludo',
+    texto: '',
+    privado: true
+  });
+}
+
+/**
+ * Mira si hay privados nuevos y los apunta en el chat.
+ *
+ * **El propio histórico hace de «hasta dónde había mirado»**, y por eso esto no
+ * guarda nada en disco ni pide una columna en la base de datos: la línea que se
+ * apunta lleva un `mid` derivado de la conversación y de la hora del último
+ * mensaje, y `historial.anadir` ya descarta lo que ya está apuntado. Lo que ya
+ * viste no se vuelve a contar, y lo nuevo aparece —aunque llegara con el pato
+ * apagado, que es el caso que el toc-toc no cubre—.
+ *
+ * Lo que se apunta es un AVISO, no el mensaje: «te ha escrito en privado». El
+ * texto se lee en su pestaña, que para eso es privado.
+ */
+function revisarPrivados() {
+  if (!api.capacidades.privados) return;
+  Promise.resolve(api.privados.conversaciones()).then((res) => {
+    if (!res || !res.ok || !Array.isArray(res.datos)) return;
+    for (const hilo of res.datos) {
+      // Lo mío no me lo tengo que avisar a mí mismo.
+      if (!hilo || hilo.mio || !hilo.con) continue;
+      const cuando = Number(hilo.enviado_el ? Date.parse(hilo.enviado_el) : hilo.ts) || 0;
+      if (!cuando) continue;
+      historial.anadir({
+        mid: `priv:${String(hilo.con).slice(0, 16)}:${cuando}`,
+        from: String(hilo.nombre || 'Pato'),
+        text: '✉️ te ha escrito en privado',
+        ts: cuando,
+        propio: false
+      });
+    }
+  }).catch((err) => console.warn('[privados] no se pudieron revisar:', err));
 }
 
 // Añade un panel al DOM, lo centra sobre el punto indicado y por encima de él
@@ -1555,9 +1650,9 @@ function avisarPresencia() {
  * mantener al día ni de lo que acordarse.
  */
 function etiquetaChat() {
-  const pendientes = historial.noLeidos();
-  if (!pendientes) return '💬 Chat';
-  return `💬 Chat · ${pendientes > 99 ? '99+' : pendientes}`;
+  const n = historial.noLeidos();
+  if (!n) return '💬 Chat';
+  return `💬 Chat · ${n > 99 ? '99+' : n}`;
 }
 
 /** Entrada del menú, con cuántos patos hay ahora mismo (contándonos). */
@@ -1568,6 +1663,7 @@ function etiquetaConectados() {
 
 function setupChat() {
   chat = new ChatClient(api.chat);
+
   chat.onMessage((m) => {
     // Se anota SIEMPRE, esté abierto el panel del chat o no: el bocadillo dura
     // unos segundos y justo eso es lo que hay que poder releer después.
@@ -1583,6 +1679,9 @@ function setupChat() {
     if (!chat.connected) conectados = [];
     avisarPresencia();
     if (salas) salas.canalCambio(chat.connected);
+    // Al conectar, a ver qué ha pasado mientras no estabas. Es la otra mitad del
+    // toc-toc: él cubre lo que llega estando, y esto lo que llegó sin estar.
+    if (chat.connected) revisarPrivados();
   });
   chat.onPresence((names) => {
     conectados = names;
@@ -1785,11 +1884,18 @@ function setupVisitas() {
     // Se apunta al admitirla, no al verla: una visita dura unos segundos, y
     // enterarse después es justo para lo que sirve el histórico.
     alAnotar: (v) => {
+      // El aviso de un privado no deja línea aquí: el pato entra igual —para eso
+      // se manda— pero lo que hay que contar es el mensaje, y eso lo apunta
+      // `revisarPrivados` cuando lo trae. Si no, saldrían dos líneas por lo mismo.
+      if (v.privado) return;
       const texto = (v.texto || '').trim();
       historial.anadir({
         mid: historial.nuevoMid(),
         from: v.de,
-        text: texto ? `🛫 vino a saludar: ${texto}` : '🛫 vino a saludar',
+        // El gesto se dice: con «vino a saludar» para todo, un regalo se pierde.
+        text: v.gesto === 'regalo'
+          ? (texto ? `🎁 vino y te dejó algo: ${texto}` : '🎁 vino y te dejó algo')
+          : (texto ? `🛫 vino a saludar: ${texto}` : '🛫 vino a saludar'),
         ts: v.ts || Date.now(),
         propio: false
       });
@@ -1801,7 +1907,8 @@ function setupVisitas() {
       if (behavior) behavior.playOnce('happy', 1.4);
     }
   });
-  chat.onVisita((v) => visitas.recibir(v));
+  chat.onVisita(recibirVisita);
+
   alApagar(() => visitas.apagar());
 }
 
