@@ -7,6 +7,25 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.35.2] - 2026-09-09
+
+### Corregido
+
+- **En 💥 Artillería, el tiempo agotado en red es empate.** Una partida podía
+  acabar con **«victoria» en las dos pantallas**: el reloj se agotaba con el último
+  disparo del rival todavía viajando y cada lado comparaba vidas distintas. Y el
+  reloj ya no corta ni a mitad de disparo ni con una jugada por aplicar.
+
+### Añadido
+
+- **`npm run red:check`.** Juega partidas enteras de los cinco juegos con red
+  —minigolf, 8 Pool, artillería, ahorcado y flota— levantando **dos partidas de
+  verdad** unidas por una sala de mentira, y con pantallas de distinto tamaño.
+  Comprueba que la partida termine y que los dos lados la recuerden igual, que es
+  lo único que no se ve jugando solo. Va en CI.
+
+  Es lo que encontró los tres últimos fallos, todos en juegos ya publicados.
+
 ## [0.35.1] - 2026-09-09
 
 ### Corregido
