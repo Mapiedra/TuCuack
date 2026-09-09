@@ -7,6 +7,20 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.35.1] - 2026-09-09
+
+### Corregido
+
+- **En 🚢 Hundir la flota, la fila de colocar ya no sigue viva con la partida
+  empezada.** Girar, barajar y «Listo» se quedaban ahí toda la partida, y
+  pulsarlos hacía cosas: **barajar movía tu flota** con los disparos del rival ya
+  anotados encima, y «Listo» mandaba una promesa nueva, que permitía cambiar el
+  tablero prometido después de ver dónde te disparan. Prometer antes de tirar es
+  todo lo que aporta ese mecanismo.
+
+  Los dos salieron de jugar **dos instancias de verdad una contra otra**; ninguno
+  se ve jugando en solitario.
+
 ## [0.35.0] - 2026-09-09
 
 ### Añadido
