@@ -7,6 +7,33 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.36.0] - 2026-09-09
+
+### Añadido
+
+- **La mascota lleva encima lo que te espera.** Mientras haya algo sin leer —del
+  chat, un pato que ha venido de visita o un privado— lleva un ✉️ encima, al lado
+  del 🍖 o del 💤, y se queda ahí hasta que abras el chat.
+
+  Todo lo que llegaba de fuera avisaba **en el momento**: el bocadillo dura unos
+  segundos y el pato de visita entra y se va. Si en ese rato estabas en otra
+  pantalla, no te enterabas de nada. La marca sí espera, que es la misma idea que
+  el emoji de hambre.
+
+- **Los privados avisan.** Antes no lo hacían, y no era un olvido de interfaz: un
+  privado va a una tabla y se queda ahí callado, así que no existía para ti hasta
+  que abrías el panel a ver.
+
+  Ahora, al escribirte alguien, **su pato viene a tu pantalla** a avisar. El texto
+  no viaja en ese aviso —sigue yendo a su tabla—, así que lo que pone tu privado
+  no se queda en un bocadillo a la vista de quien pase por detrás. Y lo que llegue
+  con el pato apagado aparece al arrancar.
+
+### Cambiado
+
+- **Una visita con regalo se distingue de una de saludo** en la línea del chat.
+  Antes las dos decían «vino a saludar».
+
 ## [0.35.2] - 2026-09-09
 
 ### Corregido
