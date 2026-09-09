@@ -1333,6 +1333,67 @@ haberse pegado el mismo tortazo tres veces.
 El [ranking entre patos](#-ranking-entre-patos--hecho-en-la-0170) no está en esta
 cuenta porque no es un juego, y además ya está hecho.
 
+## Jugar en red sin red: `npm run red:check`
+
+Un juego en red se prueba mal a mano: hacen falta dos ordenadores, dos personas
+y paciencia, y aun así sólo se recorre el camino que a los dos se les ocurra.
+Y los fallos que salen caros son justo los que **sólo existen cuando hay dos**.
+
+Este comprobador levanta **dos partidas de verdad**, las une con una sala de
+mentira y las hace jugar hasta el final unas cuantas veces, con **pantallas de
+distinto tamaño** —que es donde se rompen las proporciones—. Mira tres cosas:
+
+1. Que la partida **termine**. Una que se queda muda no da ningún error: los dos
+   esperan al otro, para siempre.
+2. Que los dos resultados **cuadren**. Que un lado diga victoria y el otro
+   también es peor que cualquier resultado injusto: es una partida que cada uno
+   recuerda de otra manera.
+3. Que nada viaje en píxeles.
+
+### Lo que hace falta para que esto sea posible
+
+Nada del otro mundo, y eso es lo interesante: el contrato de un minijuego es tan
+pequeño que **se puede cumplir a mano**.
+
+- Los de **escenario** ([`tools/banco/escenario.mjs`](../tools/banco/escenario.mjs))
+  no necesitan ni DOM: una mascota que recuerda dónde está, un lienzo que no
+  pinta, y `pet/fisica.js` importado **tal cual**, porque no toca ni el DOM ni el
+  sonido —está escrito así a propósito—.
+- Los de **panel** ([`tools/banco/panel.mjs`](../tools/banco/panel.mjs)) necesitan
+  DOM, y usan `jsdom`. Es dependencia de desarrollo: `npm ci --omit=dev` no la
+  trae y el comprobador se los salta avisando, así que en CI corren los de
+  escenario gratis.
+
+Un remedo del DOM escrito a mano sería más barato y no vale: se parecería a lo
+que uno CREE que hace el DOM, y lo que se busca aquí son cosas como «este botón
+sigue vivo cuando no debería», que es exactamente lo que un remedo se inventa a
+su favor.
+
+Los relojes sí son de mentira: `cadaCierto` se dispara a mano. Así una partida de
+tres minutos se juega en milisegundos y, sobre todo, **es determinista**.
+
+### Lo que ha encontrado
+
+| Juego | Fallo |
+|---|---|
+| 🚢 Flota | El botón «Listo» seguía vivo con la partida empezada y mandaba una promesa nueva: **el tablero prometido se podía cambiar después de ver dónde te disparan** |
+| 🚢 Flota | «Barajar» tampoco tenía guarda: **recolocaba tu flota** con los tocados del rival ya anotados encima |
+| 💥 Artillería | Una partida acababa con **«victoria» en las dos pantallas**: el reloj se agotaba con el último disparo del otro viajando y cada lado comparía vidas distintas |
+
+Ninguno de los tres se ve jugando en solitario. Los tres estaban en juegos
+publicados y probados.
+
+### Los bots no juegan bien, y es a propósito
+
+Lo que se comprueba es que la partida llegue a su final y que los dos lados
+cuenten lo mismo. Un bot que juega regular pasa por más caminos raros que uno que
+juega bien —el de la flota dispara al azar, el del minigolf pone el cursor sobre
+el hoyo y falla por sesenta píxeles—. Al del ahorcado sí se le da la palabra que
+tiene que adivinar, porque uno que acierte por frecuencia no gana nunca y
+entonces no se prueban ni la victoria ni la revelación del final.
+
+---
+
 ## Los cuacks: la moneda
 
 **Hecha, en la 0.18.0**, y la regla de no quitarle nada a nadie en la 0.19.0.

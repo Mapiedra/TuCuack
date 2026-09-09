@@ -18,6 +18,7 @@
     "marcador": "node tools/probar-marcador.js",
     "juegos:check": "node tools/comprobar-juegos.js",
     "salas:check": "node tools/probar-salas.mjs",
+    "red:check": "node tools/probar-juegos-en-red.mjs",
     "ext:watch": "node tools/build-extension.js --watch",
     "sprites": "python tools/pack_sprites.py",
     "pack": "electron-builder --dir",
@@ -68,6 +69,7 @@
     }
   },
   "devDependencies": {
+    "jsdom": "^25.0.1",
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8"
   },

@@ -45,6 +45,19 @@ jobs:
       - name: Comprobar el contrato de los minijuegos
         run: node tools/comprobar-juegos.js
 
+      # Juega partidas enteras de los juegos en red, con dos instancias de
+      # verdad unidas por una sala de mentira y con pantallas de distinto
+      # tamaño. Lo que caza es lo único que no se ve jugando solo: que una
+      # partida se quede muda, o que los dos lados la recuerden de forma
+      # distinta. Aquí aparecieron un tablero que se podía recolocar a mitad de
+      # partida y una artillería que acababa con «victoria» en las dos pantallas.
+      #
+      # Los de panel necesitan `jsdom`, que es de desarrollo: con `--omit=dev` no
+      # está, y el propio comprobador se los salta y avisa. Los de escenario no
+      # necesitan nada y son los que corren aquí.
+      - name: Jugar los minijuegos en red
+        run: npm run red:check
+
       # El ensamblado de la extensión es un paso fácil de romper sin darse cuenta
       # —basta mover un fichero de sitio— y sólo se nota al publicar. Comprobarlo
       # aquí cuesta segundos.

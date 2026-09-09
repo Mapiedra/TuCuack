@@ -224,7 +224,13 @@ export function crearPartida(ctx) {
 
     const antes = transcurrido;
     transcurrido += dt * 1000;
-    if (transcurrido >= PRESUPUESTO_MS && fase !== 'volando') { cerrarPorTiempo(); return; }
+    // Se acaba el tiempo, pero no se corta a mitad de un disparo ni con una
+    // jugada del rival por aplicar: cortar ahí deja a los dos lados con vidas
+    // distintas, que es justo lo que estropea el final.
+    if (transcurrido >= PRESUPUESTO_MS && fase !== 'volando' && !pendiente) {
+      cerrarPorTiempo();
+      return;
+    }
     if (PRESUPUESTO_MS - transcurrido < AVISO_MS
       && Math.ceil(antes / 1000) !== Math.ceil(transcurrido / 1000)) marcar();
 
@@ -452,18 +458,35 @@ export function crearPartida(ctx) {
 
   // ---- Final -------------------------------------------------------------
 
+  /**
+   * Se acabó el tiempo.
+   *
+   * Contra la mascota gana quien llegue con más vida, que es lo justo.
+   *
+   * **En red es empate**, por lo mismo que en el billar: los dos lados no
+   * cuentan el reloj a la vez, así que uno puede cerrar con el último disparo
+   * del otro todavía viajando y comparar vidas que ya no son las de nadie. Se
+   * vio en el banco de pruebas a dos: una partida acababa con **«victoria» en
+   * las dos pantallas**, que es peor que cualquier resultado injusto. Arreglarlo
+   * de verdad pediría un apretón de manos al final que el protocolo no tiene.
+   */
   function cerrarPorTiempo() {
+    if (enRed) {
+      ctx.decir('Se acabó el tiempo. Empate.');
+      acabar('tiempo', 'empate');
+      return;
+    }
     ctx.decir('Se acabó el tiempo. Gana quien llegue con más vida.');
     acabar('tiempo');
   }
 
-  function acabar(motivo) {
+  function acabar(motivo, forzado) {
     if (terminada) return;
     terminada = true;
     fase = 'fin';
 
-    const resultado = mio.vida > suyo.vida ? 'victoria'
-      : mio.vida < suyo.vida ? 'derrota' : 'empate';
+    const resultado = forzado || (mio.vida > suyo.vida ? 'victoria'
+      : mio.vida < suyo.vida ? 'derrota' : 'empate');
 
     ctx.sonido[resultado === 'victoria' ? 'victoria' : 'derrota']();
     ctx.pato.animar(resultado === 'victoria' ? 'happy' : 'idle', 1400);
@@ -487,7 +510,9 @@ export function crearPartida(ctx) {
   function detalleFinal(resultado, motivo) {
     const contra = enRed ? nombreRival : 'tu mascota';
     if (motivo === 'tiempo') {
-      return `Se acabó el tiempo contra ${contra}: ${mio.vida} a ${suyo.vida}.`;
+      return enRed
+        ? `Empate por tiempo contra ${contra}: ${mio.vida} a ${suyo.vida}.`
+        : `Se acabó el tiempo contra ${contra}: ${mio.vida} a ${suyo.vida}.`;
     }
     if (resultado === 'victoria') {
       const record = mejorPrevio === null ? ' Estrenas marca.'
