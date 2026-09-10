@@ -32,6 +32,10 @@ contextBridge.exposeInMainWorld('pato', {
   chatCaer: () => ipcRenderer.send('chat:caer'),
   // Esconder el pato en la bandeja, sin cerrarlo.
   hide: () => ipcRenderer.send('app:hide'),
+  // Y lo contrario: sacarlo él solo, sin pasar por la bandeja.
+  show: () => ipcRenderer.send('app:show'),
+  // Modo concentración: cuánto queda, para el tooltip de la bandeja.
+  focusTick: (estado) => ipcRenderer.send('focus:tick', estado),
   // Actualizaciones a mano.
   estadoActualizacion: () => ipcRenderer.invoke('update:status'),
   buscarActualizacion: () => ipcRenderer.send('update:check'),

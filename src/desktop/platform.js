@@ -24,7 +24,8 @@ export function crearPlataformaElectron() {
       juegosDeEscenario: true,
       marcadorGlobal: true,
       historialDePartidas: true,
-      privados: true
+      privados: true,
+      focus: true
     },
 
     config: () => pato.getConfig(),
@@ -45,6 +46,8 @@ export function crearPlataformaElectron() {
 
     salir: () => pato.quit(),
     ocultar: () => pato.hide(),
+    mostrar: () => pato.show(),
+    avisarFoco: (estado) => pato.focusTick(estado),
     estadoActualizacion: () => pato.estadoActualizacion(),
     buscarActualizacion: () => pato.buscarActualizacion(),
     instalarActualizacion: () => pato.instalarActualizacion(),

@@ -56,7 +56,13 @@ const CAPACIDADES_POR_DEFECTO = {
   historialDePartidas: false,
   // ¿Hay mensajes privados? Necesita que la carcasa pueda hablar con Supabase y
   // que tenga una dirección con la que firmar (ver `privados` más abajo).
-  privados: false
+  privados: false,
+  // ¿Tiene sentido el modo concentración? Necesita poder esconderse Y volver a
+  // sacarse él solo (a diferencia de `ocultar`, que sólo lo primero) y un sitio
+  // fuera del documento donde enseñar la cuenta atrás mientras está escondido.
+  // Sólo el escritorio tiene las dos cosas: bandeja del sistema y una ventana
+  // que puede mostrarse sin que nadie la reabra a mano.
+  focus: false
 };
 
 const CONFIG_POR_DEFECTO = { version: '0.0.0', isDev: false, ground: 0, sprites: {} };
@@ -236,6 +242,14 @@ export function normalizarPlataforma(p = {}) {
     // Esconde al pato sin cerrarlo. Cómo se vuelve a sacar es cosa de la
     // carcasa: la bandeja del sistema o el menú del icono de la extensión.
     ocultar: p.ocultar || noop,
+    // Lo contrario de `ocultar`, pero desde el propio pato: hace falta para que
+    // el modo concentración pueda sacarse solo al llegar el descanso, sin
+    // esperar a que alguien vaya a la bandeja.
+    mostrar: p.mostrar || noop,
+    // El modo concentración avisa de la cuenta atrás fuera del documento (ver
+    // `capacidades.focus`): mientras está escondido, la bandeja es lo único
+    // que puede enseñar cuánto queda.
+    avisarFoco: p.avisarFoco || noop,
     abrirExterno: p.abrirExterno || noop,
     alCerrar: p.alCerrar || noSuscribir,
     alRecibirComando: p.alRecibirComando || noSuscribir,

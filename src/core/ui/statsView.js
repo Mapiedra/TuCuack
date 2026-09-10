@@ -38,17 +38,39 @@ const BAJO = 30;
  * @param {import('../game/Tamagotchi.js').Tamagotchi} tam
  * @param {string} nombre
  * @param {import('../game/Level.js').Level} [level]
- * @param {{onAction?:(id:string)=>void}} [opciones]
+ * @param {{onAction?:(id:string)=>void,
+ *          foco?:{activo:()=>boolean, onClick:Function, alCambiar?:(cb:Function)=>Function}}} [opciones]
+ *   `foco`: botón de modo concentración junto al nombre. Igual que la
+ *   botonera de cuidados, sólo tiene sentido donde se pueda pulsar: el globo
+ *   del ratón no lo pasa. `alCambiar`, si se da, es cómo se entera de un
+ *   cambio de fase SIN esperar al próximo tick de necesidades — que durante
+ *   la propia concentración no llega, porque están congeladas.
  * @returns {{el:HTMLElement, destroy:Function}}
  */
 export function buildStatsView(tam, nombre, level, opciones = {}) {
   const el = document.createElement('div');
   el.className = 'vista-stats';
 
+  // El nombre y el botón de concentración, cada uno en su extremo: es lo
+  // primero que se ve, y ninguno de los dos necesita fila propia.
+  const cab = document.createElement('div');
+  cab.className = 'tooltip-cabecera';
   const t = document.createElement('div');
   t.className = 'tooltip-title';
   t.textContent = nombre;
-  el.appendChild(t);
+  cab.appendChild(t);
+
+  let btnFoco = null;
+  let bajaFoco = null;
+  if (opciones.foco) {
+    btnFoco = document.createElement('button');
+    btnFoco.type = 'button';
+    btnFoco.className = 'btn-foco';
+    btnFoco.addEventListener('click', () => opciones.foco.onClick());
+    cab.appendChild(btnFoco);
+    if (opciones.foco.alCambiar) bajaFoco = opciones.foco.alCambiar(() => pintar());
+  }
+  el.appendChild(cab);
 
   // El nivel va con el resto de indicadores, no aparte.
   let nivelTxt = null;
@@ -109,6 +131,11 @@ export function buildStatsView(tam, nombre, level, opciones = {}) {
   }
 
   const pintar = () => {
+    if (btnFoco) {
+      const activo = opciones.foco.activo();
+      btnFoco.textContent = activo ? '⏹️ Cancelar' : '🍅 Concentración';
+      btnFoco.classList.toggle('activo', activo);
+    }
     if (level) {
       nivelTxt.textContent = `Nv ${level.nivel} · ${level.rango}`;
       nivelFill.style.width = `${Math.round(level.progreso * 100)}%`;
@@ -139,7 +166,7 @@ export function buildStatsView(tam, nombre, level, opciones = {}) {
   // desde aquí mismo y las barras tienen que moverse al pulsar.
   tam.on('change', pintar);
 
-  return { el, destroy() { tam.off('change', pintar); } };
+  return { el, destroy() { tam.off('change', pintar); if (bajaFoco) bajaFoco(); } };
 }
 
 /**

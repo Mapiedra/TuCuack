@@ -19,10 +19,18 @@ function createTray(getWin, opts = {}) {
   const tray = new Tray(trayImage());
   tray.setToolTip('TuCuack');
 
+  // Estado del modo concentración, tal como lo manda `focus:tick`. Vive aquí
+  // (y no se pregunta al pato cada vez) porque el tooltip se actualiza una vez
+  // por segundo y reconstruir el menú con esa frecuencia parpadearía sin
+  // necesidad: el menú sólo se rehace cuando `activo` cambia de verdad.
+  let foco = { activo: false };
+
   const send = (cmd) => {
     const win = getWin();
     if (win && !win.isDestroyed()) win.webContents.send('tray:command', cmd);
   };
+
+  const etiquetaFase = { focusing: 'Concentración', shortBreak: 'Descanso', longBreak: 'Descanso largo' };
 
   const rebuild = () => {
     const win = getWin();
@@ -37,6 +45,10 @@ function createTray(getWin, opts = {}) {
           else w.show();
           rebuild();
         }
+      },
+      {
+        label: foco.activo ? '⏹️ Cancelar concentración' : '🍅 Iniciar concentración',
+        click: () => send(foco.activo ? 'focus:cancel' : 'focus:start')
       },
       { type: 'separator' },
       { label: 'Alimentar', click: () => send('feed') },
@@ -53,6 +65,25 @@ function createTray(getWin, opts = {}) {
   };
 
   rebuild();
+
+  /**
+   * Refresca el tooltip con la cuenta atrás y, si `activo` cambia de estado,
+   * también el menú. Sólo se toca lo justo: `main.js` llama a esto una vez por
+   * segundo desde `focus:tick`.
+   */
+  tray.actualizarFoco = (estado) => {
+    const activo = !!(estado && estado.activo);
+    const cambioDeEstado = activo !== foco.activo;
+    foco = estado || { activo: false };
+    if (activo) {
+      const mm = String(Math.floor(foco.remainingMs / 60000)).padStart(2, '0');
+      const ss = String(Math.floor((foco.remainingMs / 1000) % 60)).padStart(2, '0');
+      tray.setToolTip(`TuCuack — ${etiquetaFase[foco.fase] || 'Concentración'} ${mm}:${ss}`);
+    } else {
+      tray.setToolTip('TuCuack');
+    }
+    if (cambioDeEstado) rebuild();
+  };
 
   // El pato puede esconderse por su cuenta, desde su propio menú. Sin esto, la
   // bandeja seguiría ofreciendo "Ocultar mascota" con el pato ya escondido.

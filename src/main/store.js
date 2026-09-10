@@ -68,7 +68,13 @@ const DEFAULT_SETTINGS = {
   silenciado: false,
   escala: 100,          // tamaño del pato en % (ver core/scale.js)
   patoId: '',           // quién es este pato para los demás (ver abajo)
-  recordSecreto: ''     // la firma para el marcador global (ver abajo)
+  recordSecreto: '',    // la firma para el marcador global (ver abajo)
+  // Modo concentración (Pomodoro): duraciones en minutos y cada cuántos ciclos
+  // de trabajo toca descanso largo en vez de corto.
+  focusWorkMin: 25,
+  focusShortBreakMin: 5,
+  focusLongBreakMin: 20,
+  focusCyclesToLong: 4
 };
 
 /**

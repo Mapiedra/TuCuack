@@ -28,6 +28,8 @@ import { buildPartidaPanel } from './ui/partidaPanel.js';
 import { prestarEscenario } from './game/minijuegos/escenario.js';
 import { crearGestorDeSalas } from './game/salas.js';
 import { buildRetoPanel } from './ui/retoPanel.js';
+import { buildFocusPromptPanel } from './ui/focusPrompt.js';
+import { FocusManager, FASE } from './game/focus.js';
 import { ChatClient } from './chat/chatClient.js';
 import { SpeechBubbles } from './chat/speechBubble.js';
 import { ColaDeVisitas, ESPERA_ENTRE_VISITAS } from './visita/PatoVisitante.js';
@@ -44,9 +46,15 @@ import { crearInercia } from './pet/inercia.js';
 // para que nada reviente si algo se dispara antes de tiempo.
 let api = normalizarPlataforma();
 
-let duck, behavior, tam, chat, speech, level, visitas, juegos, salas, cartera;
+let duck, behavior, tam, chat, speech, level, visitas, juegos, salas, cartera, focus;
 let settings = { displayName: '', autoLaunch: false };
 let config = { version: '0.0.0', isDev: false };
+
+// ---- Modo concentración ---------------------------------------------------
+// Lo que ha llegado calladito mientras el pato estaba concentrado, para poder
+// resumirlo al volver. Se reinician al empezar cada tramo de trabajo.
+let focoMensajes = 0, focoVisitas = 0, focoPrivados = 0;
+let elPromptFoco = null;   // panel de "¿volvemos?" abierto, si lo hay
 
 // ---- Estado de interacción ----------------------------------------------
 let dragging = false;
@@ -287,6 +295,15 @@ export async function arrancarPato(plataforma) {
 
   behavior = new Behavior(duck, tam);
 
+  // Duraciones leídas de `settings` en cada transición: cambiarlas en Ajustes
+  // se nota en el siguiente tramo, sin tener que reconstruir nada.
+  focus = new FocusManager(() => ({
+    work: settings.focusWorkMin || 25,
+    shortBreak: settings.focusShortBreakMin || 5,
+    longBreak: settings.focusLongBreakMin || 20,
+    cyclesToLong: settings.focusCyclesToLong || 4
+  }));
+
   speech = new SpeechBubbles(porId('speechLayer'));
   const statusBubbles = porId('statusBubbles');
 
@@ -310,6 +327,7 @@ export async function arrancarPato(plataforma) {
   setupInteraction();
   setupTray();
   setupUpdates();
+  setupFocus();
 
   // Guardado al salir.
   api.alCerrar(() => saveNow());
@@ -563,10 +581,15 @@ function startLoops(statusBubbles) {
   pedido = requestAnimationFrame(frame);
   alApagar(() => cancelAnimationFrame(pedido));
 
-  // Decaimiento de necesidades y experiencia por convivencia (1 s).
+  // Decaimiento de necesidades y experiencia por convivencia (1 s). En modo
+  // concentración (trabajo o descanso) no hace falta comer, limpiarse ni
+  // jugar, así que se salta entero mientras dure.
   cadaCierto(() => {
-    tam.tick(1);
-    level.convivencia(1, tam.mood() === 'contento');
+    focus.tick();
+    if (!focus.pausaNecesidades) {
+      tam.tick(1);
+      level.convivencia(1, tam.mood() === 'contento');
+    }
   }, 1000);
 
   // Burbuja de ánimo (2 s). Durante una partida de escenario estorba: el pato
@@ -787,7 +810,22 @@ function openDuckMenu(x, y) {
   // La misma vista que sale al dejar el ratón sobre el pato, aquí con botonera:
   // con el menú abierto el globo no aparece, y decidir a ciegas qué le hace
   // falta no tenía ningún sentido.
-  const vista = buildStatsView(tam, duckName(), level, { onAction: doAction });
+  const vista = buildStatsView(tam, duckName(), level, {
+    onAction: doAction,
+    // Junto al nombre y no como opción de la lista: es el botón que más se
+    // usa de los dos, y una fila entera para él sólo hacía el menú más largo.
+    foco: api.capacidades.focus
+      ? {
+          activo: () => focus.fase !== FASE.IDLE,
+          onClick: () => (focus.fase === FASE.IDLE ? focus.iniciar() : focus.cancelar()),
+          // Sin esto el botón sólo se refrescaba con el tick de necesidades, que
+          // durante la propia concentración no llega (están congeladas): se
+          // podía pulsar "Concentración" y, con el menú abierto, seguir viendo
+          // la misma etiqueta hasta el próximo cambio de las barras.
+          alCambiar: (cb) => { focus.on('fase', cb); return () => focus.off('fase', cb); }
+        }
+      : null
+  });
 
   let menuEl = null;
   showContextMenu(x, y, items, {
@@ -856,6 +894,7 @@ function openSettings(x, y) {
     isNameTaken: (n) => chat.isNameTaken(n),
     chatReady: chat.connected,
     puedeAutoArrancar: api.capacidades.autoArranque,
+    puedeFoco: api.capacidades.focus,
     // Sólo donde el pato tiene la pantalla para él. Sobre una página ajena, ni
     // el botón aparece: llenarla de patos capturándole el ratón a quien está
     // leyendo no es una broma.
@@ -1492,6 +1531,12 @@ function openTalk(x, y, opciones = {}) {
  */
 function recibirVisita(v) {
   visitas.recibir(v);
+  // Igual que el chat común: concentrado sólo se queda con la cuenta, para
+  // decirla al llegar el descanso.
+  if (focus.pausaNecesidades) {
+    if (v && v.privado) focoPrivados++;
+    else focoVisitas++;
+  }
   // La línea del chat NO se pone aquí: la pone `alAnotar`, que es de quien
   // depende que se apunte al ADMITIR la visita y no al verla entrar. Aquí sólo
   // queda lo que la visita no sabe hacer: si viene a avisar de un privado, ir a
@@ -1668,6 +1713,9 @@ function setupChat() {
     // Se anota SIEMPRE, esté abierto el panel del chat o no: el bocadillo dura
     // unos segundos y justo eso es lo que hay que poder releer después.
     historial.anadir({ mid: m.mid, from: m.from, text: m.text, ts: m.ts, propio: false });
+    // Concentrado no se entera de nada del chat común: se cuenta para el
+    // resumen del descanso y punto. Los privados no pasan por aquí.
+    if (focus.pausaNecesidades) { focoMensajes++; return; }
     speech.show(m.from, m.text, { self: false });
     // Un poco más grave que el propio, para distinguir quién habla.
     sonido.cuack({ agudo: 0.9 });
@@ -2036,7 +2084,94 @@ function setupTray() {
     } else if (cmd === 'stats') openStats(cx, cy);
     else if (cmd === 'online') openOnline(cx, cy);
     else if (cmd === 'settings') openSettings(cx, cy);
+    else if (cmd === 'focus:start') focus.iniciar();
+    else if (cmd === 'focus:cancel') focus.cancelar();
   });
+}
+
+// ---- Modo concentración (Pomodoro) ---------------------------------------
+//
+// La máquina de estados (focus.js) no sabe nada de bocadillos, ventanas ni
+// bandeja: sólo dice en qué fase está. Todo lo que se ve pasa por aquí.
+function setupFocus() {
+  // Un solo sitio que avisa a la bandeja, llamado tanto en cada transición
+  // como en cada segundo. Antes sólo el "tick" periódico avisaba de que había
+  // empezado, y podía tardar hasta un segundo en enterarse; cancelar en
+  // cambio avisaba en el acto. Con los botones repartidos entre el menú del
+  // pato y la bandeja, ese segundo de diferencia se notaba como que no iban
+  // sincronizados.
+  const avisarEstadoFoco = () => {
+    const activo = focus.fase !== FASE.IDLE;
+    api.avisarFoco({
+      activo,
+      fase: focus.fase,
+      remainingMs: activo ? Math.max(0, focus.endsAt - Date.now()) : 0,
+      cicloActual: focus.cicloActual
+    });
+  };
+
+  focus.on('fase', ({ fase, anterior, resumen }) => {
+    if (fase === FASE.FOCUSING) {
+      focoMensajes = 0; focoVisitas = 0; focoPrivados = 0;
+      const mins = settings.focusWorkMin || 25;
+      speech.show(duckName(), `Me voy a concentrar contigo, vuelvo en ${mins} min.`, { self: true });
+      // Un respiro antes de desaparecer: si se escondiera en el acto, el
+      // bocadillo se iría con la ventana sin dar tiempo a leerlo. Justo lo que
+      // tarda en asomar y empezar a leerse, no lo que tarda en desaparecer del
+      // todo —eso ya da igual, porque se va con toda la ventana—.
+      setTimeout(() => api.ocultar(), 1200);
+    } else if (fase === FASE.SHORT_BREAK || fase === FASE.LONG_BREAK) {
+      api.mostrar();
+      if (resumen) mostrarResumenFoco(fase);
+    } else if (fase === FASE.AWAITING) {
+      abrirPromptFoco();
+    } else if (fase === FASE.IDLE) {
+      cerrarPromptFoco();
+      // Al cancelar desde el trabajo o un descanso el pato seguía escondido;
+      // rechazar la vuelta desde el aviso lo pilla ya visible, y mostrar de
+      // más no hace daño.
+      api.mostrar();
+      if (anterior !== FASE.AWAITING) toast('Concentración cancelada.');
+    }
+    avisarEstadoFoco();
+  });
+
+  focus.on('tick', avisarEstadoFoco);
+}
+
+/** El resumen de lo que ha llegado calladito, al asomar en el descanso. */
+function mostrarResumenFoco(fase) {
+  const esLargo = fase === FASE.LONG_BREAK;
+  const mins = esLargo ? (settings.focusLongBreakMin || 20) : (settings.focusShortBreakMin || 5);
+  const piezas = [];
+  if (focoMensajes) piezas.push(`${focoMensajes} mensaje${focoMensajes === 1 ? '' : 's'} en el chat`);
+  if (focoVisitas) piezas.push(`${focoVisitas} visita${focoVisitas === 1 ? '' : 's'}`);
+  if (focoPrivados) piezas.push(`${focoPrivados} privado${focoPrivados === 1 ? '' : 's'} nuevo${focoPrivados === 1 ? '' : 's'}`);
+  const resumen = piezas.length ? `Mientras estabas fuera: ${piezas.join(' · ')}.` : 'No te has perdido nada.';
+  avisoNivel(`☕ ${esLargo ? 'Descanso largo' : 'Descanso'} (${mins} min)<br>${resumen}`);
+  sonido.cuack();
+  if (behavior) behavior.playOnce('happy', 1.6);
+}
+
+/**
+ * "¿Volvemos a concentrarnos?" — el toast avisa siempre; el panel con los
+ * botones sólo si el pato está libre, igual que un reto (ver `llegaUnReto`).
+ */
+function abrirPromptFoco() {
+  toast('¿Volvemos a concentrarnos?');
+  if (openOverlays.size > 0 || dragging || escena) return;
+  const p = duckAnchor();
+  const { el } = buildFocusPromptPanel({
+    onConfirmar: () => { unregisterOverlay(el); focus.confirmarVolver(); },
+    onRechazar: () => { unregisterOverlay(el); focus.cancelar(); },
+    onClose: () => { if (elPromptFoco === el) elPromptFoco = null; }
+  });
+  elPromptFoco = el;
+  mountPanel(el, p.x, p.y);
+}
+
+function cerrarPromptFoco() {
+  if (elPromptFoco) { unregisterOverlay(elPromptFoco); elPromptFoco = null; }
 }
 
 // ---- Actualizaciones ----------------------------------------------------

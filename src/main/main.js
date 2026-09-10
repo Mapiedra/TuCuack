@@ -299,6 +299,18 @@ ipcMain.on('app:hide', () => {
   if (win && !win.isDestroyed()) win.hide();
 });
 
+// Y al revés: el modo concentración se saca solo al llegar el descanso, sin
+// esperar a que alguien pase por la bandeja.
+ipcMain.on('app:show', () => {
+  if (win && !win.isDestroyed()) win.show();
+});
+
+// Cuánto queda del modo concentración, para el tooltip de la bandeja: es el
+// único sitio donde se puede consultar mientras el pato está escondido.
+ipcMain.on('focus:tick', (_evt, estado) => {
+  if (tray && tray.actualizarFoco) tray.actualizarFoco(estado);
+});
+
 ipcMain.on('app:quit', () => app.quit());
 ipcMain.on('open-external', (_evt, url) => {
   if (typeof url === 'string' && /^https?:\/\//.test(url)) shell.openExternal(url);

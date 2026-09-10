@@ -1,5 +1,5 @@
-// Panel de ajustes: nombre del pato (para el chat), sonido, tamaño y
-// auto-arranque.
+// Panel de ajustes: nombre del pato (para el chat), sonido, tamaño,
+// concentración y auto-arranque.
 
 import { panelHeader } from './panelHeader.js';
 import { LIMITES, normalizarFactor } from '../scale.js';
@@ -11,7 +11,7 @@ import { LIMITES, normalizarFactor } from '../scale.js';
  * @param {{onSave:(s:object)=>void, onClose:Function,
  *          isNameTaken:(n:string)=>boolean, chatReady:boolean,
  *          onSonido:(s:object)=>void, onEscala:(pct:number)=>void,
- *          puedeAutoArrancar:boolean}} handlers
+ *          puedeAutoArrancar:boolean, puedeFoco:boolean}} handlers
  * @returns {{el:HTMLElement}}
  */
 export function buildSettingsPanel(settings, version, handlers) {
@@ -19,6 +19,29 @@ export function buildSettingsPanel(settings, version, handlers) {
   el.className = 'panel hot';
 
   el.appendChild(panelHeader('Ajustes', handlers));
+
+  // El panel ha ido creciendo (visitas, concentración…) hasta ser una columna
+  // interminable. Se reparte en bloques plegables, y en acordeón: al abrir uno
+  // se cierran los demás, así que como mucho crece lo que ocupe UN bloque y no
+  // la suma de todos los que se han ido abriendo por curiosidad.
+  const grupos = [];
+  const grupo = (titulo, abierto) => {
+    const det = document.createElement('details');
+    det.className = 'ajustes-grupo';
+    det.open = !!abierto;
+    const sum = document.createElement('summary');
+    sum.textContent = titulo;
+    det.appendChild(sum);
+    det.addEventListener('toggle', () => {
+      if (det.open) grupos.forEach((g) => { if (g !== det) g.open = false; });
+    });
+    grupos.push(det);
+    el.appendChild(det);
+    return det;
+  };
+
+  // ---- Mascota --------------------------------------------------------
+  const gMascota = grupo('Mascota', true);
 
   // Nombre del pato
   const row1 = document.createElement('div');
@@ -36,7 +59,7 @@ export function buildSettingsPanel(settings, version, handlers) {
     ? 'Se muestra en los bocadillos del chat.'
     : 'Chat sin configurar: no se puede comprobar si el nombre está libre.';
   row1.append(lbl1, name, hint);
-  el.appendChild(row1);
+  gMascota.appendChild(row1);
 
   // Sonido
   const rowSnd = document.createElement('div');
@@ -69,7 +92,7 @@ export function buildSettingsPanel(settings, version, handlers) {
   pintaMute();
   linea.append(mute, vol);
   rowSnd.append(lblSnd, linea);
-  el.appendChild(rowSnd);
+  gMascota.appendChild(rowSnd);
 
   // Tamaño del pato. Se aplica al momento, como el volumen, porque es un ajuste
   // que sólo se acierta viéndolo.
@@ -97,7 +120,10 @@ export function buildSettingsPanel(settings, version, handlers) {
   pintaEscala();
   lineaEsc.append(esc, valorEsc);
   rowEsc.append(lblEsc, lineaEsc);
-  el.appendChild(rowEsc);
+  gMascota.appendChild(rowEsc);
+
+  // ---- Social -----------------------------------------------------------
+  const gSocial = grupo('Social');
 
   // Visitas de otros patos. El canal es común a todo el mundo, así que tiene que
   // poder cerrarse la puerta sin renunciar al chat.
@@ -116,7 +142,40 @@ export function buildSettingsPanel(settings, version, handlers) {
   hintVis.textContent = 'Cualquier mascota conectada puede mandarte la suya a la '
     + 'pantalla. Desactívalo y no entrará ninguno.';
   rowVis.append(lblVis, hintVis);
-  el.appendChild(rowVis);
+  gSocial.appendChild(rowVis);
+
+  // ---- Modo concentración -------------------------------------------------
+  // Sólo donde el pato pueda esconderse y volver a sacarse él solo (ver
+  // `capacidades.focus`): en la extensión no hay bandeja donde enseñar la
+  // cuenta atrás mientras está fuera.
+  const foco = {};
+  if (handlers.puedeFoco) {
+    const gFoco = grupo('Modo concentración (Pomodoro)');
+
+    const campo = (etiqueta, valor, min, max) => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const lbl = document.createElement('label');
+      lbl.textContent = etiqueta;
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = String(min);
+      input.max = String(max);
+      input.step = '1';
+      input.value = String(valor);
+      row.append(lbl, input);
+      gFoco.appendChild(row);
+      return input;
+    };
+
+    foco.work = campo('Minutos de concentración', settings.focusWorkMin || 25, 1, 180);
+    foco.shortBreak = campo('Minutos de descanso corto', settings.focusShortBreakMin || 5, 1, 60);
+    foco.longBreak = campo('Minutos de descanso largo', settings.focusLongBreakMin || 20, 1, 120);
+    foco.cyclesToLong = campo('Ciclos antes del descanso largo', settings.focusCyclesToLong || 4, 1, 12);
+  }
+
+  // ---- Sistema ------------------------------------------------------------
+  const gSistema = grupo('Sistema');
 
   // Auto-arranque. Sólo donde hay un sistema en el que arrancar: en una
   // extensión no existe tal cosa.
@@ -130,23 +189,8 @@ export function buildSettingsPanel(settings, version, handlers) {
     chk.style.marginRight = '6px';
     lbl2.append(chk, document.createTextNode('Iniciar con Windows'));
     row2.appendChild(lbl2);
-    el.appendChild(row2);
+    gSistema.appendChild(row2);
   }
-
-  // Guardar
-  const btnRow = document.createElement('div');
-  btnRow.className = 'btn-row';
-  const save = document.createElement('button');
-  save.className = 'btn';
-  save.textContent = 'Guardar';
-  btnRow.appendChild(save);
-  el.appendChild(btnRow);
-
-  const ver = document.createElement('div');
-  ver.className = 'muted';
-  ver.style.marginTop = '10px';
-  ver.textContent = `TuCuack v${version}`;
-  el.appendChild(ver);
 
   // ---- Actualizaciones ----------------------------------------------------
   //
@@ -170,8 +214,7 @@ export function buildSettingsPanel(settings, version, handlers) {
       else handlers.onBuscarActualizacion();
     });
 
-    el.appendChild(botonAct);
-    el.appendChild(notaAct);
+    gSistema.append(botonAct, notaAct);
   }
 
   /**
@@ -225,15 +268,29 @@ export function buildSettingsPanel(settings, version, handlers) {
     el.addEventListener('panel:cerrado', baja, { once: true });
   }
 
-  // ---- No tocar -----------------------------------------------------------
+  // Guardar
+  const btnRow = document.createElement('div');
+  btnRow.className = 'btn-row';
+  const save = document.createElement('button');
+  save.className = 'btn';
+  save.textContent = 'Guardar';
+  btnRow.appendChild(save);
+  el.appendChild(btnRow);
+
+  const ver = document.createElement('div');
+  ver.className = 'muted';
+  ver.style.marginTop = '10px';
+  ver.textContent = `TuCuack v${version}`;
+  el.appendChild(ver);
+
+  // ---- Zona de riesgo -------------------------------------------------
   //
-  // Al final del todo y con su separador, que es donde va un botón que pide que
-  // no lo pulses. Sólo donde el pato tiene la pantalla para él: quien decide eso
-  // es app.js mirando las capacidades de la carcasa.
+  // Al final del todo y plegada: es donde va un botón que pide que no lo
+  // pulses, así que lo último que conviene es que se abra solo. Sólo donde el
+  // pato tiene la pantalla para él: quien decide eso es app.js mirando las
+  // capacidades de la carcasa.
   if (handlers.puedeLaBroma) {
-    const sep = document.createElement('hr');
-    sep.className = 'sep';
-    el.appendChild(sep);
+    const gRiesgo = grupo('Zona de riesgo');
 
     const broma = document.createElement('button');
     broma.className = 'btn peligro';
@@ -241,12 +298,12 @@ export function buildSettingsPanel(settings, version, handlers) {
     broma.textContent = '⚠️ No tocar';
     broma.title = 'No.';
     broma.addEventListener('click', () => handlers.onLaBroma());
-    el.appendChild(broma);
+    gRiesgo.appendChild(broma);
 
     const avisoBroma = document.createElement('div');
     avisoBroma.className = 'muted';
     avisoBroma.textContent = 'En serio.';
-    el.appendChild(avisoBroma);
+    gRiesgo.appendChild(avisoBroma);
 
     // El cebo, y con la cifra por delante: la broma paga si se pasa el peaje, y
     // callarlo sería esconder la mitad del trato. Lo que NO se hace es adornar
@@ -259,7 +316,7 @@ export function buildSettingsPanel(settings, version, handlers) {
       cebo.textContent = premio.yaCobrado
         ? 'El peaje ya lo cobraste hoy. Sigue sin ser buena idea.'
         : `Pasar el peaje da ${premio.cuacks} cuacks. Sigue sin ser buena idea.`;
-      el.appendChild(cebo);
+      gRiesgo.appendChild(cebo);
     }
   }
 
@@ -289,7 +346,13 @@ export function buildSettingsPanel(settings, version, handlers) {
       visitas: chkVis.checked,
       volumen: vol.value / 100,
       silenciado: !!settings.silenciado,
-      escala: Number(esc.value)
+      escala: Number(esc.value),
+      ...(handlers.puedeFoco ? {
+        focusWorkMin: Math.max(1, Number(foco.work.value) || 25),
+        focusShortBreakMin: Math.max(1, Number(foco.shortBreak.value) || 5),
+        focusLongBreakMin: Math.max(1, Number(foco.longBreak.value) || 20),
+        focusCyclesToLong: Math.max(1, Number(foco.cyclesToLong.value) || 4)
+      } : {})
     });
     handlers.onClose();
   });

@@ -255,11 +255,60 @@ html, body {
    del menú: se mira y se actúa desde ella. */
 .ctx-menu.con-cabecera { min-width: 296px; }
 .ctx-menu .vista-stats {
-  padding: 2px 4px 8px;
+  padding: 4px 6px 8px;
   margin-bottom: 6px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.12);
 }
-.ctx-menu .vista-stats .tooltip-title { font-size: 14px; margin-bottom: 7px; }
+.ctx-menu .vista-stats .tooltip-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 7px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  padding-bottom: 4px;
+}
+/* Ya no centrado ni con su propio borde: eso lo lleva ahora la cabecera
+   entera, que reparte nombre y botón en sus dos extremos.
+   `min-width: 0` es lo que de verdad arregla el desbordamiento: sin él, un
+   elemento flex no encoge nunca por debajo del ancho de su contenido, así
+   que un nombre largo empujaba al botón fuera del menú en vez de recortarse. */
+.ctx-menu .vista-stats .tooltip-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  margin-bottom: 0;
+  text-align: left;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+/* Con dos clases (`.ctx-menu .btn-foco`) para ganarle en especificidad a
+   `.ctx-menu button` (una clase + un tipo, pero eso también cuenta como más
+   específico que una clase sola): sin esto, aquel `width: 100%` se comía el
+   `flex: 0 0 auto` de aquí y el botón se estiraba a ocupar toda la fila,
+   tapando el nombre. */
+.ctx-menu .btn-foco {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: auto;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+  text-align: center;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--ink);
+  cursor: pointer;
+}
+.ctx-menu .btn-foco:hover { background: var(--accent); border-color: var(--ink); }
+.ctx-menu .btn-foco.activo { background: var(--accent-2); border-color: var(--ink); }
 .ctx-menu .vista-stats .tooltip-nivel { font-size: 12px; margin-bottom: 8px; }
 .ctx-menu .vista-stats .tooltip-nivel .bar { height: 7px; border-radius: 4px; }
 .ctx-menu .vista-stats .tooltip-stat { gap: 9px; margin-bottom: 6px; }
@@ -351,6 +400,31 @@ html, body {
 .panel { overflow-y: auto; overscroll-behavior: contain; }
 .panel .row { margin-bottom: 10px; }
 .panel label { display: block; font-weight: 600; margin-bottom: 4px; }
+
+/* Ajustes en bloques plegables: sin esto el panel es una columna
+   interminable en cuanto tiene más de tres o cuatro cosas que configurar. */
+.ajustes-grupo {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  margin-bottom: 10px;
+  padding: 0 10px;
+}
+.ajustes-grupo[open] { padding-bottom: 8px; }
+.ajustes-grupo summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 8px 0;
+  list-style: none;
+}
+.ajustes-grupo summary::-webkit-details-marker { display: none; }
+.ajustes-grupo summary::before {
+  content: '▸';
+  display: inline-block;
+  width: 12px;
+  transition: transform 0.15s ease;
+}
+.ajustes-grupo[open] summary::before { transform: rotate(90deg); }
+.ajustes-grupo .row:last-child { margin-bottom: 0; }
 
 .stat { margin-bottom: 8px; }
 .stat .lbl { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
