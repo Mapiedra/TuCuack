@@ -1,6 +1,6 @@
 {
   "name": "tucuack",
-  "version": "0.36.0",
+  "version": "0.37.0",
   "description": "TuCuack — mascota de escritorio Tamagotchi con chat social entre patos",
   "main": "src/main/main.js",
   "author": "Mapiedra",

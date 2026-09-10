@@ -7,6 +7,31 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.37.0] - 2026-09-10
+
+### Añadido
+
+- **Modo concentración (Pomodoro).** Se le pide un ciclo y se lo toma en serio:
+  avisa con un bocadillo, se esconde sola —la misma mecánica del «🙈 Ocultar»
+  de siempre— y mientras dura no hace falta comer, limpiarla ni jugar con
+  ella. El chat común también calla —bocadillo, sonido y animación—, aunque
+  sigue anotándose en el histórico sin perder nada; los privados no se
+  enteran del silencio, porque son cosa de dos y no del canal común.
+
+  Al llegar el descanso vuelve sola y cuenta lo que ha pasado mientras
+  tanto. Y al acabar el descanso no encadena el siguiente ciclo por su
+  cuenta: pregunta antes de volver a esconderse. Cada 4 ciclos de trabajo
+  toca descanso largo en vez de corto; las cuatro duraciones —trabajo,
+  descanso corto, descanso largo y cada cuántos ciclos— son configurables en
+  Ajustes. Con la mascota escondida, la bandeja del sistema es lo único que
+  enseña la cuenta atrás.
+
+### Cambiado
+
+- **Ajustes, en bloques plegables.** El panel había ido creciendo hasta ser
+  una columna interminable. Ahora se reparte en acordeón —sólo un bloque
+  abierto a la vez— para que no vuelva a pasar.
+
 ## [0.36.0] - 2026-09-09
 
 ### Añadido
