@@ -1,10 +1,17 @@
 # Probar TuCuack en Ubuntu
 
 Esta guía es para quien tenga una Ubuntu delante. El soporte de Linux se escribió
-**sin poder ejecutarlo ni una vez**: lo que decide el guardia del ratón está
-comprobado con sondas (`npm run raton:check`), pero hay cosas que ningún sustituto
-puede contestar —si la ventana se pinta transparente, si se queda encima, si el cursor
-que devuelve el sistema es el que estás moviendo—. Eso es lo que se pide aquí.
+**sin poder ejecutarlo ni una vez**: lo que decide el guardia del ratón está comprobado
+con sondas (`npm run raton:check`), pero hay cosas que ningún sustituto puede contestar
+—si la ventana se pinta transparente, si se queda encima, si el sistema entrega el
+ratón—. Eso es lo que se pide aquí.
+
+**Dónde estamos.** En la **0.38.0** el pato salía y caminaba, pero no había forma de
+tocarlo: se preguntaba al sistema dónde estaba el cursor y bajo XWayland esa respuesta
+viene congelada (ver el CHANGELOG). La **0.38.1** lo arregla con el timbre, y está
+confirmado en una Ubuntu de verdad: arranca, conecta el chat y **responde al ratón**.
+Lo que sigue abierto es el resto de la lista de aquí abajo, que nadie ha recorrido
+entera.
 
 No hace falta saber del proyecto. Hace falta media hora y decir qué pasó.
 
@@ -44,9 +51,9 @@ se va a poder tocar. Todo lo demás de esta lista dará igual.
 
 ## Y si no se le puede tocar
 
-Ésa fue exactamente la primera respuesta que llegó de Ubuntu, y por eso el pato trae
-ahora dos herramientas para contestar *por qué* sin adivinar nada. Si al pato no se le
-puede señalar, ni pulsar, ni arrastrar, haz estas dos pruebas y pega lo que salga:
+Eso fue lo que pasó en la 0.38.0, y por eso el pato trae ahora herramientas para
+contestar *por qué* sin adivinar nada. Si vuelve a pasar —otra máquina, otro
+escritorio— haz estas dos pruebas y pega lo que salga:
 
 ```bash
 tucuack --timbre-de-prueba
@@ -120,6 +127,11 @@ Sobre cada una: **sí / no / raro**, y si es raro, en qué se nota.
 - **Cuánto consume.** `top -p $(pgrep -f tucuack | head -1)` un rato con el pato
   quieto. El sondeo del cursor corre 20 veces por segundo; si eso se nota en el
   ventilador, hay que saberlo.
+- **El timbre, que no se note.** Es una ventana transparente de un palmo pegada al
+  pato, y hay dos formas de que se note aunque no se vea: que el escritorio le pinte
+  sombra o borde (un recuadro que sigue al pato), o que al pasar por encima del pato la
+  ventana en la que estabas escribiendo pierda el foco. Ninguna de las dos debería
+  pasar; si pasa, es del timbre.
 - **Ajustes → Actualizaciones.** Con el `.deb` tiene que decir que se actualiza con el
   gestor de paquetes, no dar error. Con el AppImage, tiene que buscar de verdad.
 - **Todo lo que escriba la terminal** mientras juegas. Pégalo tal cual, aunque parezca

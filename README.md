@@ -352,9 +352,11 @@ overlay tiene el ratón y se recorta para no invadir la franja de la bandeja. La
 diferencia con Windows es de un palmo: dentro de la caja del pato y sobre un píxel
 transparente, el clic se lo queda el timbre en vez de llegar al escritorio.
 
-Y como nada de esto se ha podido ejecutar todavía, hay una lista de lo que hay que
-mirar en una máquina de verdad y de qué hace falta saber si algo va mal:
-[`docs/PROBAR-EN-UBUNTU.md`](docs/PROBAR-EN-UBUNTU.md).
+Nada de esto se ha podido ejecutar desde la máquina en la que se escribió, así que hay
+una lista de lo que hay que mirar en una Ubuntu de verdad y de qué hace falta saber si
+algo va mal: [`docs/PROBAR-EN-UBUNTU.md`](docs/PROBAR-EN-UBUNTU.md). Lo confirmado a
+día de hoy es que arranca, conecta el chat y responde al ratón; el resto de esa lista
+sigue abierto.
 
 **La bandeja** necesita que el escritorio muestre iconos de bandeja. Ubuntu trae la
 extensión *AppIndicator* puesta de fábrica, así que ahí no hay nada que hacer; en un
