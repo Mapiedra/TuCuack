@@ -5,8 +5,9 @@ la barra de tareas**, se puede **arrastrar y lanzar por la pantalla**, se cuida 
 **Tamagotchi**, **habla con los patos de otras personas** mediante bocadillos de cómic
 y **se va de visita a su pantalla**.
 
-La app de escritorio es de **Windows**; en cualquier otro sistema el mismo pato vive en
-la **extensión de Chrome**, y unos y otros comparten canal.
+La app de escritorio es de **Windows** y de **Linux**; donde no hay app —macOS, un
+ordenador ajeno, un móvil— el mismo pato vive en la **extensión de Chrome**, y todos
+comparten canal.
 
 Construido con **Electron**. Chat con **Supabase Realtime**. Auto-actualización con
 **electron-updater + GitHub Releases**.
@@ -127,6 +128,22 @@ Cada mascota apunta su propia fila, así que no hay una verdad compartida que de
 sino el cuaderno de cada cual, y el servidor recorta a las cien últimas por dueño para
 que la tabla no crezca sin fin. **Las jugadas no se guardan**, y no es un olvido: el
 porqué está en [`supabase/partidas.sql`](supabase/partidas.sql).
+
+**🪙 Los cuacks.** La moneda: se ganan jugando y se gastan en comprar juegos. El
+saldo **vive en el servidor**, no en tu disco, y eso tiene dos consecuencias que
+conviene saber. La buena: no se puede inflar editando un fichero, y hay dónde mirarlo
+—que es lo que hace falta para que algún día pueda haber premios—. La de siempre: el
+monedero es de la **instalación**, no de la persona, igual que el marcador y el
+historial. El pato de escritorio y el de Chrome son dos monederos, y borrar los ajustes
+es perder los cuacks.
+
+El reparto es lo importante: **el pato dice qué ha jugado y el servidor dice cuánto
+vale**. El importe de cada partida lo calcula el servidor con su propio catálogo, y el
+precio de un juego también, así que no hay por dónde declarar una cifra. Sin conexión se
+puede jugar: lo ganado se apunta y se cobra solo al volver la línea, incluso si cierras
+el pato por el camino. Comprar sí la necesita, y lo dice. Todo el razonamiento está en
+[`supabase/cuacks.sql`](supabase/cuacks.sql), y cómo se calibran los precios en
+[`docs/MINIJUEGOS.md`](docs/MINIJUEGOS.md#los-cuacks).
 
 **✉️ Privados.** Mensajes a **una** persona. Están dentro de **Chat**, en su propia
 pestaña junto a «Todos», porque las dos son formas de decirle algo a alguien; lo que
@@ -284,16 +301,64 @@ python tools/make_icons.py
 npm run build     # instalador para tu sistema, en dist/
 ```
 
-Se compila el instalador **NSIS** de Windows. El workflow de release lo sube al
-Release junto con el **zip de la extensión de Chrome**, que se ensambla en el
-mismo workflow con `npm run ext`.
+electron-builder empaqueta **para el sistema en el que corre**, así que cada uno sale
+de su sitio: el instalador **NSIS** de Windows se compila en Windows, y el `.deb` y el
+`.AppImage` de Linux en Linux (`npm run build:linux`). El workflow de release lo hace
+en dos runners y lo sube todo al mismo Release, junto con el **zip de la extensión de
+Chrome**, que se ensambla ahí mismo con `npm run ext`.
 
-### Fuera de Windows
+### En Linux
 
-La app de escritorio es de Windows. En cualquier otro sistema el pato vive en la
-**extensión de Chrome**, que no depende del sistema operativo: mismo núcleo,
-mismo canal de chat y los mismos patos, así que se conversa y se reciben visitas
-entre unos y otros sin distinción. Se instala en modo desarrollador
+El pato es el mismo: el núcleo no sabe en qué sistema vive (ver **Estructura**), y lo
+que cambia se resuelve entero en el proceso principal. Pero hay cuatro cosas que
+conviene saber, porque se ven.
+
+**Dos paquetes, y no dan lo mismo.** El `.deb` es el recomendado en Ubuntu y derivadas:
+lo instala el gestor de paquetes, que además deja el sandbox de Chromium con los
+permisos que pide. El `.AppImage` es para el resto — y en Ubuntu 24.04 en adelante
+puede negarse a arrancar (`SUID sandbox helper... is not configured correctly`), porque
+el sistema restringe los *user namespaces* sin privilegios; se sortea con
+`--no-sandbox`, pero entonces mejor el `.deb`.
+
+**Sólo el AppImage se autoactualiza.** Es el único formato que electron-updater sabe
+reemplazar por su cuenta. El `.deb` vive dentro de la contabilidad de `dpkg` y
+actualizarlo a espaldas del gestor de paquetes sería pedir una pelea —además de una
+contraseña de administrador a mitad de partida—: ése se actualiza con `apt` o
+instalando encima el del Release siguiente. El panel de Ajustes lo dice en vez de
+enseñar un botón que no haría nada.
+
+**X11, no Wayland.** El overlay se sostiene sobre tres cosas que Wayland no da:
+mantener una ventana siempre encima, colocarla donde uno quiera y preguntar dónde está
+el cursor. Bajo **XWayland** están las tres, así que el pato pide X11 al arrancar
+(`ozone-platform`, en [`src/main/sistema.js`](src/main/sistema.js)). Se puede forzar lo
+contrario con `--ozone-platform=wayland` si se quiere ver qué pasa; lo que pasa es que
+el pato se queda detrás de las ventanas.
+
+**Acercarse al pato cuesta un sondeo.** La ventana de Windows reenvía el movimiento del
+ratón aunque los clics la atraviesen; la de Linux, no. Sin eso el pato no se enteraría
+nunca de que hay alguien encima, así que el proceso principal pregunta dónde está el
+cursor 20 veces por segundo y le abre la puerta cuando entra en la caja del pato —que
+el pato va publicando, y que es la de los píxeles que se ven, no la del lienzo entero
+(ver [`src/main/raton.js`](src/main/raton.js)). La diferencia con Windows es de un
+palmo: dentro de esa caja y sobre un píxel transparente, el clic se lo queda el overlay
+en vez de llegar al escritorio.
+
+Y como nada de esto se ha podido ejecutar todavía, hay una lista de lo que hay que
+mirar en una máquina de verdad y de qué hace falta saber si algo va mal:
+[`docs/PROBAR-EN-UBUNTU.md`](docs/PROBAR-EN-UBUNTU.md).
+
+**La bandeja** necesita que el escritorio muestre iconos de bandeja. Ubuntu trae la
+extensión *AppIndicator* puesta de fábrica, así que ahí no hay nada que hacer; en un
+GNOME pelado hay que instalarla o el pato se quedará sin la única forma de recuperarlo
+cuando se esconde. **El arranque con la sesión** es un `.desktop` en
+`~/.config/autostart/`, que el ajuste escribe y borra solo.
+
+### Fuera del escritorio
+
+Donde no hay app —macOS, un ordenador prestado, el trabajo— el pato vive en la
+**extensión de Chrome**, que no depende del sistema operativo: mismo núcleo, mismo
+canal de chat y los mismos patos, así que se conversa y se reciben visitas entre unos y
+otros sin distinción. Se instala en modo desarrollador
 (ver [`src/extension/INSTALAR.txt`](src/extension/INSTALAR.txt)).
 
 Para publicar una versión y que las instalaciones se actualicen solas:
@@ -324,7 +389,7 @@ src/core/       el pato: animación, física, Tamagotchi, paneles, chat, niveles
 src/desktop/    carcasa de escritorio: documento del overlay y plataforma Electron
 src/extension/  carcasa de Chrome: panel lateral, service worker y plataforma
 src/main/       proceso principal: ventana overlay, bandeja, chat, updater, persistencia
-tools/          generadores de sprites e iconos (Python), banco de pruebas y ensamblado
+tools/          generadores de sprites e iconos (Python), sondas, banco de pruebas y ensamblado
 assets/         sprite sheet e iconos
 .github/        workflow de release
 ```
@@ -401,6 +466,11 @@ npx electron . --dev --probe "JSON.stringify(__pato.state())"
 
 En modo `--dev`, el renderer expone `window.__pato` (`duck`, `behavior`, `tam`, `chat`,
 `throwFrom(x,y,vx,vy)`, `act('feed'|'play'|'clean'|'sleep')`, `state()`, `name()`).
+
+`--zonas` enciende en Windows el sondeo del cursor que sólo hace falta en Linux (ver
+[`src/main/raton.js`](src/main/raton.js)): es la única forma de ver funcionar ese
+camino sin una máquina Linux delante. Lo que decide el guardia, sin ventana ni cursor,
+lo comprueba `npm run raton:check`.
 
 **Banco de pruebas.** El núcleo también arranca en un navegador normal, sin
 Electron, con una plataforma de mentira que guarda en `localStorage` y no se

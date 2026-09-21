@@ -23,6 +23,7 @@ export function crearPlataformaElectron() {
       comandosExternos: true,
       juegosDeEscenario: true,
       marcadorGlobal: true,
+      monederoEnServidor: true,
       historialDePartidas: true,
       privados: true,
       focus: true
@@ -39,6 +40,9 @@ export function crearPlataformaElectron() {
 
     // El núcleo pide el ratón en positivo; la ventana se configura al revés.
     capturarRaton: (capturar) => pato.setIgnoreMouse(!capturar),
+    // Dónde está el pato, para los sistemas donde el overlay se queda mudo
+    // mientras deja pasar los clics (`config.necesitaZonas` dice si hace falta).
+    publicarZona: (caja) => pato.zonaDelPato(caja),
     empezarArrastre: () => pato.dragStart(),
     terminarArrastre: () => pato.dragEnd(),
     alCambiarEscenario: (cb) => pato.onLayoutChanged(cb),
@@ -62,6 +66,14 @@ export function crearPlataformaElectron() {
       guardar: (record) => pato.marcadorGuardar(record)
     },
 
+    monedero: {
+      mios: () => pato.cuacksMios(),
+      estrenar: (local) => pato.cuacksEstrenar(local),
+      partida: (p) => pato.cuacksPartida(p),
+      comprar: (id) => pato.cuacksComprar(id),
+      broma: (nivel) => pato.cuacksBroma(nivel),
+      borrar: () => pato.cuacksBorrar()
+    },
     partidas: {
       guardar: (p) => pato.partidasGuardar(p),
       mias: () => pato.partidasMias()

@@ -58,6 +58,12 @@ jobs:
       - name: Jugar los minijuegos en red
         run: npm run red:check
 
+      # El guardia del ratón: lo único que hace que al pato se le pueda tocar en
+      # Linux, y lo único del proyecto que se escribió sin poder verlo funcionar.
+      # Un fallo aquí no es un pato raro, es un escritorio que no responde.
+      - name: Comprobar el guardia del ratón
+        run: npm run raton:check
+
       # El ensamblado de la extensión es un paso fácil de romper sin darse cuenta
       # —basta mover un fichero de sitio— y sólo se nota al publicar. Comprobarlo
       # aquí cuesta segundos.

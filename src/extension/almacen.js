@@ -136,6 +136,23 @@ export const privados = {
   borrarTodo: () => preguntarAlWorker({ tipo: 'privados-borrar-todo' })
 };
 
+/**
+ * El monedero, preguntándoselo al worker.
+ *
+ * Por ahí y no directamente por lo de siempre: la firma vive allí y este código
+ * corre dentro de la página web de cualquiera. Y hay una razón de fondo más,
+ * que está en `supabase/cuacks.sql`: lo que se manda no es cuántos cuacks se han
+ * ganado, es qué partida se ha jugado. El importe lo pone el servidor.
+ */
+export const monedero = {
+  mios: () => preguntarAlWorker({ tipo: 'cuacks-mios' }),
+  estrenar: (local) => preguntarAlWorker({ tipo: 'cuacks-estrenar', local }),
+  partida: (partida) => preguntarAlWorker({ tipo: 'cuacks-partida', partida }),
+  comprar: (juego) => preguntarAlWorker({ tipo: 'cuacks-comprar', juego }),
+  broma: (nivel) => preguntarAlWorker({ tipo: 'cuacks-broma', nivel }),
+  borrar: () => preguntarAlWorker({ tipo: 'cuacks-borrar' })
+};
+
 export const marcador = {
   mejores: (juego, mejorEs) => preguntarAlWorker({ tipo: 'marcador-mejores', juego, mejorEs }),
   todos: () => preguntarAlWorker({ tipo: 'marcador-todos' }),

@@ -39,6 +39,65 @@ Se hace una sola vez, y sirve para todos los entornos.
 
 ---
 
+## Paso 0.5 — Las tablas
+
+El **chat** no necesita ninguna: va por *broadcast*, que son mensajes efímeros que
+viajan por WebSocket sin tocar la base de datos. Todo lo demás sí, y se monta
+lanzando ficheros en **SQL Editor → New query**, pegando el contenido y dándole a
+*Run*. Los cuatro son **idempotentes**: se pueden volver a lanzar sin romper nada,
+y hay que hacerlo cada vez que cambien.
+
+| Fichero | Qué monta | Si no se lanza |
+|---|---|---|
+| [`supabase/records.sql`](../supabase/records.sql) | El marcador global | *Marcador global* sale vacío y las marcas no suben |
+| [`supabase/partidas.sql`](../supabase/partidas.sql) | El historial de partidas por red | *Tus partidas* sale vacío |
+| [`supabase/mensajes.sql`](../supabase/mensajes.sql) | Los privados y los bloqueos | El sobre no manda nada |
+| [`supabase/cuacks.sql`](../supabase/cuacks.sql) | El monedero: saldo, compras y catálogo | **El saldo se queda en el disco**, como antes: se puede jugar y comprar, pero la cifra no sale de ese equipo |
+
+> **El de los cuacks hay que volver a lanzarlo al añadir un juego.** El servidor
+> lleva su propia copia del catálogo —es lo que le permite calcular lo que paga
+> una partida en vez de creerse lo que le digan—, así que después de tocar
+> `minijuegos/index.js` toca `npm run catalogo` y pegar el fichero otra vez. Sin
+> eso, el juego nuevo ni se compra ni paga: el servidor contesta
+> `juego-desconocido`. `npm run cuacks:check` avisa de la mitad que se puede
+> comprobar desde aquí.
+
+El del monedero se puede probar **antes** de pegarlo, contra un Postgres de usar
+y tirar en Docker:
+
+```bash
+npm run cuacks:sql
+```
+
+Levanta un contenedor, le pone el decorado que Supabase da por hecho, aplica
+`cuacks.sql` tal cual y ejercita las cinco funciones —incluyendo lo que puede y no
+puede hacer el rol `anon`, que es con el que se conecta el pato—. Si el fichero no
+parsea, dice la línea exacta. El contenedor se borra al terminar.
+
+Y **después** de pegarlo en el panel, para comprobar que de verdad está en este
+proyecto y con el catálogo al día:
+
+```bash
+npm run cuacks:servidor
+```
+
+No escribe nada, y no por prudencia: llama a cada función con un secreto
+demasiado corto, que es un camino que las recorre enteras —existe, se puede
+llamar como `anon`, valida lo que recibe— y termina sin tocar ninguna fila. De
+paso comprueba que con la clave publicable **no** se llega al saldo de nadie.
+Es lo que hay que lanzar tras añadir un juego, que es cuando se olvida.
+
+Cada fichero lleva arriba un comentario largo con el porqué de cómo está hecho;
+`records.sql` es el que hay que leer primero, porque los demás dan por sabido lo
+que explica —cómo se identifica al dueño de una fila sin que haya cuentas—.
+
+Después de lanzarlos, el panel de Supabase avisa de *«Public / Signed-In Users Can
+Execute SECURITY DEFINER Function»*. Es **a propósito** y está explicado en cada
+fichero: esas funciones son la puerta de escritura y tiene que poder llamarlas el
+pato, que se conecta como `anon`.
+
+---
+
 ## Entorno 1 — Tu equipo (desarrollo)
 
 Edita el fichero `supabase.json` de la raíz del proyecto (ya viene creado):
@@ -94,7 +153,8 @@ Si **no** defines los secrets el build no falla: publica una versión sin chat.
 
 ## Entorno 3 — El instalador que reparten a otros
 
-Quien instale el `.exe` **no tiene que configurar nada**: las credenciales van dentro.
+Quien instale el `.exe` de Windows o el `.deb` / `.AppImage` de Linux **no tiene que
+configurar nada**: las credenciales van dentro.
 
 Para publicar una versión:
 
@@ -105,9 +165,11 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-El workflow compila, crea el **GitHub Release** y sube el instalador junto con
-`latest.yml`. Las instalaciones existentes detectan la nueva versión al arrancar, la
-descargan en segundo plano y la aplican al reiniciar.
+El workflow compila en dos runners (Windows y Linux), crea el **GitHub Release** y sube
+el instalador de Windows con `latest.yml` y los paquetes de Linux con
+`latest-linux.yml`. Las instalaciones existentes detectan la nueva versión al arrancar,
+la descargan en segundo plano y la aplican al reiniciar — con una excepción: el `.deb`
+lo actualiza el gestor de paquetes, no el pato (ver el README, *En Linux*).
 
 > **Importante:** para que dos personas se vean en el chat, sus dos instalaciones
 > deben llevar **las mismas credenciales**, es decir salir del mismo Release (o
@@ -131,7 +193,13 @@ En Windows:
 %APPDATA%\TuCuack\supabase.json
 ```
 
-(pega esa ruta en el explorador). Mismo formato que siempre. Reinicia TuCuack.
+(pega esa ruta en el explorador). En Linux:
+
+```
+~/.config/TuCuack/supabase.json
+```
+
+Mismo formato que siempre. Reinicia TuCuack.
 
 Útil para apuntar a otro proyecto de Supabase, para probar un canal aparte, o para
 activar el chat en una versión que se compiló sin él.
@@ -187,9 +255,12 @@ nombre y sus propias estadísticas; para dejarlo todo limpio, borra esa carpeta.
 
 | Síntoma | Causa probable |
 |---|---|
-| No aparece ninguna tabla en Supabase | Correcto: el chat usa *broadcast* y no toca la base de datos. |
+| No aparece ninguna tabla en Supabase | Correcto para el **chat**, que usa *broadcast*. Para el marcador, los privados y los cuacks sí hacen falta: ver [Paso 0.5](#paso-05--las-tablas). |
+| El saldo de cuacks no se comparte entre equipos | Es lo esperado: el monedero es de la instalación, no de la persona. Dos equipos son dos monederos. |
+| Comprar dice *«necesita conexión»* | El monedero vive en el servidor y comprar no se apunta en una cola. Lo ganado jugando sí: se cobra solo al volver la línea. |
+| Un juego nuevo no se puede comprar y sus partidas no pagan | Falta sembrar el catálogo: `npm run catalogo` y volver a lanzar `supabase/cuacks.sql`. |
 | La consola muestra `canal: CHANNEL_ERROR` o *transport failure* | Credenciales rechazadas por Realtime. Lo más habitual: la URL lleva `/rest/v1` al final, o la clave está incompleta. |
-| `CHANNEL_ERROR ... unable to verify the first certificate` | Un antivirus o un proxy está inspeccionando el tráfico HTTPS con su propio certificado (AVG, Avast, ESET, proxys de empresa). El pato ya se fía de las raíces del almacén de Windows, así que esto sólo debería salir si la raíz del interceptor no está instalada ahí; compruébalo en `certmgr.msc` → *Entidades de certificación raíz de confianza*. |
+| `CHANNEL_ERROR ... unable to verify the first certificate` | Un antivirus o un proxy está inspeccionando el tráfico HTTPS con su propio certificado (AVG, Avast, ESET, proxys de empresa). El pato ya se fía de las raíces del almacén de Windows, así que esto sólo debería salir si la raíz del interceptor no está instalada ahí; compruébalo en `certmgr.msc` → *Entidades de certificación raíz de confianza*. En Linux no se lee ningún almacén del sistema (ahí esto es raro): valen las raíces que trae Node, o `NODE_EXTRA_CA_CERTS`. |
 | Ajustes dice *«Chat sin configurar»* | El fichero no se encuentra o sigue con los valores de ejemplo. Revisa la ruta y que el JSON sea válido. |
 | Configurado, pero no llegan mensajes | Las dos instalaciones apuntan a proyectos de Supabase distintos. |
 | No avisa de nombres repetidos | La comprobación necesita conexión: sin chat no se puede saber qué nombres hay. |

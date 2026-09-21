@@ -6,11 +6,17 @@ const store = require('./store');
 const marcador = require('./marcador');
 const historial = require('./historial');
 const partidas = require('./partidas');
+const cuacks = require('./cuacks');
 const mensajes = require('./mensajes');
 const { createTray } = require('./tray');
 const { initUpdater, configurarAvisos, estadoActualizacion, buscarActualizacion, instalarActualizacion }
   = require('./updater');
 const { initChat } = require('./chat');
+const sistema = require('./sistema');
+const { crearGuardiaDelRaton } = require('./raton');
+
+// Antes de que Electron arranque: en Linux, X11 (ver `prepararLinea`).
+sistema.prepararLinea(app);
 
 const isDev = process.argv.includes('--dev');
 
@@ -20,6 +26,15 @@ let win = null;
 let tray = null;
 /** @type {{ send: Function, isReady: Function } | null} */
 let chat = null;
+
+// Quien decide si el overlay captura el ratón. En Windows es un pasamanos
+// —la ventana se apaña sola—; en Linux sondea el cursor porque la ventana no
+// avisa. Ver `raton.js`.
+const guardiaDelRaton = crearGuardiaDelRaton({
+  getWin: () => win,
+  getGround: () => groundFromBottom(),
+  sondear: !sistema.reenviaElRaton
+});
 
 // Monitor en el que vive el pato ahora mismo. El overlay cubre ese monitor
 // entero (se usa `bounds` y no `workArea` para tapar también la barra de
@@ -59,10 +74,14 @@ function groundFromBottom() {
 
 function createWindow() {
   const bounds = computeBounds();
+  guardiaDelRaton.reiniciar();
 
   win = new BrowserWindow({
     ...bounds,
     transparent: true,
+    // Windows se da por enterado con `transparent`; algunos compositores de
+    // Linux pintan negro si no se les dice además de qué color es la nada.
+    ...(sistema.esLinux ? { backgroundColor: '#00000000' } : {}),
     frame: false,
     alwaysOnTop: true,
     skipTaskbar: true,
@@ -87,8 +106,9 @@ function createWindow() {
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
   // Por defecto los clics atraviesan el overlay hacia las apps de debajo.
-  // El renderer lo desactiva al pasar el ratón por el pato/paneles.
-  win.setIgnoreMouseEvents(true, { forward: true });
+  // El renderer lo desactiva al pasar el ratón por el pato/paneles —y donde no
+  // llega a enterarse de que hay alguien encima, el guardia se lo dice.
+  guardiaDelRaton.pedirCaptura(false);
 
   win.loadFile(path.join(__dirname, '..', 'desktop', 'index.html'));
 
@@ -105,6 +125,7 @@ function createWindow() {
   });
 
   win.on('closed', () => {
+    guardiaDelRaton.reiniciar();
     win = null;
   });
 
@@ -174,11 +195,14 @@ ipcMain.on('drag:end', stopDragTracking);
 // El renderer decide, según el hover, si el overlay debe capturar el ratón.
 ipcMain.on('set-ignore-mouse', (_evt, ignore) => {
   if (!win || win.isDestroyed()) return;
-  if (ignore) {
-    win.setIgnoreMouseEvents(true, { forward: true });
-  } else {
-    win.setIgnoreMouseEvents(false);
-  }
+  guardiaDelRaton.pedirCaptura(!ignore);
+});
+
+// Dónde está el pato ahora mismo, para poder verlo venir donde la ventana no
+// reenvía el movimiento del cursor. Sólo lo publica quien hace falta: en
+// Windows este canal no lo usa nadie (ver `necesitaZonas` en `config:get`).
+ipcMain.on('zonas:pato', (_evt, caja) => {
+  guardiaDelRaton.anotarZona(caja || null);
 });
 
 // Persistencia expuesta al renderer.
@@ -207,6 +231,9 @@ ipcMain.handle('config:get', () => ({
   version: app.getVersion(),
   isDev,
   ground: groundFromBottom(),
+  // Si la ventana no reenvía el ratón, el pato tiene que ir diciendo dónde
+  // está: es la única pista que le queda al proceso principal.
+  necesitaZonas: !sistema.reenviaElRaton,
   sprites: leerSprites()
 }));
 
@@ -281,6 +308,16 @@ ipcMain.handle('marcador:todos', () => marcador.todos());
 ipcMain.handle('partidas:guardar', (_evt, p) => partidas.guardar(p));
 ipcMain.handle('partidas:mias', () => partidas.mias());
 
+// El monedero. Igual que el marcador: el pato pide y este lado firma. Y aquí
+// hay un motivo más para que sea así —el de fondo, en realidad—: el importe de
+// cada partida lo calcula el servidor, no el pato. Ver supabase/cuacks.sql.
+ipcMain.handle('cuacks:mios', () => cuacks.mios());
+ipcMain.handle('cuacks:estrenar', (_evt, local) => cuacks.estrenar(local || {}));
+ipcMain.handle('cuacks:partida', (_evt, p) => cuacks.apuntarPartida(p || {}));
+ipcMain.handle('cuacks:comprar', (_evt, id) => cuacks.comprar(id));
+ipcMain.handle('cuacks:broma', (_evt, nivel) => cuacks.cobrarBroma(nivel));
+ipcMain.handle('cuacks:borrar', () => cuacks.borrar());
+
 // Mensajes privados. Ni el secreto ni la lista de bloqueados cruzan el puente:
 // el pato pide y este lado firma (ver mensajes.js y supabase/mensajes.sql).
 ipcMain.handle('privados:enviar', (_evt, m) => mensajes.enviar(m || {}));
@@ -318,7 +355,7 @@ ipcMain.on('open-external', (_evt, url) => {
 
 function applyAutoLaunch(settings) {
   if (isDev) return;
-  app.setLoginItemSettings({ openAtLogin: !!(settings && settings.autoLaunch) });
+  sistema.aplicarArranqueAutomatico(app, !!(settings && settings.autoLaunch));
 }
 
 // ---- Ciclo de vida ------------------------------------------------------
@@ -343,6 +380,11 @@ if (!gotLock) {
   });
 
   app.whenReady().then(() => {
+    // Lo que hace falta saber cuando el pato se porta raro en un sistema que
+    // aquí no hay forma de mirar: qué plataforma, y si el overlay se va a
+    // enterar solo de que el cursor se acerca o va a hacer falta sondearlo.
+    console.log(`[app] ${process.platform}`
+      + ` · ratón ${sistema.reenviaElRaton ? 'reenviado por la ventana' : 'sondeado (ver raton.js)'}`);
     createWindow();
     // El canal de avisos de actualización se abre SIEMPRE, aunque no haya
     // actualizador: si no, en desarrollo el pato preguntaría y la respuesta
@@ -362,7 +404,7 @@ if (!gotLock) {
 
 // El pato vive en la bandeja; no cerramos la app al cerrar la ventana.
 app.on('window-all-closed', () => {
-  // No-op en Windows: se sale desde la bandeja o el menú del pato.
+  // No-op: se sale desde la bandeja o el menú del pato.
 });
 
 app.on('before-quit', () => {

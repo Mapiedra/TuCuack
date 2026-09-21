@@ -5,7 +5,9 @@
 // global: pasamos `ws` como transporte. El renderer habla por IPC.
 //
 // Además del chat, el canal mantiene la PRESENCIA de cada pato conectado con su
-// nombre, que es lo que permite comprobar que un nombre no esté ya en uso.
+// nombre, que es lo que permite comprobar que un nombre no esté ya en uso. Que
+// esa lista se parezca a la realidad cuesta más de lo que parece: ver el LATIDO
+// más abajo.
 //
 // Por el mismo canal viajan las VISITAS: un pato que se planta en la pantalla de
 // otro. Van en un evento de broadcast aparte (`visita`) para no ensuciar la
@@ -52,7 +54,7 @@ const CANAL_DE_SALA = (salaId) => `sala:${salaId}`;
 
 /** Lo que este pato anuncia saber hacer, para que el otro lo mire ANTES de
  *  retar o de escribirle. Capacidades, nunca números de versión. */
-const CAPACIDADES = ['sala', 'privados'];
+const CAPACIDADES = ['sala', 'privados', 'latido'];
 
 /**
  * Nuestra DIRECCIÓN para los mensajes privados: `sha256(recordSecreto)`.
@@ -83,6 +85,71 @@ const TOPE_COLA_SALA = 30;
 // anuncio deja una entrada de más, y el pato sale duplicado en la lista de
 // conectados que ven los demás.
 let anunciado = false;
+
+// --- Que la lista de conectados se parezca a la realidad -------------------
+//
+// La presencia de Supabase es un estado que se construye a base de PARCHES: al
+// entrar llega el censo entero y a partir de ahí sólo llegan los «ha entrado
+// éste» y «se ha ido aquél». Eso tiene tres agujeros, y los tres se veían:
+//
+//   1. **Un anuncio que falla no se reintenta.** El `track` se hacía UNA vez al
+//      conectar; si fallaba, se escribía el error en la consola y el pato se
+//      quedaba invisible para todo el mundo PARA SIEMPRE, aunque chateara con
+//      normalidad. Es justo el caso de «me habla alguien que no aparece».
+//
+//   2. **Un parche que se pierde no vuelve.** Si el «ha entrado éste» se cae
+//      por el camino, ese pato no aparece nunca más: no hay nada que vuelva a
+//      pedir el censo, y el estado local se queda desviado sin que nadie lo note.
+//
+//   3. **Un pato que muere sin despedirse tarda en irse.** El portátil que se
+//      suspende o el proceso que se mata no cierran el socket: su entrada sigue
+//      en el censo hasta que el servidor se cansa. Ahí la lista enseña a alguien
+//      que no está, que es el mismo desajuste por el otro lado.
+//
+// El LATIDO tapa los tres de una vez. Cada pato se vuelve a anunciar cada
+// `LATIDO_MS`, y volver a anunciarse es un parche más: quien se hubiera perdido
+// el primero recibe éste. De paso, el anuncio que falló se reintenta solo, y
+// cada entrada queda fechada —con lo que las que dejan de refrescarse se pueden
+// dar por muertas sin esperar al servidor.
+//
+// No es caro: un anuncio cada tres cuartos de minuto por pato, contra los diez
+// eventos por segundo que el canal tiene configurados.
+const LATIDO_MS = 45000;
+
+/**
+ * Cuánto se le aguanta a una entrada sin refrescarse antes de darla por muerta.
+ *
+ * Tres latidos y pico: con uno o dos se echaría de la lista a quien sólo ha
+ * tenido un mal momento de red, y de los dos errores ese es el peor — de un
+ * fantasma te enteras al escribirle, de un ausente no te enteras nunca.
+ *
+ * Sólo se le aplica a quien anuncia la capacidad `latido`: un pato de una
+ * versión anterior se anuncia una vez y no vuelve, así que su fecha es la de
+ * entrada y caducarla lo borraría de la lista estando perfectamente conectado.
+ */
+const CADUCIDAD_MS = 150000;
+
+/** El temporizador del latido. Vive mientras el canal esté conectado. */
+let latido = null;
+
+/**
+ * Quien acaba de hablar, aunque el censo no lo tenga.
+ *
+ * Es la otra mitad del arreglo, y la que se nota en el acto: un mensaje recién
+ * llegado es la prueba más fuerte que hay de que alguien está ahí — más que el
+ * censo, que es una copia local de algo que pasó antes—. Así que quien habla
+ * entra en la lista aunque el censo todavía no se haya enterado, y se queda
+ * mientras siga siendo creíble.
+ *
+ * Se vacía solo por edad: si de verdad se fue, deja de hablar y se cae.
+ *
+ * @type {Map<string, {nombre:string, id:string, caps:string[], dir:string, at:number}>}
+ */
+const vistos = new Map();
+
+/** Cuánto vale lo que dijo alguien que no estaba en el censo. */
+const VISTO_MS = 90000;
+const TOPE_VISTOS = 200;
 
 /**
  * @param {() => import('electron').BrowserWindow | null} getWin
@@ -156,7 +223,15 @@ function initChat(getWin, initialName, patoId, direccion) {
           from: String(from || 'Pato').slice(0, 40),
           text: clean,
           ts: Date.now(),
-          mid: String(mid || '').slice(0, 40)
+          mid: String(mid || '').slice(0, 40),
+          // El remite. Va aquí para que quien reciba el mensaje pueda meter al
+          // remitente en su lista de conectados aunque el censo no lo tenga
+          // (ver `vistos`). Son los mismos campos que se anuncian en la
+          // presencia, y un pato anterior a esto los ignora sin enterarse.
+          clave: myKey,
+          id: myId,
+          caps: CAPACIDADES,
+          dir: miDireccion
         }
       });
       return true;
@@ -212,22 +287,19 @@ function initChat(getWin, initialName, patoId, direccion) {
     /** Nuestra dirección, para saber cuál de las conversaciones es con quién. */
     direccion: () => miDireccion,
 
-    /** Actualiza el nombre anunciado en la presencia. */
+    /**
+     * Actualiza el nombre anunciado en la presencia.
+     *
+     * Si el canal aún no está conectado, basta con apuntarlo: al suscribirse se
+     * anuncia con el nombre que haya. Y si el anuncio falla, tampoco se pierde
+     * nada — el latido lo reintenta en menos de un minuto.
+     */
     async setName(name) {
       const nuevo = String(name || '').slice(0, 40);
       if (nuevo === myName && anunciado) return;
       myName = nuevo;
-      if (channel && connected) {
-        try {
-          await channel.track({
-            name: myName, at: Date.now(), id: myId,
-            caps: CAPACIDADES, dir: miDireccion
-          });
-          anunciado = true;
-        } catch (err) {
-          console.error('[chat] no se pudo actualizar el nombre:', err);
-        }
-      }
+      anunciado = false;   // el nombre cambió: lo anunciado ya no vale
+      if (channel && connected) await anunciarse();
     },
 
     /**
@@ -247,6 +319,7 @@ function initChat(getWin, initialName, patoId, direccion) {
       if (!channel) return false;
       console.log('[chat] caída provocada a mano (sólo en --dev)');
       connected = false;
+      pararLatido();
       notify(getWin, { type: 'status', connected: false, reason: 'CAIDA_DE_PRUEBA' });
       programarReintento(getWin);
       return true;
@@ -375,6 +448,12 @@ function crearCanal(getWin) {
 
   ch.on('broadcast', { event: 'chat' }, ({ payload }) => {
     if (!payload) return;
+    // Quien habla está. Si el censo no lo tiene —porque su anuncio se perdió o
+    // porque nunca llegó—, entra en la lista por la puerta de atrás y se avisa
+    // en el acto: es exactamente el caso de «me escribe alguien que no aparece».
+    if (apuntarVisto(payload.clave, payload.from, payload.id, payload.caps, payload.dir)) {
+      notify(getWin, { type: 'presence', names: presentNames(), presentes: presentes() });
+    }
     notify(getWin, {
       type: 'message',
       from: String(payload.from || 'Pato'),
@@ -389,7 +468,13 @@ function crearCanal(getWin) {
   // Visitas: un pato que viene a la pantalla de otro. Llegan a todo el canal,
   // así que lo que no venga dirigido a nosotros se descarta aquí mismo.
   ch.on('broadcast', { event: 'visita' }, ({ payload }) => {
-    if (!payload || payload.aClave !== myKey) return;
+    if (!payload) return;
+    // Se apunta ANTES de descartar lo que va dirigido a otro: una visita que
+    // pasa de largo sigue probando que quien la manda está conectado.
+    if (apuntarVisto(payload.deClave, payload.de, '', [], '')) {
+      notify(getWin, { type: 'presence', names: presentNames(), presentes: presentes() });
+    }
+    if (payload.aClave !== myKey) return;
     notify(getWin, { type: 'visita', visita: limpiarVisita(payload) });
   });
 
@@ -397,7 +482,12 @@ function crearCanal(getWin) {
   // aquí, sin llegar al pato. Viaja por el mismo `chat:event` que todo lo demás,
   // así que no hace falta ni un canal IPC nuevo ni un puente aparte.
   ch.on('broadcast', { event: 'juego' }, ({ payload }) => {
-    if (!payload || payload.aClave !== myKey) return;
+    if (!payload) return;
+    // Aquí sólo se refresca: un mensaje de partida lleva el id del rival, no su
+    // nombre, y sin nombre no hay nada que poner en la lista. Vale para que a
+    // alguien con quien se está jugando no se le eche por caducidad.
+    refrescarVisto(payload.deClave);
+    if (payload.aClave !== myKey) return;
     notify(getWin, { type: 'juego', mensaje: payload });
   });
 
@@ -457,7 +547,12 @@ function crearCanalDeSala(getWin, salaId) {
     config: { broadcast: { self: false } }
   });
   ch.on('broadcast', { event: 'juego' }, ({ payload }) => {
-    if (!payload || payload.aClave !== myKey) return;
+    if (!payload) return;
+    // Aquí sólo se refresca: un mensaje de partida lleva el id del rival, no su
+    // nombre, y sin nombre no hay nada que poner en la lista. Vale para que a
+    // alguien con quien se está jugando no se le eche por caducidad.
+    refrescarVisto(payload.deClave);
+    if (payload.aClave !== myKey) return;
     notify(getWin, { type: 'juego', mensaje: payload });
   });
   return ch;
@@ -619,23 +714,20 @@ function suscribir(getWin) {
       // vez sobre el mismo canal, y cada anuncio deja una entrada NUEVA en la
       // presencia en vez de reemplazar la anterior: el pato se va multiplicando
       // en la lista de conectados de todos los demás.
-      if (!anunciado) {
-        try {
-          await channel.track({
-            name: myName, at: Date.now(), id: myId,
-            caps: CAPACIDADES, dir: miDireccion
-          });
-          anunciado = true;
-        } catch (e) {
-          console.error('[chat] no se pudo anunciar la presencia:', e);
-        }
-      }
+      if (!anunciado) await anunciarse();
+      // Y a partir de aquí, uno cada `LATIDO_MS`. Es lo que reintenta el anuncio
+      // si acaba de fallar, lo que vuelve a colocar a este pato en el censo de
+      // quien se perdiera el primero, y lo que fecha la entrada para que los
+      // demás puedan distinguir a un conectado de un fantasma.
+      arrancarLatido(getWin);
       notify(getWin, { type: 'presence', names: presentNames(), presentes: presentes() });
       return;
     }
 
     // Se ha caído antes de aguantar: el intento no cuenta como bueno.
     if (estable) { clearTimeout(estable); estable = null; }
+    // Sin canal no hay a quién anunciarse: el latido se reanuda al reconectar.
+    pararLatido();
     console.log(`[chat] canal: ${status}${detalle}`);
     notify(getWin, { type: 'status', connected: false, reason: status });
     if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
@@ -711,6 +803,115 @@ function disabledChat() {
 }
 
 /**
+ * Se anuncia en la presencia con lo que somos ahora mismo.
+ *
+ * Devuelve si ha salido. Falla en silencio a propósito salvo por el aviso en
+ * consola: quien llama no puede hacer nada mejor que volver a intentarlo, y de
+ * eso ya se encarga el latido.
+ */
+async function anunciarse() {
+  if (!channel || !connected) return false;
+  try {
+    await channel.track({
+      name: myName,
+      // La fecha es lo que convierte la entrada en algo comprobable: sin ella,
+      // un pato que murió sin despedirse y uno que acaba de entrar son iguales.
+      at: Date.now(),
+      id: myId,
+      caps: CAPACIDADES,
+      dir: miDireccion
+    });
+    anunciado = true;
+    return true;
+  } catch (err) {
+    // Antes esto dejaba al pato invisible para siempre. Ahora sólo cuesta un
+    // latido.
+    console.error('[chat] no se pudo anunciar la presencia:', err.message || err);
+    anunciado = false;
+    return false;
+  }
+}
+
+/** Arranca el latido. Idempotente: llamarlo dos veces no deja dos. */
+function arrancarLatido(getWin) {
+  if (latido) return;
+  latido = setInterval(async () => {
+    if (!channel || !connected) return;
+    await anunciarse();
+    // El censo de los demás también envejece entre latidos: aunque no llegue
+    // ningún parche, lo que ha caducado tiene que dejar de salir en la lista.
+    notify(getWin, { type: 'presence', names: presentNames(), presentes: presentes() });
+  }, LATIDO_MS);
+}
+
+function pararLatido() {
+  if (latido) { clearInterval(latido); latido = null; }
+}
+
+/**
+ * Apunta que alguien acaba de hablar.
+ *
+ * @returns {boolean} si esto cambia lo que se enseña —o sea, si hay que
+ *   repintar la lista de conectados—. Refrescar a alguien que ya salía no lo es.
+ */
+function apuntarVisto(clave, nombre, id, caps, dir) {
+  const k = String(clave || '').slice(0, 40);
+  const n = String(nombre || '').slice(0, 40);
+  // Sin clave no hay a quién apuntar, y sin nombre no hay nada que enseñar: eso
+  // es un pato de una versión anterior a que el chat llevara remite. Se le sigue
+  // oyendo, sencillamente no se le puede añadir a la lista por esta vía.
+  if (!k || !n || k === myKey) return false;
+
+  const antes = vistos.get(k);
+  vistos.set(k, {
+    nombre: n,
+    id: String(id || (antes && antes.id) || '').slice(0, 40),
+    caps: Array.isArray(caps) ? caps.slice(0, 8).map(String) : ((antes && antes.caps) || []),
+    dir: /^[0-9a-f]{64}$/.test(String(dir || '')) ? String(dir) : ((antes && antes.dir) || ''),
+    at: Date.now()
+  });
+
+  // El canal es público y esto crece con lo que manden otros: con tope, y se
+  // suelta lo más viejo, que es lo que menos prueba.
+  if (vistos.size > TOPE_VISTOS) {
+    let masViejo = null;
+    let cuando = Infinity;
+    for (const [clv, v] of vistos) if (v.at < cuando) { cuando = v.at; masViejo = clv; }
+    if (masViejo) vistos.delete(masViejo);
+  }
+
+  // Repintar sólo si de verdad cambia algo: el censo puede tenerlo ya, y
+  // entonces esto no añade nada que ver.
+  if (antes && antes.nombre === n) return false;
+  return !enElCenso(k);
+}
+
+/** Refresca a alguien del que ya se sabía, sin poder crear la entrada. */
+function refrescarVisto(clave) {
+  const k = String(clave || '').slice(0, 40);
+  const v = k && vistos.get(k);
+  if (v) v.at = Date.now();
+}
+
+/** Si el censo de Supabase tiene a este pato ahora mismo. */
+function enElCenso(clave) {
+  if (!channel || !connected) return false;
+  try {
+    const metas = (channel.presenceState() || {})[clave];
+    return Array.isArray(metas) && metas.some((m) => m && m.name);
+  } catch {
+    return false;
+  }
+}
+
+/** Tira lo que ya no prueba nada. */
+function purgarVistos(ahora) {
+  for (const [clave, v] of vistos) {
+    if (ahora - v.at > VISTO_MS) vistos.delete(clave);
+  }
+}
+
+/**
  * Los demás patos conectados, con su clave de presencia (excluye el propio).
  *
  * La clave hace falta para dirigirle una visita a uno en concreto: dos patos
@@ -721,29 +922,45 @@ function disabledChat() {
  * mandarle el pato, pero no jugar, porque una partida tiene que sobrevivir a que
  * su clave cambie al reconectar.
  *
- * @returns {{clave:string, nombre:string, id:string}[]}
+ * Sale de DOS sitios, y no es redundancia: el censo de Supabase —que puede
+ * llegar tarde, perderse un parche o quedarse con un fantasma— y quien ha
+ * hablado hace nada, que es la prueba más fuerte de que alguien está ahí. El
+ * censo manda donde tiene datos; lo oído rellena los huecos. Ver `vistos`.
+ *
+ * @returns {{clave:string, nombre:string, id:string, caps:string[], dir:string}[]}
  */
 function presentes() {
   if (!channel || !connected) return [];
+  const ahora = Date.now();
+  purgarVistos(ahora);
+
+  const lista = new Map();
   try {
     const state = channel.presenceState() || {};
-    const out = [];
-    const vistos = new Set();
     for (const [key, metas] of Object.entries(state)) {
       if (key === myKey) continue;
       for (const m of metas) {
         // Un mismo pato puede figurar varias veces: le pasa a quien siga con una
         // versión que se anunciaba de más.
-        if (!m || !m.name || vistos.has(key)) continue;
-        vistos.add(key);
-        out.push({
+        if (!m || !m.name || lista.has(key)) continue;
+        // Lo que ese pato dice saber hacer. Viene vacío si es de una versión
+        // anterior a las capacidades, y una lista vacía significa "el camino
+        // de siempre": ni un `if` especial para los antiguos.
+        const caps = Array.isArray(m.caps) ? m.caps.slice(0, 8).map(String) : [];
+        // Caducidad: una entrada que hace rato que no se refresca es de alguien
+        // que se fue sin despedirse —el portátil que se suspende, el proceso que
+        // se mata— y el servidor todavía no lo ha echado.
+        //
+        // Sólo se les mira la fecha a los que dicen latir. Al resto se les cree,
+        // porque su fecha es la de entrada y no significa nada: echarlos sería
+        // esconder a alguien que está perfectamente conectado.
+        const fecha = Number(m.at) || 0;
+        if (caps.includes('latido') && fecha && ahora - fecha > CADUCIDAD_MS) continue;
+        lista.set(key, {
           clave: String(key),
           nombre: String(m.name),
           id: String(m.id || ''),
-          // Lo que ese pato dice saber hacer. Viene vacío si es de una versión
-          // anterior a las capacidades, y una lista vacía significa "el camino
-          // de siempre": ni un `if` especial para los antiguos.
-          caps: Array.isArray(m.caps) ? m.caps.slice(0, 8).map(String) : [],
+          caps,
           // Su dirección para los privados. Vacía si es de una versión anterior,
           // y entonces no se le puede escribir: la interfaz tiene que decirlo,
           // no fallar en silencio.
@@ -751,10 +968,16 @@ function presentes() {
         });
       }
     }
-    return out;
-  } catch {
-    return [];
+  } catch { /* sin censo se sigue con lo que se haya oído */ }
+
+  // Y encima, quien ha hablado hace nada. El censo manda cuando tiene a alguien
+  // —ahí los datos son suyos, de primera mano—; esto es para los que faltan.
+  for (const [clave, v] of vistos) {
+    if (lista.has(clave)) continue;
+    lista.set(clave, { clave, nombre: v.nombre, id: v.id, caps: v.caps, dir: v.dir });
   }
+
+  return [...lista.values()];
 }
 
 /** Nombres de los demás patos conectados (excluye el propio). */

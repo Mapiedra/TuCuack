@@ -42,6 +42,39 @@ const STATE_ANIM = {
 
 const CANON_DIR = 1; // el arte mira a la derecha
 
+/**
+ * Lleva la caja de un frame (proporciones del lienzo, 0..1) a coordenadas de
+ * cliente, teniendo en cuenta que el lienzo se voltea cuando el pato mira a la
+ * izquierda —lo mismo que deshace `hitTest`, pero al revés—.
+ *
+ * Sin caja se devuelve el rectángulo entero, que es lo de toda la vida: quien
+ * la pide se lleva de más, nunca de menos.
+ *
+ * Está fuera de la clase para poder comprobarla sin un lienzo delante: es donde
+ * se esconde el error que nadie vería —una caja en el lado contrario hace que
+ * el pato sólo responda mirando a la derecha— y se prueba en
+ * `tools/probar-raton.js`.
+ *
+ * @param {{left:number, top:number, right:number, bottom:number, width:number, height:number}} r
+ * @param {{x0:number, x1:number, y0:number, y1:number} | null} caja
+ * @param {boolean} volteado
+ */
+export function cajaEnCliente(r, caja, volteado) {
+  if (!caja) return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+  let { x0, x1 } = caja;
+  if (volteado) {
+    const izq = 1 - x1;
+    x1 = 1 - x0;
+    x0 = izq;
+  }
+  return {
+    left: r.left + x0 * r.width,
+    right: r.left + x1 * r.width,
+    top: r.top + caja.y0 * r.height,
+    bottom: r.top + caja.y1 * r.height
+  };
+}
+
 export class Duck {
   constructor(root, canvas, groundOffset = 0, skinId = 'normal', metadatos = null) {
     this.skinId = skinId;
@@ -277,6 +310,62 @@ export class Duck {
     } catch {
       return true;
     }
+  }
+
+  /**
+   * La caja de lo que se ve, en coordenadas de cliente.
+   *
+   * El lienzo lleva mucho margen transparente alrededor (por eso `hitTest` mira
+   * el alfa y no el rectángulo), así que publicarlo entero convertiría un buen
+   * pedazo de escritorio en zona muerta donde no se puede pulsar nada. Esto es
+   * el rectángulo de los píxeles que de verdad están pintados.
+   *
+   * Sólo lo necesita quien no puede preguntar por el alfa en cada movimiento
+   * del ratón: ver `src/main/raton.js`. El resultado se guarda por frame —el
+   * mismo dibujo da siempre la misma caja— así que la vuelta completa al sheet
+   * se paga una vez y ya.
+   */
+  cajaOpaca() {
+    const r = this.rect();
+    return cajaEnCliente(r, this._cajaNormalizada(), this.facing !== CANON_DIR);
+  }
+
+  /**
+   * La caja del frame actual en proporciones (0..1) del lienzo, o `null` si no
+   * se puede saber: sin arte cargado, o con el frame entero transparente. Quien
+   * llama se queda entonces con el lienzo entero, que es lo de siempre.
+   */
+  _cajaNormalizada() {
+    if (!this.ready || !this.animator || !this.animator.current) return null;
+    const clave = `${this.skinId}:${this.animator.current}:${this.animator.frame}`;
+    if (this._cajas && this._cajas.has(clave)) return this._cajas.get(clave);
+
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+    let datos;
+    try {
+      datos = this.animator.ctx.getImageData(0, 0, w, h).data;
+    } catch {
+      return null;
+    }
+    let minX = w, minY = h, maxX = -1, maxY = -1;
+    for (let y = 0; y < h; y++) {
+      const fila = y * w;
+      for (let x = 0; x < w; x++) {
+        if (datos[(fila + x) * 4 + 3] <= 24) continue;   // el mismo umbral que hitTest
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+    const caja = maxX < 0 ? null : {
+      x0: minX / w, x1: (maxX + 1) / w,
+      y0: minY / h, y1: (maxY + 1) / h
+    };
+    if (!this._cajas) this._cajas = new Map();
+    this._cajas.set(clave, caja);
+    return caja;
   }
 
   _apply() {

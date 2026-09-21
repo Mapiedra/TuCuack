@@ -1,12 +1,15 @@
 name: Release
 
 # Se dispara al subir un tag de versión (p. ej. v0.1.0). Compila el instalador de
-# Windows y publica el Release con latest.yml, que es el feed que electron-updater
-# consulta para autoactualizarse. Además empaqueta la extensión de Chrome.
+# Windows y los paquetes de Linux, y publica el Release con latest.yml y
+# latest-linux.yml, que son los feeds que electron-updater consulta para
+# autoactualizarse. Además empaqueta la extensión de Chrome.
 #
-# La app de escritorio es de Windows. En cualquier otro sistema el pato vive en la
-# extensión de Chrome, que se empaqueta aquí mismo y no depende del sistema
-# operativo: el mismo núcleo, el mismo canal de chat y los mismos patos.
+# La app de escritorio es de Windows y de Linux; se compila cada una en su propio
+# runner porque electron-builder empaqueta para el sistema en el que corre. En lo
+# demás —macOS, un móvil, un ordenador ajeno— el pato vive en la extensión de
+# Chrome, que se empaqueta aquí mismo y no depende del sistema operativo: el mismo
+# núcleo, el mismo canal de chat y los mismos patos.
 #
 # Para publicar una versión:
 #   1. sube "version" en package.json y añade la entrada en CHANGELOG.md
@@ -22,10 +25,11 @@ permissions:
 
 jobs:
   # El Release se crea aquí, una sola vez, antes de nada. Si lo crearan los jobs
-  # que publican, los dos intentarían crearlo a la vez y el que perdiera la
-  # carrera fallaría con "already_exists" sin subir sus ficheros: es lo que dejó
+  # que publican, los tres intentarían crearlo a la vez y los que perdieran la
+  # carrera fallarían con "already_exists" sin subir sus ficheros: es lo que dejó
   # la 0.3.1 a medias. Con el Release ya creado, cada job se limita a subir lo
-  # suyo — el instalador de Windows y el zip de la extensión.
+  # suyo — el instalador de Windows, los paquetes de Linux y el zip de la
+  # extensión.
   preparar:
     name: Preparar el Release
     runs-on: ubuntu-latest
@@ -87,6 +91,47 @@ jobs:
           # Por defecto electron-builder se niega a subir a un Release publicado
           # hace más de dos horas. Eso impide relanzar a mano un job que falló,
           # que es justo cuando más falta hace.
+          EP_GH_IGNORE_TIME: true
+
+  # Los dos formatos que se publican para Linux (ver `build.linux` en
+  # package.json):
+  #
+  #   - `.deb` para Ubuntu y derivadas, que es donde va a estar casi todo el
+  #     mundo. Se instala con el gestor de paquetes, que además deja el sandbox
+  #     de Chromium con los permisos que pide, y lo actualiza apt.
+  #   - `.AppImage` para el resto, que es el único formato que electron-updater
+  #     sabe reemplazar solo (ver `initUpdater`), y por eso el único que se
+  #     autoactualiza. De ahí sale `latest-linux.yml`.
+  linux:
+    needs: preparar
+    name: Linux
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Las mismas credenciales del chat que en Windows: los patos comparten
+      # canal sin importar de dónde salga cada uno.
+      - name: Configure Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: node tools/write-supabase-config.js
+
+      - name: Build and publish
+        run: npm run release -- --linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EP_GH_IGNORE_TIME: true
 
   # La extensión no se compila: se ensambla copiando el núcleo, su carcasa y los

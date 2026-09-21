@@ -468,7 +468,80 @@ Jugar también gasta energía del pato (`tam.play()`), y un pato agotado no jueg
 ## Los cuacks
 
 La moneda. Se ganan jugando y se gastan en comprar juegos, y viven en
-[`core/game/cuacks.js`](../src/core/game/cuacks.js).
+[`core/game/cuacks.js`](../src/core/game/cuacks.js) —el reparto— y en
+[`supabase/cuacks.sql`](../supabase/cuacks.sql), que es donde está el dinero.
+
+### Dónde está el saldo, y por qué ahí
+
+**En el servidor.** Lo que hay en `pet-state.json` es una copia para poder
+enseñar algo sin conexión, no la verdad.
+
+El motivo se ve venir: un fichero JSON con `"saldo": 12` es un fichero JSON con
+`"saldo": 999999` en cuanto alguien lo abre. Mientras los cuacks sólo compraran
+minijuegos daba bastante igual —el que se engaña es él—, pero con premios o
+cupones de por medio deja de dar igual. Y hay una segunda razón, más
+aburrida y igual de decisiva: para dar un premio hay que poder mirar cuántos
+tiene alguien, y eso no se hace si la cifra está repartida por los discos de la
+gente.
+
+Lo que **no** arregla mover la cifra a la nube es que el cliente la declare. Con
+una función `ingresar_cuacks(secreto, cuantos)` no se habría ganado nada: en vez
+de editar un JSON, una llamada. Por eso el reparto es éste:
+
+> **El pato dice qué ha jugado. El servidor dice cuánto vale.**
+
+El pato manda «he terminado esta partida de Flappy y la he ganado», con el
+identificador de la partida; el importe lo calcula el servidor con su propio
+catálogo de niveles y precios. Lo mismo al comprar: el precio sale de ese
+catálogo, no del mensaje. Así no hay por dónde regalarse un saldo, cobrar dos
+veces la misma partida ni comprar por menos de lo que vale.
+
+Lo que sigue sin poder comprobarse —y conviene tenerlo escrito antes de montar
+premios encima— es que alguien apunte partidas sin haberlas jugado. Sin un
+servidor que juegue la partida eso no se sabe, igual que el marcador no puede
+comprobar una marca. Lo que sí se consigue es que hacerlo cueste lo mismo que
+jugar —una partida es una partida, y hay tope por hora—.
+
+**El monedero es de la instalación, no de la persona.** El dueño es el mismo
+`sha256` del secreto que ya firma en el marcador, así que el pato de escritorio y
+el de Chrome son dos monederos, y borrar los ajustes es perder los cuacks sin
+nadie a quien reclamar. Es el precio de no pedirle a nadie que se registre para
+jugar, el mismo que ya se paga en el marcador y en el historial.
+
+### Jugar sin conexión
+
+Se puede, y se cobra. Lo que se gana sin línea se apunta en una cola que va con
+el estado guardado, y sale sola en cuanto vuelve la red —aunque sea mañana, o
+tras cerrar el pato—. Como cada partida lleva identificador y el servidor no paga
+dos veces la misma, reintentar no tiene ningún riesgo.
+
+El premio se enseña **en el acto**, sin esperar al servidor: lo que se pinta es
+«lo último que dijo él, más lo que todavía no ha contestado». Nunca se cuenta dos
+veces y nunca hay que esperar.
+
+**Comprar sí necesita conexión**, y es a propósito: una compra apuntada en una
+cola es una compra que puede fallar cuando el jugador ya está jugando a lo que
+creía suyo. Mejor decirlo. Y el peaje de la broma tampoco se apunta, por otro
+motivo: no lleva identificador —es «una vez al día», no «esta vez»— y
+reintentarlo mañana lo cobraría otra vez.
+
+### Dos catálogos, y cómo no se separan
+
+El servidor necesita saber el nivel y el precio de cada juego para poder calcular,
+así que hay una copia de
+[`minijuegos/index.js`](../src/core/game/minijuegos/index.js) en la tabla
+`juegos_catalogo`. Dos copias de lo mismo se separan siempre, y lo único que lo
+impide aquí es que la segunda no se escriba a mano:
+
+```
+npm run catalogo         # vuelca el catálogo en supabase/cuacks.sql
+npm run cuacks:check     # avisa si el pato y el SQL dejaron de decir lo mismo
+npm run cuacks:servidor  # y si lo que hay LANZADO en el proyecto está al día
+```
+
+Después de `npm run catalogo` hay que **volver a lanzar `supabase/cuacks.sql`** en
+el editor SQL del panel. Si se olvida, el juego nuevo no se puede comprar y sus
+partidas no pagan: el servidor contesta `juego-desconocido` a las dos cosas.
 
 ### Lo que paga una partida
 
@@ -1245,8 +1318,15 @@ npx electron . --dev --probe "(__pato.verJuegos(), document.querySelectorAll('.j
 - `__pato.verPartida('tresenraya', 'solo')` — abre una partida
 - `__pato.juegos()` — el progreso guardado
 - `__pato.darXp(700)` — para ver el aviso de desbloqueo
-- `__pato.cuacks()` — saldo, ganado, comprados y el día que se cobró la broma
-- `__pato.darCuacks(1000)` — para probar la tienda sin jugar cuarenta partidas
+- `__pato.cuacks()` — saldo, ganado, comprados, el día que se cobró la broma y lo
+  que esté pendiente de subir al servidor
+- `__pato.darCuacks(1000)` — mueve el saldo **del espejo local**, no el del
+  servidor, así que la siguiente respuesta de éste lo deshace. Sigue valiendo para
+  ver cómo se pinta la tienda con saldo; para probar una compra de verdad hace
+  falta jugar, o estrenar el monedero con un `pet-state.json` ya cargado —la
+  cifra local sólo se importa mientras el monedero no exista (ver [Los
+  cuacks](#los-cuacks))—
+- `__pato.comprarJuego('minigolf')` — compra de verdad, contra el servidor
 - `__pato.probarEscena({revienta: true})` — presta el escenario a un juego que
   falla, para comprobar que el pato vuelve igualmente
 

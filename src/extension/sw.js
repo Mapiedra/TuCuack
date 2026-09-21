@@ -31,6 +31,30 @@ let miId = '';
 /** Si ya nos hemos anunciado en la presencia con el nombre actual. */
 let anunciado = false;
 
+// --- Que la lista de conectados se parezca a la realidad -------------------
+//
+// El gemelo de lo mismo en src/main/chat.js, donde está razonado entero: la
+// presencia se construye a base de parches, y un parche que se pierde no vuelve,
+// un anuncio que falla no se reintenta y un pato que muere sin despedirse tarda
+// en irse. El latido tapa los tres, y lo oído rellena lo que el censo no tenga.
+//
+// Los dos extremos del canal tienen que usar los MISMOS números: si el pato de
+// escritorio late cada 45 s y la extensión caducara a los 30, cada uno vería al
+// otro parpadear.
+const LATIDO_MS = 45000;
+const CADUCIDAD_MS = 150000;
+const VISTO_MS = 90000;
+const TOPE_VISTOS = 200;
+
+/** El temporizador del latido, mientras el canal esté conectado. */
+let latido = null;
+
+/**
+ * Quien acaba de hablar, aunque el censo no lo tenga.
+ * @type {Map<string, {nombre:string, id:string, caps:string[], dir:string, at:number}>}
+ */
+const vistos = new Map();
+
 /** Tope de un mensaje de partida (ver el mismo en src/main/chat.js). */
 const TOPE_JUEGO = 4096;
 
@@ -52,7 +76,7 @@ const TOPE_JUEGO = 4096;
 const CANAL_DE_SALA = (salaId) => `sala:${salaId}`;
 
 /** Lo que este pato anuncia saber hacer. Capacidades, nunca versiones. */
-const CAPACIDADES = ['sala', 'privados'];
+const CAPACIDADES = ['sala', 'privados', 'latido'];
 
 /**
  * Nuestra DIRECCIÓN para los privados: `sha256(recordSecreto)`, en hexadecimal.
@@ -408,6 +432,68 @@ async function misPartidas() {
   });
 }
 
+// ---- El monedero ---------------------------------------------------------
+//
+// El gemelo de src/main/cuacks.js. El porqué de todo está en
+// `supabase/cuacks.sql`, que es lectura previa; el resumen es que el saldo vive
+// allí y que el pato no declara cuántos cuacks ha ganado, declara qué ha
+// jugado. Aquí, además, hay el motivo de siempre para que pase por el worker:
+// la firma no puede bajar a la página.
+
+async function rpcCuacks(fn, cuerpo) {
+  const secreto = await secretoDelMarcador();
+  if (!secreto) return { ok: false, error: 'sin-firma' };
+  const res = await pedirASupabase(`/rest/v1/rpc/${fn}`, {
+    method: 'POST',
+    body: JSON.stringify({ p_secreto: secreto, ...(cuerpo || {}) })
+  });
+  if (!res.ok) return res;
+  // `ok: false` con motivo dentro es una respuesta, no un fallo de red, y la
+  // diferencia importa: de un «no te llega» no hay que reintentar, de un «sin
+  // respuesta» sí. Por eso el motivo sube tal cual.
+  return { ok: true, datos: res.datos || null };
+}
+
+const misCuacks = () => rpcCuacks('mis_cuacks', {});
+
+function estrenarCuacks(local) {
+  const l = local && typeof local === 'object' ? local : {};
+  return rpcCuacks('estrenar_cuacks', {
+    p_saldo: enteroPositivo(l.saldo),
+    p_ganado: enteroPositivo(l.ganado),
+    p_comprados: Array.isArray(l.comprados)
+      ? l.comprados.filter((x) => typeof x === 'string').slice(0, 200)
+      : [],
+    p_dia_broma: typeof l.diaDeLaBroma === 'string' ? l.diaDeLaBroma : ''
+  });
+}
+
+function apuntarPartidaDeCuacks(p) {
+  if (!p || !p.id || !p.juego || !RESULTADOS.includes(p.resultado)) {
+    return Promise.resolve({ ok: false, error: 'partida-mala' });
+  }
+  return rpcCuacks('apuntar_partida_cuacks', {
+    p_partida: String(p.id).slice(0, 80),
+    p_juego: String(p.juego).slice(0, 40),
+    p_resultado: p.resultado,
+    p_en_red: !!p.enRed
+  });
+}
+
+function comprarJuegoDeCuacks(id) {
+  if (!id) return Promise.resolve({ ok: false, error: 'juego-malo' });
+  return rpcCuacks('comprar_juego', { p_juego: String(id).slice(0, 40) });
+}
+
+const cobrarLaBromaDeCuacks = (nivel) => rpcCuacks('cobrar_broma', { p_nivel: enteroPositivo(nivel) });
+const borrarMisCuacks = () => rpcCuacks('borrar_mis_cuacks', {});
+
+function enteroPositivo(v) {
+  const n = Math.floor(Number(v));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+
 // ---- Mensajes privados ---------------------------------------------------
 //
 // El gemelo de src/main/mensajes.js. No van por el canal: van a una tabla,
@@ -578,6 +664,12 @@ function crearCanal() {
     // Se anota aunque no haya ningún pato a la vista: es entonces cuando el
     // histórico gana su sueldo.
     anotarEnHistorial({ ...mensaje, propio: false });
+    // Quien habla está. Si el censo no lo tiene —porque su anuncio se perdió o
+    // porque nunca llegó—, entra en la lista por la puerta de atrás y se avisa
+    // en el acto: es el caso de «me escribe alguien que no aparece conectado».
+    if (apuntarVisto(payload.clave, payload.from, payload.id, payload.caps, payload.dir)) {
+      avisar({ type: 'presence', names: nombresPresentes(), presentes: presentes() });
+    }
     avisar({ type: 'message', ...mensaje });
   });
 
@@ -587,13 +679,24 @@ function crearCanal() {
   // se guarda si no hay pato a la vista: el pato se muda de pestaña cada dos por
   // tres y llegar tarde a una jugada no puede costar la partida.
   ch.on('broadcast', { event: 'juego' }, ({ payload }) => {
-    if (!payload || payload.aClave !== miClave) return;
+    if (!payload) return;
+    // Sólo se refresca: un mensaje de partida lleva el id del rival, no su
+    // nombre, y sin nombre no hay nada que poner en la lista. Vale para que a
+    // alguien con quien se está jugando no se le eche por caducidad.
+    refrescarVisto(payload.deClave);
+    if (payload.aClave !== miClave) return;
     anotarEnPartida(payload);
     avisar({ type: 'juego', mensaje: payload });
   });
 
   ch.on('broadcast', { event: 'visita' }, ({ payload }) => {
-    if (!payload || payload.aClave !== miClave) return;
+    if (!payload) return;
+    // Se apunta ANTES de descartar lo que va dirigido a otro: una visita que
+    // pasa de largo sigue probando que quien la manda está conectado.
+    if (apuntarVisto(payload.deClave, payload.de, '', [], '')) {
+      avisar({ type: 'presence', names: nombresPresentes(), presentes: presentes() });
+    }
+    if (payload.aClave !== miClave) return;
     if (puertos.size === 0) {
       // A diferencia del chat, una visita no se guarda para después: llegar
       // tarde a una visita es no haberla tenido.
@@ -664,23 +767,19 @@ function suscribir() {
       avisar({ type: 'status', connected: true, reason: status });
       // Sólo una vez por canal: repetir el anuncio no reemplaza la entrada
       // anterior en la presencia, la duplica.
-      if (!anunciado) {
-        try {
-          await canal.track({
-            name: miNombre, at: Date.now(), id: miId,
-            caps: CAPACIDADES, dir: miDireccion
-          });
-          anunciado = true;
-        } catch (e) {
-          console.error('[chat] no se pudo anunciar la presencia:', e);
-        }
-      }
+      if (!anunciado) await anunciarse();
+      // Y a partir de aquí, uno cada `LATIDO_MS`: reintenta el anuncio que
+      // acabe de fallar, vuelve a colocarnos en el censo de quien se perdiera el
+      // primero y fecha la entrada para que los demás distingan un conectado de
+      // un fantasma.
+      arrancarLatido();
       avisar({ type: 'presence', names: nombresPresentes(), presentes: presentes() });
       return;
     }
 
     // Se ha caído antes de aguantar: el intento no cuenta como bueno.
     if (estable) { clearTimeout(estable); estable = null; }
+    pararLatido();   // sin canal no hay a quién anunciarse
     console.log(`[chat] canal: ${status}${err ? ` (${err.message || err})` : ''}`);
     avisar({ type: 'status', connected: false, reason: status });
     if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
@@ -743,33 +842,160 @@ function programarReintento() {
 }
 
 /**
+ * Se anuncia en la presencia con lo que somos ahora mismo.
+ *
+ * El gemelo de `anunciarse` en src/main/chat.js. Falla en silencio salvo por el
+ * aviso en consola: quien llama no puede hacer nada mejor que reintentarlo, y de
+ * eso se encarga el latido.
+ */
+async function anunciarse() {
+  if (!canal || !conectado) return false;
+  try {
+    await canal.track({
+      name: miNombre,
+      // La fecha es lo que hace comprobable la entrada: sin ella, un pato que
+      // murió sin despedirse y uno que acaba de entrar son iguales.
+      at: Date.now(),
+      id: miId,
+      caps: CAPACIDADES,
+      dir: miDireccion
+    });
+    anunciado = true;
+    return true;
+  } catch (err) {
+    // Antes esto dejaba al pato invisible para siempre. Ahora cuesta un latido.
+    console.error('[chat] no se pudo anunciar la presencia:', err.message || err);
+    anunciado = false;
+    return false;
+  }
+}
+
+/**
+ * Arranca el latido. Idempotente: llamarlo dos veces no deja dos.
+ *
+ * En un service worker los temporizadores no son de fiar —Chrome recicla el
+ * worker cuando se aburre—, y aquí da igual: mientras el canal viva, el tráfico
+ * del WebSocket mantiene despierto al worker; y si el worker muere, se lleva el
+ * socket por delante, el servidor da de baja la presencia en el acto y al
+ * despertar `conectar()` vuelve a anunciarse. En ninguno de los dos casos queda
+ * un pato fantasma.
+ */
+function arrancarLatido() {
+  if (latido) return;
+  latido = setInterval(async () => {
+    if (!canal || !conectado) return;
+    await anunciarse();
+    // El censo de los demás también envejece entre latidos: aunque no llegue
+    // ningún parche, lo caducado tiene que dejar de salir en la lista.
+    avisar({ type: 'presence', names: nombresPresentes(), presentes: presentes() });
+  }, LATIDO_MS);
+}
+
+function pararLatido() {
+  if (latido) { clearInterval(latido); latido = null; }
+}
+
+/**
+ * Apunta que alguien acaba de hablar. El gemelo de lo mismo en main/chat.js.
+ *
+ * @returns {boolean} si cambia lo que se enseña —o sea, si hay que repintar la
+ *   lista—. Refrescar a alguien que ya salía no lo es.
+ */
+function apuntarVisto(clave, nombre, id, caps, dir) {
+  const k = String(clave || '').slice(0, 40);
+  const n = String(nombre || '').slice(0, 40);
+  // Sin clave no hay a quién apuntar y sin nombre no hay nada que enseñar: eso
+  // es un pato anterior a que el chat llevara remite. Se le sigue oyendo,
+  // sencillamente no entra en la lista por esta vía.
+  if (!k || !n || k === miClave) return false;
+
+  const antes = vistos.get(k);
+  vistos.set(k, {
+    nombre: n,
+    id: String(id || (antes && antes.id) || '').slice(0, 40),
+    caps: Array.isArray(caps) ? caps.slice(0, 8).map(String) : ((antes && antes.caps) || []),
+    dir: /^[0-9a-f]{64}$/.test(String(dir || '')) ? String(dir) : ((antes && antes.dir) || ''),
+    at: Date.now()
+  });
+
+  // El canal es público y esto crece con lo que manden otros: con tope, y se
+  // suelta lo más viejo, que es lo que menos prueba.
+  if (vistos.size > TOPE_VISTOS) {
+    let masViejo = null;
+    let cuando = Infinity;
+    for (const [clv, v] of vistos) if (v.at < cuando) { cuando = v.at; masViejo = clv; }
+    if (masViejo) vistos.delete(masViejo);
+  }
+
+  if (antes && antes.nombre === n) return false;
+  return !enElCenso(k);
+}
+
+/** Refresca a alguien del que ya se sabía, sin poder crear la entrada. */
+function refrescarVisto(clave) {
+  const k = String(clave || '').slice(0, 40);
+  const v = k && vistos.get(k);
+  if (v) v.at = Date.now();
+}
+
+/** Si el censo de Supabase tiene a este pato ahora mismo. */
+function enElCenso(clave) {
+  if (!canal || !conectado) return false;
+  try {
+    const metas = (canal.presenceState() || {})[clave];
+    return Array.isArray(metas) && metas.some((m) => m && m.name);
+  } catch {
+    return false;
+  }
+}
+
+/** Tira lo que ya no prueba nada. */
+function purgarVistos(ahora) {
+  for (const [clave, v] of vistos) {
+    if (ahora - v.at > VISTO_MS) vistos.delete(clave);
+  }
+}
+
+/**
  * Los demás patos conectados, con su clave de presencia (excluye el propio).
  *
  * La clave hace falta para dirigirle una visita a uno en concreto: dos patos
  * pueden llamarse igual, pero cada uno tiene su clave.
  *
- * @returns {{clave:string, nombre:string}[]}
+ * Sale de DOS sitios, como en el escritorio: el censo de Supabase —que puede
+ * llegar tarde, perder un parche o quedarse con un fantasma— y quien ha hablado
+ * hace nada. El censo manda donde tiene datos; lo oído rellena los huecos.
+ *
+ * @returns {{clave:string, nombre:string, id:string, caps:string[], dir:string}[]}
  */
 function presentes() {
   if (!canal || !conectado) return [];
+  const ahora = Date.now();
+  purgarVistos(ahora);
+
+  const lista = new Map();
   try {
     const estado = canal.presenceState() || {};
-    const salida = [];
-    const vistos = new Set();
     for (const [clave, metas] of Object.entries(estado)) {
       if (clave === miClave) continue;
       for (const m of metas) {
         // Un mismo pato puede figurar varias veces: le pasa a quien siga con una
         // versión que se anunciaba de más.
-        if (!m || !m.name || vistos.has(clave)) continue;
-        vistos.add(clave);
-        salida.push({
+        if (!m || !m.name || lista.has(clave)) continue;
+        // Vacío si ese pato es de una versión anterior a las capacidades, y
+        // una lista vacía significa "el camino de siempre".
+        const caps = Array.isArray(m.caps) ? m.caps.slice(0, 8).map(String) : [];
+        // Caducidad: una entrada que hace rato que no se refresca es de alguien
+        // que se fue sin despedirse y el servidor aún no ha echado. Sólo se les
+        // mira la fecha a los que dicen latir: al resto se les cree, porque su
+        // fecha es la de entrada y echarlos sería esconder a un conectado.
+        const fecha = Number(m.at) || 0;
+        if (caps.includes('latido') && fecha && ahora - fecha > CADUCIDAD_MS) continue;
+        lista.set(clave, {
           clave: String(clave),
           nombre: String(m.name),
           id: String(m.id || ''),
-          // Vacío si ese pato es de una versión anterior a las capacidades, y
-          // una lista vacía significa "el camino de siempre".
-          caps: Array.isArray(m.caps) ? m.caps.slice(0, 8).map(String) : [],
+          caps,
           // Su dirección para los privados. Vacía si es de una versión anterior:
           // a ése no se le puede escribir, y la interfaz tiene que decirlo en
           // vez de fallar en silencio.
@@ -777,10 +1003,15 @@ function presentes() {
         });
       }
     }
-    return salida;
-  } catch {
-    return [];
+  } catch { /* sin censo se sigue con lo que se haya oído */ }
+
+  // Y encima, quien ha hablado hace nada: para los que el censo no tenga.
+  for (const [clave, v] of vistos) {
+    if (lista.has(clave)) continue;
+    lista.set(clave, { clave, nombre: v.nombre, id: v.id, caps: v.caps, dir: v.dir });
   }
+
+  return [...lista.values()];
 }
 
 /** Nombres de los demás patos conectados (excluye el propio). */
@@ -1085,7 +1316,14 @@ function enviar(msg) {
     ts: Date.now(),
     mid: String(msg.mid || '').slice(0, 40)
   };
-  canal.send({ type: 'broadcast', event: 'chat', payload: propio });
+  // El remite viaja con el mensaje pero NO se guarda en el histórico: sirve
+  // para que quien lo reciba pueda meternos en su lista de conectados aunque el
+  // censo no nos tenga, y ahí se acaba su vida útil.
+  canal.send({
+    type: 'broadcast',
+    event: 'chat',
+    payload: { ...propio, clave: miClave, id: miId, caps: CAPACIDADES, dir: miDireccion }
+  });
   // Lo dicho por uno mismo también es conversación: si no, al mudarse de
   // pestaña el histórico quedaría lleno de respuestas sin pregunta.
   anotarEnHistorial({ ...propio, propio: true });
@@ -1097,17 +1335,11 @@ async function ponerNombre(nombre) {
   // presencia: el pato aparecería repetido en la lista de conectados.
   if (nuevo === miNombre && anunciado) return;
   miNombre = nuevo;
-  if (canal && conectado) {
-    try {
-      await canal.track({
-            name: miNombre, at: Date.now(), id: miId,
-            caps: CAPACIDADES, dir: miDireccion
-          });
-      anunciado = true;
-    } catch (err) {
-      console.error('[chat] no se pudo actualizar el nombre:', err);
-    }
-  }
+  anunciado = false;   // el nombre cambió: lo anunciado ya no vale
+  // Si el anuncio falla no se pierde nada: el latido lo reintenta en menos de
+  // un minuto. Y si el canal aún no está, al suscribirse se anuncia el nombre
+  // que haya.
+  if (canal && conectado) await anunciarse();
 }
 
 chrome.runtime.onMessage.addListener((msg, _emisor, responder) => {
@@ -1142,6 +1374,31 @@ chrome.runtime.onMessage.addListener((msg, _emisor, responder) => {
 
   if (msg.tipo === 'partidas-mias') {
     misPartidas().then(responder);
+    return true;
+  }
+
+  if (msg.tipo === 'cuacks-mios') {
+    misCuacks().then(responder);
+    return true;
+  }
+  if (msg.tipo === 'cuacks-estrenar') {
+    estrenarCuacks(msg.local).then(responder);
+    return true;
+  }
+  if (msg.tipo === 'cuacks-partida') {
+    apuntarPartidaDeCuacks(msg.partida).then(responder);
+    return true;
+  }
+  if (msg.tipo === 'cuacks-comprar') {
+    comprarJuegoDeCuacks(msg.juego).then(responder);
+    return true;
+  }
+  if (msg.tipo === 'cuacks-broma') {
+    cobrarLaBromaDeCuacks(msg.nivel).then(responder);
+    return true;
+  }
+  if (msg.tipo === 'cuacks-borrar') {
+    borrarMisCuacks().then(responder);
     return true;
   }
 

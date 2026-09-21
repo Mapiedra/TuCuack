@@ -24,6 +24,14 @@ try {
 
 /** Si `initUpdater` llegó a arrancar. En desarrollo no se llama siquiera. */
 let iniciado = false;
+
+/**
+ * Por qué no hay actualizador, cuando no lo hay por algo más que el desarrollo.
+ *
+ * Lo pinta Ajustes tal cual: "no disponible" a secas, en una instalación de
+ * verdad, parece una avería. Y no lo es.
+ */
+let motivo = '';
 let avisar = () => {};
 
 /**
@@ -66,6 +74,20 @@ function configurarAvisos(getWin) {
 function initUpdater(getWin) {
   configurarAvisos(getWin);
   if (!autoUpdater) return;
+
+  // En Linux sólo se autoactualiza el AppImage: es el único formato que
+  // electron-updater sabe reemplazar por su cuenta, porque es un fichero suyo
+  // y nada más. Un .deb vive dentro de la contabilidad de dpkg, y actualizarlo
+  // a espaldas del gestor de paquetes es pedir una pelea —además de una
+  // contraseña de administrador en mitad de la partida—. Ese lo actualiza apt,
+  // o quien se baje el siguiente del Release.
+  if (process.platform === 'linux' && !process.env.APPIMAGE) {
+    motivo = 'Esta instalación se actualiza con el gestor de paquetes (apt) '
+      + 'o bajando la nueva versión del Release.';
+    anotar({ tipo: 'no-disponible', mensaje: motivo });
+    return;
+  }
+
   iniciado = true;
 
   autoUpdater.autoDownload = true;
@@ -96,7 +118,7 @@ function estadoActualizacion() {
   if (!autoUpdater || !iniciado) {
     // En desarrollo no hay actualizaciones que buscar: la app no viene de un
     // Release. Se dice, en vez de dejar un botón que no haría nada.
-    return { tipo: 'no-disponible' };
+    return motivo ? { tipo: 'no-disponible', mensaje: motivo } : { tipo: 'no-disponible' };
   }
   return { ...estado };
 }
@@ -122,7 +144,7 @@ let comprobacion = 0;
  */
 function buscarActualizacion() {
   if (!autoUpdater || !iniciado) {
-    anotar({ tipo: 'no-disponible' });
+    anotar(motivo ? { tipo: 'no-disponible', mensaje: motivo } : { tipo: 'no-disponible' });
     return;
   }
 

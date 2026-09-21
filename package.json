@@ -19,9 +19,16 @@
     "juegos:check": "node tools/comprobar-juegos.js",
     "salas:check": "node tools/probar-salas.mjs",
     "red:check": "node tools/probar-juegos-en-red.mjs",
+    "presencia:check": "node tools/probar-presencia.js",
+    "raton:check": "node tools/probar-raton.js",
+    "cuacks:check": "node tools/probar-cuacks.mjs",
+    "cuacks:sql": "node tools/probar-cuacks-sql.mjs",
+    "cuacks:servidor": "node tools/probar-cuacks-servidor.mjs",
+    "catalogo": "node tools/catalogo-a-sql.mjs",
     "ext:watch": "node tools/build-extension.js --watch",
     "sprites": "python tools/pack_sprites.py",
     "pack": "electron-builder --dir",
+    "build:linux": "electron-builder --linux",
     "build": "electron-builder",
     "release": "electron-builder --publish always",
     "sprites:check": "python tools/check_source.py",
@@ -60,6 +67,16 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "shortcutName": "TuCuack"
+    },
+    "linux": {
+      "target": [
+        "deb",
+        "AppImage"
+      ],
+      "icon": "assets/icons/tucuack.png",
+      "category": "Utility",
+      "synopsis": "Una mascota de escritorio: un pato que pasea por la barra de tareas",
+      "maintainer": "Mapiedra <mapiedra-hexer@users.noreply.github.com>"
     },
     "publish": {
       "provider": "github",

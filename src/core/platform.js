@@ -57,6 +57,12 @@ const CAPACIDADES_POR_DEFECTO = {
   // ¿Hay mensajes privados? Necesita que la carcasa pueda hablar con Supabase y
   // que tenga una dirección con la que firmar (ver `privados` más abajo).
   privados: false,
+  // ¿El monedero vive en el servidor? Necesita lo mismo que el marcador. Donde
+  // no lo hay —el banco de pruebas— los cuacks siguen funcionando contra el
+  // disco, como antes: el juego no se queda sin moneda por no haber servidor.
+  // Lo que cambia es quién manda, y eso sí hay que preguntarlo antes de decirle
+  // a nadie que su saldo está a salvo de que le toquen el fichero.
+  monederoEnServidor: false,
   // ¿Tiene sentido el modo concentración? Necesita poder esconderse Y volver a
   // sacarse él solo (a diferencia de `ocultar`, que sólo lo primero) y un sitio
   // fuera del documento donde enseñar la cuenta atrás mientras está escondido.
@@ -126,6 +132,45 @@ const PARTIDAS_DESACTIVADAS = {
   guardar: async () => ({ ok: false, error: 'sin-historial' }),
   /** @type {() => Promise<object>} */
   mias: async () => ({ ok: false, error: 'sin-historial' })
+};
+
+/**
+ * El monedero, cuando no lo hay.
+ *
+ * Mismo reparto que el marcador: el núcleo nunca ve la firma. Y una diferencia
+ * de fondo con todo lo demás del contrato, que está razonada entera en
+ * `supabase/cuacks.sql`: el pato NO manda cuántos cuacks ha ganado, manda QUÉ
+ * partida ha jugado. El importe lo calcula el servidor con su propio catálogo,
+ * porque si no, mover el saldo a la nube no habría arreglado nada.
+ *
+ * Desactivado, todas contestan que no hay servidor. Eso NO deja al pato sin
+ * moneda: la cartera del núcleo sigue llevando la cuenta contra el disco (ver
+ * game/cuacks.js), y lo que se juega mientras tanto se apunta en su cola.
+ *
+ * Todas devuelven `{ok, datos?, error?}` y no lanzan.
+ */
+const MONEDERO_DESACTIVADO = {
+  /** El monedero tal y como está en el servidor.
+   *  @type {() => Promise<object>} */
+  mios: async () => ({ ok: false, error: 'sin-monedero' }),
+  /** Lo crea con la cifra del disco, si no existía. Si existía, no lo toca.
+   *  @type {(local:{saldo:number, ganado:number, comprados:string[],
+   *                 diaDeLaBroma:string}) => Promise<object>} */
+  estrenar: async () => ({ ok: false, error: 'sin-monedero' }),
+  /** Apunta una partida para que la pague el servidor. `id` la identifica, y por
+   *  eso reintentarla no la cobra dos veces.
+   *  @type {(p:{id:string, juego:string, resultado:string,
+   *             enRed:boolean}) => Promise<object>} */
+  partida: async () => ({ ok: false, error: 'sin-monedero' }),
+  /** Compra un juego. El precio lo pone el catálogo del servidor.
+   *  @type {(juegoId:string) => Promise<object>} */
+  comprar: async () => ({ ok: false, error: 'sin-monedero' }),
+  /** Cobra el peaje de la broma. Una vez al día, y lo vigila el servidor.
+   *  @type {(nivel:number) => Promise<object>} */
+  broma: async () => ({ ok: false, error: 'sin-monedero' }),
+  /** Tira el monedero propio. Sin vuelta atrás.
+   *  @type {() => Promise<object>} */
+  borrar: async () => ({ ok: false, error: 'sin-monedero' })
 };
 
 /**
@@ -229,6 +274,10 @@ export function normalizarPlataforma(p = {}) {
     // que toque (en Electron, invertirlo para setIgnoreMouseEvents) es cosa de
     // la carcasa.
     capturarRaton: p.capturarRaton || noop,
+    // Opcional. Sólo lo aporta la carcasa que no sepa reenviar el movimiento
+    // del ratón mientras los clics la atraviesan (Linux): entonces el pato va
+    // diciendo dónde está para que se le pueda ver venir. Ver `src/main/raton.js`.
+    publicarZona: p.publicarZona || null,
     empezarArrastre: p.empezarArrastre || noop,
     terminarArrastre: p.terminarArrastre || noop,
     // El suelo se ha movido (cambio de resolución, panel redimensionado).
@@ -272,6 +321,9 @@ export function normalizarPlataforma(p = {}) {
 
     // ---- Historial de partidas por red -----------------------------------
     partidas: { ...PARTIDAS_DESACTIVADAS, ...(p.partidas || {}) },
+
+    // ---- El monedero -----------------------------------------------------
+    monedero: { ...MONEDERO_DESACTIVADO, ...(p.monedero || {}) },
 
     // ---- Mensajes privados -----------------------------------------------
     privados: { ...PRIVADOS_DESACTIVADOS, ...(p.privados || {}) }

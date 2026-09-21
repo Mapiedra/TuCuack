@@ -6,6 +6,9 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('pato', {
   // Overlay: capturar o dejar pasar el ratón según el hover.
   setIgnoreMouse: (ignore) => ipcRenderer.send('set-ignore-mouse', ignore),
+  // Y dónde está el pato, para donde el hover no llega a enterarse de nada
+  // (ver `src/main/raton.js`).
+  zonaDelPato: (caja) => ipcRenderer.send('zonas:pato', caja),
 
   // Estado del Tamagotchi.
   loadState: () => ipcRenderer.invoke('state:load'),
@@ -47,6 +50,14 @@ contextBridge.exposeInMainWorld('pato', {
   // Historial de partidas por red.
   partidasGuardar: (p) => ipcRenderer.invoke('partidas:guardar', p),
   partidasMias: () => ipcRenderer.invoke('partidas:mias'),
+  // El monedero, que vive en el servidor (ver supabase/cuacks.sql). Lo que el
+  // pato manda es qué ha jugado, no cuánto ha ganado.
+  cuacksMios: () => ipcRenderer.invoke('cuacks:mios'),
+  cuacksEstrenar: (local) => ipcRenderer.invoke('cuacks:estrenar', local),
+  cuacksPartida: (p) => ipcRenderer.invoke('cuacks:partida', p),
+  cuacksComprar: (id) => ipcRenderer.invoke('cuacks:comprar', id),
+  cuacksBroma: (nivel) => ipcRenderer.invoke('cuacks:broma', nivel),
+  cuacksBorrar: () => ipcRenderer.invoke('cuacks:borrar'),
   // Mensajes privados.
   privadosEnviar: (m) => ipcRenderer.invoke('privados:enviar', m),
   privadosLeer: (con, tope) => ipcRenderer.invoke('privados:leer', con, tope),

@@ -40,10 +40,14 @@ const descargas = [
   '## Descargas',
   '',
   `- **Windows**: \`TuCuack-Setup-${version}.exe\``,
+  `- **Ubuntu / Debian**: \`tucuack_${version}_amd64.deb\``,
+  `- **Otras Linux**: \`TuCuack-${version}.AppImage\``,
   `- **Cualquier sistema**: \`TuCuack-extension-${version}.zip\` (extensión de Chrome)`,
   '',
   'Si ya tienes la app instalada no hace falta descargar nada: se actualiza sola.',
-  'La extensión se actualiza descomprimiendo el zip encima de la carpeta anterior.',
+  'Con dos excepciones: el `.deb`, que lo actualiza el gestor de paquetes (o se',
+  'instala encima el nuevo), y la extensión, que se actualiza descomprimiendo el',
+  'zip encima de la carpeta anterior.',
 ].join('\n');
 
 process.stdout.write(cuerpo + descargas + '\n');

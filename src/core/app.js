@@ -22,7 +22,7 @@ import { Level } from './game/Level.js';
 import { SKINS, skinPorId, estaDesbloqueada, SKIN_POR_DEFECTO } from './game/skins.js';
 import { MINIJUEGOS, minijuegoPorId, nombreDeJuego, juegosDisponibles } from './game/minijuegos/index.js';
 import { ProgresoJuegos } from './game/minijuegos/progreso.js';
-import { Cartera, pagoDePartida, CUACK } from './game/cuacks.js';
+import { Cartera, CUACK } from './game/cuacks.js';
 import { buildJuegosPanel } from './ui/juegosPanel.js';
 import { buildPartidaPanel } from './ui/partidaPanel.js';
 import { prestarEscenario } from './game/minijuegos/escenario.js';
@@ -257,7 +257,20 @@ export async function arrancarPato(plataforma) {
   cartera = new Cartera(saved.cuacks, {
     partidas: juegos.totales().partidas,
     yaAbiertos: juegosDisponibles(level.nivel).map((j) => j.id)
+  }, api.capacidades.monederoEnServidor ? api.monedero : null);
+  // Con el monedero en el servidor, el saldo ya no cambia sólo cuando el pato
+  // hace algo: cambia cuando contesta la red, que puede ser un segundo después
+  // o mañana, al soltar lo que se jugó sin conexión. Así que se guarda y se
+  // repinta cuando lo diga la cartera, no cuando lo adivine quien la usa.
+  cartera.alCambiar(() => {
+    saveNow();
+    avisarPresencia();   // los paneles abiertos repintan su saldo
   });
+  // Y se pone al día: pregunta el saldo de verdad, estrena el monedero con lo
+  // que hubiera en el disco si aún no existía y suelta lo que quedara pendiente
+  // de la última vez. Sin esperarlo: el pato tiene que salir a la pantalla
+  // aunque la red esté lenta, y mientras tanto enseña lo del disco.
+  cartera.sincronizar().catch((err) => console.error('[cuacks] no se pudo sincronizar', err));
   const skin = skinPorId(settings.skin);
   const skinValida = skin && estaDesbloqueada(skin, level.nivel) ? skin.id : SKIN_POR_DEFECTO;
 
@@ -377,13 +390,19 @@ export async function arrancarPato(plataforma) {
       },
       juegos: () => juegos.toJSON(),
       cuacks: () => ({ ...cartera.toJSON(), estrenada: cartera.estrenada,
-                       deBienvenida: cartera.deBienvenida }),
+                       deBienvenida: cartera.deBienvenida,
+                       // Si lo que se enseña lo ha dicho el servidor. Es LA
+                       // pregunta cuando algo no cuadra con el saldo: un `false`
+                       // aquí significa que se está pintando lo del disco porque
+                       // el monedero de fuera no contestó.
+                       confirmada: cartera.confirmada,
+                       enServidor: cartera.enServidor() }),
       /** Para probar la tienda sin esperar a que exista un juego de pago. */
       darCuacks: (n) => cartera.ingresar(n),
       // El gemelo del anterior: sin esto se pueden dar cuacks desde una sonda
       // pero no gastarlos, y un juego de escenario de pago no hay forma de
       // abrirlo para probarlo.
-      comprarJuego: (id) => cartera.comprar(minijuegoPorId(id)),
+      comprarJuego: (id) => cartera.comprar(minijuegoPorId(id)).then((r) => r.hecho),
       salas: () => salas,
       /** Un vistazo a la partida por red, para ver dónde se ha atascado. */
       estadoDeJuego: () => {
@@ -610,6 +629,41 @@ function startLoops(statusBubbles) {
   // Guardado periódico (15 s). En mitad de una partida de escenario la posición
   // del pato es la de la pelota, no la suya: se guarda al devolverlo.
   cadaCierto(() => { if (!escena) saveNow(); }, 15000);
+
+  // Y, donde haga falta, dónde está el pato.
+  //
+  // Sólo en la carcasa que no recibe el movimiento del ratón mientras deja
+  // pasar los clics —Linux—, y porque allí es la única pista que tiene el
+  // proceso principal para saber que el cursor se está acercando. En Windows
+  // `necesitaZonas` viene a false y aquí no corre nada: ni el temporizador, ni
+  // la lectura del alfa, ni un solo mensaje por el puente.
+  if (config.necesitaZonas && api.publicarZona) publicarZona();
+}
+
+// Cada cuánto se dice dónde está el pato, y cuánto se le añade a la caja por
+// los píxeles que recorra entre dos avisos. Andando son unos pocos; lanzado
+// vuela mucho más, pero entonces se le está arrastrando y el ratón ya está
+// capturado de todas formas.
+const ZONA_MS = 120;
+const ZONA_MARGEN = 10;
+
+function publicarZona() {
+  const decir = () => {
+    if (!duck) return;
+    const c = duck.cajaOpaca();
+    api.publicarZona(c && {
+      left: c.left - ZONA_MARGEN,
+      top: c.top - ZONA_MARGEN,
+      right: c.right + ZONA_MARGEN,
+      bottom: c.bottom + ZONA_MARGEN
+    });
+  };
+  decir();
+  cadaCierto(decir, ZONA_MS);
+  // Al apagar, que no quede una caja vieja rondando: sin esto el guardia
+  // seguiría capturando el ratón en el sitio donde estaba el pato hasta que
+  // caducara sola.
+  alApagar(() => api.publicarZona(null));
 }
 
 /** setInterval que se para solo cuando el pato se apaga. */
@@ -619,6 +673,10 @@ function cadaCierto(fn, ms) {
 }
 
 function saveNow() {
+  // Puede llamarse antes de que haya pato: la cartera avisa de sus cambios y el
+  // primero le llega del servidor, que contesta cuando le parece. Sin esto, una
+  // respuesta rápida en un arranque lento se lleva por delante el arranque.
+  if (!duck) return;
   const sitioLibre = Math.max(1, window.innerWidth - duck.width);
   // Si justo ahora anda fuera de la pantalla llevando un recado, se guarda de
   // dónde salió: apagar en ese par de segundos no debe dejarlo pegado al borde.
@@ -1010,10 +1068,19 @@ function openJuegos(x, y) {
     // Cobrar y guardar es de aquí: el panel pinta el precio, pero no toca el
     // disco. Guardar en el acto y no al cerrar, que una compra no se puede
     // perder por apagar justo después.
-    onComprar: (juego) => {
-      const hecho = cartera.comprar(juego);
-      if (hecho) { sonido.fanfarria(); saveNow(); }
-      return hecho;
+    onComprar: async (juego) => {
+      const { hecho, motivo } = await cartera.comprar(juego);
+      // La cartera ya guarda y repinta por su cuenta (ver `alCambiar`).
+      if (hecho) { sonido.fanfarria(); return true; }
+      // Un «no llega» no hace falta decirlo: el botón se apaga solo al
+      // repintar. Quedarse sin conexión SÍ, porque si no parece que el botón
+      // está roto —y no lo está, es que el monedero vive fuera—.
+      if (motivo === 'sin-conexion') {
+        toast('Comprar necesita conexión: los cuacks se llevan fuera.');
+      } else if (motivo === 'juego-desconocido') {
+        toast('Ese juego todavía no está en la tienda del servidor.');
+      }
+      return false;
     },
     onMarcador: (juego) => api.marcador.mejores(juego.id, juego.marca.mejor),
     // Todo el marcador de una vez, para la vista de conjunto.
@@ -1153,7 +1220,12 @@ function abrirLaBroma() {
       nivel: level.nivel,
       sonido,
       decir: (t) => toast(t),
-      alPasarElPeaje: () => pagarElPeaje()
+      // El peaje se cobra fuera, así que es una promesa. No se espera —la broma
+      // sigue su curso— pero sí se recoge: una promesa suelta que falle se lleva
+      // por delante el turno entero del navegador.
+      alPasarElPeaje: () => {
+        pagarElPeaje().catch((err) => console.error('[broma] no se pudo cobrar', err));
+      }
     }));
     if (!enMarcha) return;
     escena = enMarcha;
@@ -1173,9 +1245,15 @@ function abrirLaBroma() {
  * Cuando ya se ha cobrado hoy se dice, en vez de callarse y no pagar: quien
  * acaba de resolver diez cuentas se merece saber por qué no ha caído nada.
  */
-function pagarElPeaje() {
-  const { cuacks, yaCobrado } = cartera.cobrarLaBroma(level.nivel);
-  saveNow();
+async function pagarElPeaje() {
+  const { cuacks, yaCobrado, sinConexion } = await cartera.cobrarLaBroma(level.nivel);
+  if (sinConexion) {
+    // A diferencia de una partida, esto no se puede apuntar en la cola: no lleva
+    // identificador, así que reintentarlo mañana lo cobraría otra vez. Ver
+    // `cobrarLaBroma` en game/cuacks.js.
+    toast('El peaje se cobra fuera y ahora mismo no hay línea. Vuelve a intentarlo.');
+    return;
+  }
   if (yaCobrado) {
     toast('El peaje ya lo cobraste hoy. Sigue sin ser buena idea.');
     return;
@@ -1289,11 +1367,41 @@ function anotarPartida(juego, r, enRed) {
   const antes = juegos.de(juego.id).mejor;
   juegos.anotar(juego.id, r);
   const xp = level.minijuego(r.resultado);
-  const cuacks = cartera.ingresar(pagoDePartida(juego, r.resultado, { enRed: !!enRed }));
+  // El identificador se calcula ANTES de apuntar nada, y el mismo vale para el
+  // monedero y para el historial: son dos tablas distintas del mismo servidor y
+  // no tendría sentido que una partida se llamara de dos maneras.
+  const id = idDePartida(juego, enRed);
+  const cuacks = cartera.apuntarPartida(juego, r.resultado, { enRed: !!enRed, id });
   saveNow();     // un récord no se pierde por cerrar antes del guardado
   contarloFuera(juego, antes);
-  if (enRed) apuntarLaPartida(juego, r);
+  if (enRed) apuntarLaPartida(juego, r, id);
   return { xp, cuacks };
+}
+
+/**
+ * Cómo se llama una partida terminada.
+ *
+ * Es lo que hace que reintentar no la cobre dos veces, así que tiene que ser el
+ * MISMO en cada reintento y distinto del de cualquier otra partida.
+ *
+ * Por red sale de la sala más la secuencia en la que empezó. Lo segundo hace
+ * falta porque una revancha se juega en la MISMA sala: sin ello, la segunda
+ * partida pisaría a la primera y se contaría una donde hubo tres. Los dos
+ * jugadores llegan al mismo nombre, y da igual: en el servidor cada uno tiene su
+ * fila, porque la clave lleva el dueño delante.
+ *
+ * Contra la máquina no hay sala de la que tirar, así que se inventa. El reloj
+ * solo no basta —dos partidas del mismo segundo existen— y por eso lleva cola.
+ *
+ * @returns {string} vacío si la partida por red no llegó a empezar de verdad
+ */
+function idDePartida(juego, enRed) {
+  if (enRed) {
+    const sala = salas && salas.sala();
+    if (!sala || !sala.inicioN) return '';
+    return `${sala.id}:${sala.inicioN}`;
+  }
+  return `solo:${juego.id}:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 8)}`;
 }
 
 /**
@@ -1307,20 +1415,19 @@ function anotarPartida(juego, r, enRed) {
  * se enseña el resultado, y colgar eso de una petición de red sería pagar el
  * historial con la única parte que el jugador está mirando.
  *
- * El identificador junta la sala con la secuencia en la que empezó la partida.
- * Hace falta lo segundo porque una revancha se juega en la MISMA sala: sin ello,
- * la segunda partida pisaría a la primera y el historial contaría una donde hubo
- * tres.
+ * El identificador lo pone `idDePartida`, y es el mismo con el que el monedero
+ * cobra esta partida: dos tablas del mismo servidor no pueden llamar de dos
+ * maneras a lo mismo.
  */
-function apuntarLaPartida(juego, r) {
+function apuntarLaPartida(juego, r, id) {
   if (!api.capacidades.historialDePartidas) return;
   const sala = salas && salas.sala();
   // Sin sala o sin inicio no hubo partida por red que apuntar: pasa si el rival
-  // se fue antes de empezar.
-  if (!sala || !sala.inicioN) return;
+  // se fue antes de empezar. Es la misma condición que deja `id` vacío.
+  if (!sala || !sala.inicioN || !id) return;
 
   Promise.resolve(api.partidas.guardar({
-    id: `${sala.id}:${sala.inicioN}`,
+    id,
     juego: juego.id,
     rival: (sala.rival && sala.rival.nombre) || 'Pato',
     resultado: r.resultado,

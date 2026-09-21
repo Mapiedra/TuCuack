@@ -19,9 +19,13 @@ import { panelHeader } from './panelHeader.js';
  * @param {Object} capacidades   lo que la carcasa permite (ver core/platform.js)
  * @param {Object} handlers
  * @param {(juego, modo:'solo'|'turnos', opciones:object) => void} handlers.onJugar
- * @param {(juego) => boolean} handlers.onComprar
+ * @param {(juego) => Promise<boolean>} handlers.onComprar
  *   Cobra y apunta la compra. Devuelve si se ha comprado. Lo hace app.js y no
- *   este panel: aquí no se guarda en disco.
+ *   este panel: aquí no se guarda en disco ni se habla con el servidor.
+ *
+ *   Es una promesa porque el monedero vive fuera (ver supabase/cuacks.sql): la
+ *   compra es un viaje de ida y vuelta, y mientras dura hay que decirlo en vez
+ *   de dejar el botón como si no se hubiera pulsado.
  * @param {() => Promise<object>} [handlers.onMarcadorGlobal]
  *   Todo el marcador de una vez, para la vista de conjunto.
  * @param {() => Promise<object>} [handlers.onPartidas]
@@ -314,10 +318,27 @@ export function buildJuegosPanel(level, progreso, cartera, presencia, capacidade
     comprar.type = 'button';
     comprar.textContent = falta > 0 ? 'Todavía no te llega' : `Comprarlo por ${juego.precio}`;
     comprar.disabled = falta > 0;
-    comprar.addEventListener('click', () => {
-      // Quien cobra es app.js. Si dice que no —saldo justo, dos clics seguidos—
-      // se vuelve a pintar y el botón se apaga solo: no hace falta un mensaje.
-      if (!handlers.onComprar(juego)) { pintar(); return; }
+    comprar.addEventListener('click', async () => {
+      // Se apaga el botón mientras dura el viaje. Sin esto, dos clics seguidos
+      // son dos compras en camino —la segunda la rechaza el servidor, pero el
+      // panel se queda un rato pareciendo que no ha pasado nada—.
+      if (comprar.disabled) return;
+      comprar.disabled = true;
+      const antes = comprar.textContent;
+      comprar.textContent = 'Comprando…';
+
+      // Quien cobra es app.js. Si dice que no —saldo justo, dos clics seguidos,
+      // sin conexión— se vuelve a pintar; lo que haya que explicar lo dice
+      // app.js, que es quien sabe por qué ha fallado.
+      let hecho = false;
+      try {
+        hecho = await handlers.onComprar(juego);
+      } finally {
+        // Puede que el panel se haya cerrado mientras tanto.
+        if (comprar.isConnected) { comprar.disabled = false; comprar.textContent = antes; }
+      }
+      if (!hecho) { pintar(); return; }
+
       enTienda = null;
       elegido = juego.modos.length > 1 ? juego : null;
       pintar();

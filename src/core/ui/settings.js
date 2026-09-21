@@ -253,7 +253,10 @@ export function buildSettingsPanel(settings, version, handlers) {
         : `Descargando ${version}…`,
       ninguna: 'Ya tienes la última.',
       error: `No se pudo comprobar: ${e.mensaje || 'sin detalle'}`,
-      'no-disponible': 'En desarrollo no hay actualizaciones que buscar.',
+      // El motivo, cuando lo hay: en una instalación de verdad (un .deb, que
+      // actualiza el gestor de paquetes) un "no disponible" a secas parece una
+      // avería.
+      'no-disponible': e.mensaje || 'En desarrollo no hay actualizaciones que buscar.',
       desconocido: ''
     }[e.tipo] || '';
   }
