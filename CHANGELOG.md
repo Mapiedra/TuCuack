@@ -7,6 +7,103 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.38.0] - 2026-09-21
+
+### Añadido
+
+- **El pato también es de Ubuntu.** La app de escritorio se compila y se publica para
+  Linux, en `.deb` (el recomendado en Ubuntu y derivadas) y en `.AppImage`. El pato es
+  exactamente el mismo: el núcleo no sabe en qué sistema vive, y nada de lo que hace
+  —caminar, jugar, hablar, visitar— cambia. Lo que había que contestar es del proceso
+  principal y cabe en dos ficheros nuevos, [`src/main/sistema.js`](src/main/sistema.js)
+  y [`src/main/raton.js`](src/main/raton.js); lo único que se le pide al pato es que
+  diga dónde está, y sólo lo hace donde hace falta.
+
+  **Acercarse al pato.** El overlay cubre la pantalla entera y deja pasar los clics;
+  sólo captura el ratón cuando el cursor llega al pato. En Windows eso lo resuelve la
+  propia ventana, que sigue entregando el movimiento del ratón aunque los clics la
+  atraviesen (`forward`). Eso es de Windows y macOS: en Linux la ventana se queda muda,
+  el pato no se entera nunca de que hay alguien encima y sería un pato de mirar. Así que
+  lo que la ventana no cuenta se pregunta — el proceso principal sondea dónde está el
+  cursor y le abre la puerta cuando entra en la caja del pato, que el pato va
+  publicando. La caja es la de **los píxeles que se ven**, no la del lienzo: el sprite
+  lleva tanto margen transparente que publicarlo entero habría convertido un buen pedazo
+  de escritorio en zona muerta. Se calcula una vez por fotograma dibujado y se recuerda.
+
+  **X11, no Wayland.** El overlay se sostiene sobre tres cosas que Wayland no da:
+  siempre encima, colocar la ventana y preguntar por el cursor. Bajo XWayland están las
+  tres, así que se pide X11 al arrancar en vez de confiar en que el valor por defecto de
+  Electron no cambie. Se puede forzar Wayland a mano para ver qué pasa.
+
+  **Lo que se actualiza solo y lo que no.** Sólo el `.AppImage`: es el único formato que
+  electron-updater sabe reemplazar por su cuenta. Un `.deb` vive dentro de la
+  contabilidad de `dpkg`, y actualizarlo a espaldas del gestor de paquetes es pedir una
+  pelea además de una contraseña de administrador a mitad de partida. Ajustes lo dice
+  con esas palabras en vez de enseñar un "no disponible" que en una instalación de
+  verdad parece una avería.
+
+  **El arranque con la sesión** ya no es `setLoginItemSettings` —que es de Windows y
+  macOS— sino un `.desktop` en `~/.config/autostart/`, que el ajuste escribe y borra. Y
+  la bandeja funciona tal cual: Ubuntu trae la extensión *AppIndicator* de fábrica.
+
+  Todo esto se ha escrito **sin una Ubuntu delante**, así que lo que decide el guardia
+  del ratón se comprueba entero sin ventana, sin cursor y sin Linux
+  (`npm run raton:check`, en CI), y el camino completo —el pato publicando
+  su caja, el puente, el guardia— se puede encender en Windows con `--zonas` para verlo
+  funcionar. Lo que queda por confirmar en una máquina de verdad es lo que ningún
+  sustituto puede decir: que la ventana se pinta transparente, que se queda encima y que
+  el cursor que devuelve el sistema es el que uno está moviendo.
+
+- **Los cuacks viven en el servidor.** El saldo, lo ganado y los juegos comprados
+  dejan de estar sólo en `pet-state.json` y pasan a una tabla de Supabase. La
+  primera vez el monedero **nace con la cifra que hubiera en el disco**, así que
+  nadie pierde lo que llevaba ganado; a partir de ahí manda el servidor y el
+  fichero local es una copia para poder enseñar algo sin conexión.
+
+  Lo importante no es dónde está la cifra, es quién la calcula: **el pato dice qué
+  ha jugado y el servidor dice cuánto vale**. El importe de cada partida sale de la
+  fórmula de siempre pero con el nivel que dice el catálogo *del servidor*, y el
+  precio de un juego, igual. Guardar el saldo en la nube y dejar que el cliente
+  declarara la cifra no habría arreglado nada —en vez de editar un JSON, una
+  llamada—; así no hay por dónde.
+
+  **Sin conexión se sigue jugando y se sigue cobrando**: lo ganado se apunta en una
+  cola que va con el estado guardado y sale sola al volver la línea, aunque sea
+  mañana. Cada partida lleva identificador y el servidor no paga dos veces la
+  misma, así que reintentar no cuesta nada. Comprar sí necesita conexión, y lo
+  dice: una compra apuntada en una cola es una compra que puede fallar cuando ya
+  estás jugando a lo que creías tuyo.
+
+  Hay que lanzar [`supabase/cuacks.sql`](supabase/cuacks.sql) en el panel de
+  Supabase, y volver a lanzarlo cada vez que se añada un juego o cambie un precio
+  (`npm run catalogo` lo regenera). Sin eso, el monedero se queda en el disco como
+  estaba. Tres comprobaciones nuevas, cada una para una cosa distinta:
+  `cuacks:check` —que el pato y el SQL digan lo mismo—, `cuacks:sql` —que el SQL
+  haga lo que dice, contra un Postgres de usar y tirar en Docker— y
+  `cuacks:servidor` —que esté lanzado en el proyecto y con el catálogo al día,
+  sin escribir nada—.
+
+### Corregido
+
+- **La lista de conectados se ajusta a la realidad.** Podía hablarte alguien que no
+  aparecía en ella, y había tres motivos distintos, los tres tapados ahora:
+
+  El anuncio de presencia se hacía **una sola vez** al conectar y, si fallaba, el
+  pato quedaba invisible para todo el mundo **para siempre** —chateando con
+  normalidad—. Ahora cada pato se vuelve a anunciar cada 45 segundos, con lo que un
+  anuncio fallido se reintenta solo.
+
+  Ese mismo latido arregla el segundo motivo: la presencia se construye a base de
+  parches, y un «ha entrado éste» que se perdiera no volvía nunca. Y el tercero, por
+  el otro lado: como cada anuncio va fechado, un pato que se fue sin despedirse
+  —portátil suspendido, proceso matado— deja de salir en la lista sin esperar a que
+  el servidor se canse. A los patos de versiones anteriores, que no laten, se les
+  sigue creyendo.
+
+  Y encima, **quien habla entra en la lista en el acto** aunque el censo todavía no
+  lo tenga: un mensaje recién llegado es la prueba más fuerte de que alguien está
+  ahí. `npm run presencia:check` fija los cinco casos.
+
 ## [0.37.0] - 2026-09-10
 
 ### Añadido
