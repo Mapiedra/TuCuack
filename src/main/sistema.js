@@ -23,6 +23,29 @@ const path = require('path');
  */
 const fingirQueNoReenvia = process.argv.includes('--zonas');
 
+/**
+ * `--raton=siempre`: que el overlay no suelte el ratón nunca.
+ *
+ * Es un modo de prueba, y sirve para una sola pregunta —la que separa los dos
+ * fallos que se parecen—: si con esto el pato SÍ responde, lo que falla es la
+ * puerta (quién avisa de que el cursor ha llegado); si sigue sin responder, lo
+ * que falla es que la ventana no recibe el ratón en absoluto, que es otra
+ * historia y se arregla en otro sitio.
+ */
+const noSoltarElRaton = process.argv.includes('--raton=siempre');
+
+/** `--diagnostico`: contarlo todo por la terminal. Ver `main.js`. */
+const diagnostico = process.argv.includes('--diagnostico');
+
+/**
+ * `--timbre-de-prueba`: que el timbre se toque solo, una vez, al arrancar.
+ *
+ * Comprueba el camino entero sin mover el ratón: si tras arrancar con esto el
+ * pato se para y saca su globo, el timbre llega hasta él y lo que falla es otra
+ * cosa. Ver `src/desktop/sensor.html`.
+ */
+const timbreDePrueba = process.argv.includes('--timbre-de-prueba');
+
 const esWindows = process.platform === 'win32';
 const esMac = process.platform === 'darwin';
 const esLinux = process.platform === 'linux';
@@ -136,6 +159,9 @@ module.exports = {
   esMac,
   esLinux,
   reenviaElRaton,
+  noSoltarElRaton,
+  diagnostico,
+  timbreDePrueba,
   aplicarArranqueAutomatico,
   prepararLinea
 };

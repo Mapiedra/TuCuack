@@ -14,6 +14,7 @@ const { initUpdater, configurarAvisos, estadoActualizacion, buscarActualizacion,
 const { initChat } = require('./chat');
 const sistema = require('./sistema');
 const { crearGuardiaDelRaton } = require('./raton');
+const { crearSensor } = require('./sensor');
 
 // Antes de que Electron arranque: en Linux, X11 (ver `prepararLinea`).
 sistema.prepararLinea(app);
@@ -27,14 +28,43 @@ let tray = null;
 /** @type {{ send: Function, isReady: Function } | null} */
 let chat = null;
 
+// El timbre del pato: sólo donde la ventana no avisa de nada (ver `sensor.js`).
+// En Windows no se crea, así que no hay ni ventana de más ni un canal abierto.
+const sensor = sistema.reenviaElRaton ? null : crearSensor({
+  alPuntero: (evento) => repartirPuntero(evento),
+  prueba: sistema.timbreDePrueba
+});
+
 // Quien decide si el overlay captura el ratón. En Windows es un pasamanos
-// —la ventana se apaña sola—; en Linux sondea el cursor porque la ventana no
-// avisa. Ver `raton.js`.
+// —la ventana se apaña sola—; en Linux sondea el cursor y pone el timbre,
+// porque la ventana no avisa. Ver `raton.js`.
 const guardiaDelRaton = crearGuardiaDelRaton({
   getWin: () => win,
   getGround: () => groundFromBottom(),
-  sondear: !sistema.reenviaElRaton
+  sondear: !sistema.reenviaElRaton,
+  sensor,
+  siempre: sistema.noSoltarElRaton,
+  diagnostico: sistema.diagnostico
 });
+
+/**
+ * Lo que oye el timbre, al pato.
+ *
+ * Llega en coordenadas de pantalla y se le pasa al overlay en las suyas, que
+ * son las del documento: el pato las recibe como un evento de ratón normal y
+ * no tiene por qué enterarse de que ha venido por otra puerta.
+ */
+function repartirPuntero(evento) {
+  if (!win || win.isDestroyed()) return;
+  const b = win.getBounds();
+  win.webContents.send('puntero:sensor', {
+    tipo: evento.tipo,
+    x: evento.x - b.x,
+    y: evento.y - b.y,
+    botones: evento.botones,
+    boton: evento.boton
+  });
+}
 
 // Monitor en el que vive el pato ahora mismo. El overlay cubre ese monitor
 // entero (se usa `bounds` y no `workArea` para tapar también la barra de
@@ -126,6 +156,7 @@ function createWindow() {
 
   win.on('closed', () => {
     guardiaDelRaton.reiniciar();
+    if (sensor) sensor.cerrar();
     win = null;
   });
 
@@ -203,6 +234,19 @@ ipcMain.on('set-ignore-mouse', (_evt, ignore) => {
 // Windows este canal no lo usa nadie (ver `necesitaZonas` en `config:get`).
 ipcMain.on('zonas:pato', (_evt, caja) => {
   guardiaDelRaton.anotarZona(caja || null);
+});
+
+// Y lo que oye el timbre. Sólo existe donde hay timbre.
+let ultimoAviso = 0;
+ipcMain.on('sensor:puntero', (_evt, evento) => {
+  if (!sensor || !evento) return;
+  // Con `--diagnostico`, que se vea que el timbre suena: es LA pregunta cuando
+  // el pato no responde. Sin aturdir: dos avisos por segundo bastan.
+  if (sistema.diagnostico && (evento.tipo !== 'mousemove' || Date.now() - ultimoAviso > 500)) {
+    ultimoAviso = Date.now();
+    console.log('[diag] el timbre oye', JSON.stringify(evento));
+  }
+  sensor.oir(evento);
 });
 
 // Persistencia expuesta al renderer.
@@ -386,6 +430,7 @@ if (!gotLock) {
     console.log(`[app] ${process.platform}`
       + ` · ratón ${sistema.reenviaElRaton ? 'reenviado por la ventana' : 'sondeado (ver raton.js)'}`);
     createWindow();
+    if (sistema.diagnostico) arrancarDiagnostico();
     // El canal de avisos de actualización se abre SIEMPRE, aunque no haya
     // actualizador: si no, en desarrollo el pato preguntaría y la respuesta
     // —"aquí no hay nada que buscar"— no llegaría a ninguna parte.
@@ -402,12 +447,68 @@ if (!gotLock) {
   });
 }
 
+// ---- Diagnóstico (`--diagnostico`) --------------------------------------
+//
+// El soporte de Linux se escribió sin una máquina donde ejecutarlo, así que
+// cuando algo no va, lo que hace falta no es una teoría: es ver lo que el pato
+// ve. Esto lo dice todo por la terminal, una vez por segundo, para poder
+// pegarlo tal cual.
+//
+// Lo importante es la línea del cursor: si no cambia mientras se mueve el ratón
+// por la pantalla, el sistema NO nos está diciendo dónde está (es lo que pasa
+// bajo XWayland con una ventana que deja pasar los clics), y entonces lo que
+// tiene que salvar la situación es el timbre. Ver `sensor.js`.
+function arrancarDiagnostico() {
+  const d = screen.getPrimaryDisplay();
+  console.log('[diag] sesión:', process.env.XDG_SESSION_TYPE || '?',
+    '· escritorio:', process.env.XDG_CURRENT_DESKTOP || process.env.DESKTOP_SESSION || '?',
+    '· ozone:', app.commandLine.getSwitchValue('ozone-platform') || '(por defecto)');
+  console.log('[diag] pantalla:', JSON.stringify({
+    bounds: d.bounds, workArea: d.workArea, escala: d.scaleFactor
+  }));
+
+  // Lo que diga el pato por su consola, aquí: un error del renderer en un
+  // sistema que no se puede mirar es, si no, un silencio.
+  const enganchar = () => {
+    if (!win || win.isDestroyed()) return;
+    win.webContents.on('console-message', (...args) => {
+      // La firma cambió de posicional a objeto entre versiones de Electron.
+      const d0 = args[1];
+      const texto = d0 && typeof d0 === 'object' ? d0.message : args[2];
+      const nivel = d0 && typeof d0 === 'object' ? d0.level : args[1];
+      console.log(`[pato:${nivel}]`, texto);
+    });
+    win.webContents.on('render-process-gone', (_e, detalles) =>
+      console.log('[diag] el pato se ha caído:', JSON.stringify(detalles)));
+  };
+  enganchar();
+
+  setInterval(() => {
+    const e = guardiaDelRaton.estado();
+    console.log('[diag]', JSON.stringify({
+      cursor: e.cursor,
+      ventana: e.ventana,
+      visible: e.visible,
+      suelo: e.suelo,
+      zona: e.zona,
+      edadZona: e.edadDeLaZona,
+      enLaCaja: e.enLaCaja,
+      ignorando: e.ignorando,
+      loPide: e.loPideElPato,
+      sensor: e.sensor
+    }));
+  }, 1000);
+}
+
 // El pato vive en la bandeja; no cerramos la app al cerrar la ventana.
 app.on('window-all-closed', () => {
   // No-op: se sale desde la bandeja o el menú del pato.
 });
 
 app.on('before-quit', () => {
+  // El timbre es una ventana más: si se queda abierta, la app no termina de
+  // cerrarse y el pato se queda de fantasma en la lista de procesos.
+  if (sensor) sensor.cerrar();
   // Lo que quedara sin volcar del histórico: las escrituras van con retardo
   // para no reescribir el fichero en cada mensaje, y al salir ya no hay más
   // ocasiones.

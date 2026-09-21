@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>TuCuack — sensor</title>
+<!--
+  El timbre del pato.
+
+  Esta ventana no se ve ni hace nada: es un rectángulo transparente del tamaño
+  del pato que existe sólo para que el sistema tenga a quién entregarle el
+  ratón. El overlay grande deja pasar los clics, y donde eso significa "no
+  recibo NADA" (Linux) el pato se quedaría sin enterarse de que alguien se le
+  acerca. Ver `src/main/sensor.js`.
+
+  Todo lo que pasa aquí se reenvía al pato tal cual; quien decide qué hacer con
+  ello sigue siendo el de siempre.
+-->
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+</style>
+</head>
+<body>
+<script>
+  // Lo último que se dijo, para no repetir el mismo punto sesenta veces por
+  // segundo: el ratón se mueve mucho más de lo que hace falta contar.
+  let ultimo = { x: -1, y: -1, t: 0 };
+  const CADA_MS = 25;
+  const SALTO = 2;
+
+  function contar(tipo, e) {
+    window.sensor.dice({
+      tipo,
+      x: e.clientX,
+      y: e.clientY,
+      botones: e.buttons,
+      boton: e.button
+    });
+  }
+
+  addEventListener('mousemove', (e) => {
+    const ahora = performance.now();
+    const lejos = Math.abs(e.clientX - ultimo.x) >= SALTO
+      || Math.abs(e.clientY - ultimo.y) >= SALTO;
+    // Mientras se arrastra no se filtra nada: el pato tiene que seguir al
+    // cursor sin saltos, y ahí los eventos son todos suyos de todas formas.
+    if (!e.buttons && !lejos && ahora - ultimo.t < CADA_MS) return;
+    ultimo = { x: e.clientX, y: e.clientY, t: ahora };
+    contar('mousemove', e);
+  });
+
+  // Pulsar y soltar van siempre, sin filtro: son los que deciden.
+  addEventListener('mousedown', (e) => contar('mousedown', e));
+  addEventListener('mouseup', (e) => contar('mouseup', e));
+
+  // Al salir el cursor, que el pato lo sepa: si no, se queda con el último
+  // punto de dentro y creería que sigue ahí.
+  addEventListener('mouseleave', (e) => contar('mouseleave', e));
+
+  // `--timbre-de-prueba`: llamar al timbre sin tocar el ratón.
+  //
+  // Es la única forma de comprobar el camino entero —timbre, puente, overlay,
+  // pato— en una máquina donde no se puede mover el cursor a mano, y en una
+  // ajena donde hay que saber si el timbre llega a sonar. Lo que se manda es lo
+  // mismo que mandaría un ratón de verdad parado en el centro.
+  if (location.search.includes('prueba=1')) {
+    // Varias veces, no una: el pato camina, y un solo toque contra un blanco en
+    // movimiento puede caer en el hueco transparente de al lado y no probar
+    // nada. Mientras acierte, el pato se para —se para siempre que le señalas—,
+    // que es la señal que hay que ver desde fuera.
+    let quedan = 6;
+    const tocar = () => {
+      window.sensor.dice({
+        tipo: 'mousemove',
+        x: Math.round(innerWidth / 2),
+        y: Math.round(innerHeight / 2),
+        botones: 0,
+        boton: 0,
+        deMentira: true
+      });
+      if (--quedan > 0) return setTimeout(tocar, 600);
+      // Y se le suelta: un pato señalado es un pato quieto, y dejarlo así
+      // parecería que se ha colgado.
+      setTimeout(() => window.sensor.dice({
+        tipo: 'mousemove', x: -9999, y: -9999, botones: 0, boton: 0, deMentira: true
+      }), 1200);
+    };
+    setTimeout(tocar, 1500);
+  }
+</script>
+</body>
+</html>

@@ -34,11 +34,52 @@ Nada más arrancar, la terminal tiene que escribir algo así:
 
 ```
 [app] linux · ratón sondeado (ver raton.js)
-[raton] el pato ya dice dónde está: sondeo del cursor en marcha
+[raton] el pato ya dice dónde está: sondeo del cursor en marcha (y timbre puesto)
 ```
 
 **Si falta la segunda**, para aquí y dilo: el pato no está publicando dónde está y no
 se va a poder tocar. Todo lo demás de esta lista dará igual.
+
+---
+
+## Y si no se le puede tocar
+
+Ésa fue exactamente la primera respuesta que llegó de Ubuntu, y por eso el pato trae
+ahora dos herramientas para contestar *por qué* sin adivinar nada. Si al pato no se le
+puede señalar, ni pulsar, ni arrastrar, haz estas dos pruebas y pega lo que salga:
+
+```bash
+tucuack --timbre-de-prueba
+```
+
+Al cabo de un segundo y medio el pato debería **pararse solo** unos cuatro segundos
+(se para siempre que le señalas) y luego seguir andando. Si se para, el camino entero
+—la ventanita que oye el ratón, el puente, el pato— funciona, y lo que falla es que el
+sistema no le está entregando el ratón a esa ventanita.
+
+```bash
+tucuack --diagnostico
+```
+
+Escribe una línea por segundo con todo lo que el pato sabe. Mueve el ratón por la
+pantalla y **mira el campo `cursor`**: si no cambia, el sistema no nos está diciendo
+dónde está el ratón (es lo normal bajo XWayland) y lo que tiene que salvar la situación
+es el timbre. Pasa el ratón por encima del pato y mira si aparecen líneas
+`[diag] el timbre oye ...`: si aparecen, el timbre suena; si no, no le llega nada.
+
+Pega unas quince líneas: unas cuantas con el ratón lejos y unas cuantas pasando por
+encima del pato.
+
+Y una tercera, sólo si las otras dos no aclaran nada:
+
+```bash
+tucuack --raton=siempre
+```
+
+Con esto el pato se queda el ratón de toda la pantalla (el escritorio deja de
+responder: es para un minuto, no para trabajar). Si **así** se le puede señalar y
+arrastrar, lo que falla es quién avisa de que el cursor ha llegado. Si ni así, es que
+la ventana no recibe el ratón en absoluto, que es otra historia.
 
 ---
 

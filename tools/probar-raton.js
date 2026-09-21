@@ -36,6 +36,10 @@
 //   8. Y la caja que el pato publica se voltea con el lienzo cuando mira a la
 //      izquierda. Si no, respondería un palmo al otro lado y sólo mirando a la
 //      derecha: la clase de cosa que se achaca a "va raro".
+//   9. El timbre (ver `sensor.js`) está puesto exactamente mientras los clics
+//      pasan de largo, y encima del pato: en coordenadas de PANTALLA, que no
+//      son las de la ventana en cuanto hay un segundo monitor, y sin meterse en
+//      la franja de la bandeja.
 
 // ---- El decorado ----------------------------------------------------------
 
@@ -75,7 +79,8 @@ const { crearGuardiaDelRaton } = require('../src/main/raton.js');
 
 // La ventana: un monitor de 1920x1080 en el origen, visible, y un cuaderno
 // donde apunta todo lo que le manden.
-function crearVentana() {
+function crearVentana(bounds) {
+  const b = bounds || { x: 0, y: 0, width: 1920, height: 1080 };
   return {
     ignorando: null,
     visible: true,
@@ -83,7 +88,7 @@ function crearVentana() {
     ordenes: 0,
     isDestroyed() { return this.destruida; },
     isVisible() { return this.visible; },
-    getBounds() { return { x: 0, y: 0, width: 1920, height: 1080 }; },
+    getBounds() { return { ...b }; },
     setIgnoreMouseEvents(ignorar) { this.ignorando = ignorar; this.ordenes++; }
   };
 }
@@ -101,15 +106,30 @@ const comprobar = (que, bien, extra) => {
   if (!bien) fallos++;
 };
 
+// Un timbre de mentira: apunta lo que le mandan, que es lo único que hace falta
+// comprobar desde aquí (que exista la ventana de verdad es cosa de Electron).
+function crearTimbre() {
+  return {
+    armado: false,
+    sitio: null,
+    colocar(caja) { this.sitio = caja; },
+    armar() { this.armado = true; },
+    desarmar() { this.armado = false; },
+    estado() { return { armado: this.armado, sitio: this.sitio }; }
+  };
+}
+
 function montar(opciones = {}) {
   sondas.length = 0;
-  const win = crearVentana();
+  const win = crearVentana(opciones.ventana);
+  const sensor = opciones.timbre ? crearTimbre() : null;
   const guardia = crearGuardiaDelRaton({
     getWin: () => win,
     getGround: () => (opciones.suelo != null ? opciones.suelo : BARRA),
-    sondear: opciones.sondear !== false
+    sondear: opciones.sondear !== false,
+    sensor
   });
-  return { win, guardia };
+  return { win, guardia, sensor };
 }
 
 // ---- 1. Windows: un pasamanos --------------------------------------------
@@ -238,6 +258,75 @@ function montar(opciones = {}) {
   guardia2.pedirCaptura(false);
   comprobar('7b. La ventana nueva arranca dejando pasar los clics',
     nueva.ignorando === true, `ignorando=${nueva.ignorando}`);
+}
+
+// ---- 9. El timbre ---------------------------------------------------------
+{
+  const { win, guardia, sensor } = montar({ timbre: true });
+  guardia.pedirCaptura(false);
+  cursor = { x: 100, y: 100 };
+  guardia.anotarZona(CAJA_DEL_PATO);
+  comprobar('9. Mientras los clics pasan de largo, el timbre está puesto sobre el pato',
+    sensor.armado && sensor.sitio
+    && sensor.sitio.x === 900 && sensor.sitio.y === 900
+    && sensor.sitio.width === 100 && sensor.sitio.height === 110,
+    JSON.stringify(sensor.estado()));
+
+  // Llega el cursor (o llama el timbre, da igual quién): el overlay coge el
+  // ratón y el timbre se quita de en medio para no robarle los eventos.
+  guardia.pedirCaptura(true);
+  comprobar('9b. Con el overlay quedándose el ratón, el timbre se retira',
+    !sensor.armado && win.ignorando === false, JSON.stringify(sensor.estado()));
+
+  guardia.pedirCaptura(false);
+  latir();
+  comprobar('9c. Y vuelve a su sitio cuando el pato suelta el ratón',
+    sensor.armado && win.ignorando === true, JSON.stringify(sensor.estado()));
+}
+
+// ---- 9d. El timbre tampoco entra en la barra de tareas --------------------
+{
+  const { guardia, sensor } = montar({ timbre: true });
+  guardia.pedirCaptura(false);
+  guardia.anotarZona(CAJA_HASTA_LA_BARRA);   // baja hasta 1060, la barra empieza en 1032
+  comprobar('9d. El timbre se recorta por arriba de la barra: la bandeja se puede pulsar',
+    sensor.sitio && sensor.sitio.y === 900 && sensor.sitio.height === 132,
+    JSON.stringify(sensor.sitio));
+}
+
+// ---- 9e. En el segundo monitor, coordenadas de pantalla ------------------
+{
+  const { guardia, sensor } = montar({
+    timbre: true,
+    ventana: { x: 1920, y: -200, width: 1280, height: 1024 }
+  });
+  guardia.pedirCaptura(false);
+  guardia.anotarZona({ left: 100, top: 50, right: 180, bottom: 140 });
+  comprobar('9e. El timbre va en coordenadas de pantalla, no de la ventana',
+    sensor.sitio && sensor.sitio.x === 2020 && sensor.sitio.y === -150
+    && sensor.sitio.width === 80 && sensor.sitio.height === 90,
+    JSON.stringify(sensor.sitio));
+}
+
+// ---- 9f. Sin pato del que avisar, no hay timbre ---------------------------
+{
+  const { win, guardia, sensor } = montar({ timbre: true });
+  guardia.pedirCaptura(false);
+  guardia.anotarZona(CAJA_DEL_PATO);
+  const puesto = sensor.armado;
+  avanzar(3500);                       // el pato lleva 3,5 s sin decir nada
+  latir();
+  const trasCaducar = sensor.armado;
+
+  guardia.anotarZona(CAJA_DEL_PATO);   // vuelve a hablar
+  win.visible = false;                 // pero está escondido en la bandeja
+  guardia.anotarZona(CAJA_DEL_PATO);
+  comprobar('9f. Sin caja fresca o con el pato escondido, el timbre se retira',
+    puesto && !trasCaducar && !sensor.armado,
+    `puesto=${puesto}, trasCaducar=${trasCaducar}, escondido=${sensor.armado}`);
+
+  guardia.reiniciar();
+  comprobar('9g. Y al cerrar la ventana, también', !sensor.armado);
 }
 
 // ---- 8. La caja que se publica, del lienzo a la pantalla -----------------

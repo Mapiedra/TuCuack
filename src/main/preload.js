@@ -9,6 +9,13 @@ contextBridge.exposeInMainWorld('pato', {
   // Y dónde está el pato, para donde el hover no llega a enterarse de nada
   // (ver `src/main/raton.js`).
   zonaDelPato: (caja) => ipcRenderer.send('zonas:pato', caja),
+  // Lo que ha oído el timbre (ver `src/main/sensor.js`): llega en coordenadas
+  // de este documento y la carcasa lo suelta como un evento de ratón normal.
+  alSentirElPuntero: (cb) => {
+    const fn = (_e, p) => cb(p);
+    ipcRenderer.on('puntero:sensor', fn);
+    return () => ipcRenderer.removeListener('puntero:sensor', fn);
+  },
 
   // Estado del Tamagotchi.
   loadState: () => ipcRenderer.invoke('state:load'),

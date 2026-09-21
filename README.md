@@ -334,14 +334,23 @@ el cursor. Bajo **XWayland** están las tres, así que el pato pide X11 al arran
 contrario con `--ozone-platform=wayland` si se quiere ver qué pasa; lo que pasa es que
 el pato se queda detrás de las ventanas.
 
-**Acercarse al pato cuesta un sondeo.** La ventana de Windows reenvía el movimiento del
-ratón aunque los clics la atraviesen; la de Linux, no. Sin eso el pato no se enteraría
-nunca de que hay alguien encima, así que el proceso principal pregunta dónde está el
-cursor 20 veces por segundo y le abre la puerta cuando entra en la caja del pato —que
-el pato va publicando, y que es la de los píxeles que se ven, no la del lienzo entero
-(ver [`src/main/raton.js`](src/main/raton.js)). La diferencia con Windows es de un
-palmo: dentro de esa caja y sobre un píxel transparente, el clic se lo queda el overlay
-en vez de llegar al escritorio.
+**Acercarse al pato tiene truco.** La ventana de Windows reenvía el movimiento del
+ratón aunque los clics la atraviesen; la de Linux, no: mientras deja pasar los clics no
+recibe absolutamente nada. Preguntarle al sistema dónde está el cursor tampoco vale
+bajo **XWayland** —que es donde corre esto en Ubuntu—, porque ahí esa pregunta sólo
+tiene respuesta de verdad mientras el cursor está sobre una superficie X11, y una
+ventana que deja pasar los clics no lo es: lo que se lee es la última posición conocida,
+congelada.
+
+Así que hay un **timbre**: una ventana diminuta, transparente y sin foco, puesta justo
+encima del pato, que **no** deja pasar los clics
+([`src/main/sensor.js`](src/main/sensor.js)). Como sí es una superficie nuestra, el
+sistema le entrega el ratón sin que haya que preguntar nada; lo que oye se le pasa al
+overlay como un evento de ratón normal, y de ahí en adelante manda el pato de siempre
+con su hit-test al píxel. El timbre se mueve con él, se quita de en medio en cuanto el
+overlay tiene el ratón y se recorta para no invadir la franja de la bandeja. La
+diferencia con Windows es de un palmo: dentro de la caja del pato y sobre un píxel
+transparente, el clic se lo queda el timbre en vez de llegar al escritorio.
 
 Y como nada de esto se ha podido ejecutar todavía, hay una lista de lo que hay que
 mirar en una máquina de verdad y de qué hace falta saber si algo va mal:
@@ -467,10 +476,17 @@ npx electron . --dev --probe "JSON.stringify(__pato.state())"
 En modo `--dev`, el renderer expone `window.__pato` (`duck`, `behavior`, `tam`, `chat`,
 `throwFrom(x,y,vx,vy)`, `act('feed'|'play'|'clean'|'sleep')`, `state()`, `name()`).
 
-`--zonas` enciende en Windows el sondeo del cursor que sólo hace falta en Linux (ver
-[`src/main/raton.js`](src/main/raton.js)): es la única forma de ver funcionar ese
-camino sin una máquina Linux delante. Lo que decide el guardia, sin ventana ni cursor,
-lo comprueba `npm run raton:check`.
+Cuatro interruptores más, todos para el mismo problema: el camino del ratón en Linux no
+se puede mirar desde aquí.
+
+| | |
+|---|---|
+| `--zonas` | enciende en Windows lo que sólo hace falta en Linux (el sondeo del cursor y el timbre), para verlo funcionar sin una máquina Linux delante |
+| `--diagnostico` | lo cuenta todo por la terminal una vez por segundo —cursor, ventana, caja del pato, timbre— y reenvía ahí la consola del pato, que si no es un silencio |
+| `--timbre-de-prueba` | toca el timbre solo, seis veces: si el pato se para, el camino entero llega hasta él |
+| `--raton=siempre` | el overlay no suelta el ratón nunca. Separa los dos fallos que se parecen: si así el pato responde, lo que falla es quién avisa; si no, es que la ventana no recibe nada |
+
+Lo que decide el guardia, sin ventana ni cursor, lo comprueba `npm run raton:check`.
 
 **Banco de pruebas.** El núcleo también arranca en un navegador normal, sin
 Electron, con una plataforma de mentira que guarda en `localStorage` y no se
