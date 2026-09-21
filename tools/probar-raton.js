@@ -15,7 +15,7 @@
 // que está el cursor, qué caja publicó el pato y qué pidió el renderer—, así que
 // se le puede contar lo que uno quiera y ver qué contesta. Eso es esto.
 //
-// Las siete escenas son las que de verdad pueden romper:
+// Las escenas son las que de verdad pueden romper:
 //
 //   1. En Windows no se sondea nada: el guardia es un pasamanos y la ventana
 //      sigue haciendo lo de siempre.
@@ -33,8 +33,9 @@
 //      mucho peor que un pato al que hay que volver a acercarse.
 //   7. Una ventana nueva empieza de cero. Dar por puesto en ella lo que se puso
 //      en la anterior la dejaría capturando el escritorio entero.
-
-const path = require('path');
+//   8. Y la caja que el pato publica se voltea con el lienzo cuando mira a la
+//      izquierda. Si no, respondería un palmo al otro lado y sólo mirando a la
+//      derecha: la clase de cosa que se achaca a "va raro".
 
 // ---- El decorado ----------------------------------------------------------
 
@@ -55,12 +56,19 @@ const avanzar = (ms) => { ahora += ms; };
 let cursor = { x: 0, y: 0 };
 
 // El `screen` de Electron, que es lo único que `raton.js` le pide.
-const ruta = require.resolve('electron', { paths: [path.join(__dirname, '..', 'src', 'main')] });
-require.cache[ruta] = {
-  id: ruta,
-  filename: ruta,
-  loaded: true,
-  exports: { screen: { getCursorScreenPoint: () => ({ ...cursor }) } }
+//
+// Se intercepta la carga en vez de colarlo en la caché de `require` (como hacen
+// las otras sondas con supabase-js y ws) porque eso obliga a RESOLVER el módulo
+// primero, y aquí no tiene por qué existir: Electron es una dependencia de
+// desarrollo y CI instala con `--omit=dev`. Esta sonda no necesita Electron
+// —precisamente ésa es la gracia—, así que tampoco debe necesitar tenerlo
+// instalado.
+const Module = require('module');
+const electronDeMentira = { screen: { getCursorScreenPoint: () => ({ ...cursor }) } };
+const cargarDeVerdad = Module._load;
+Module._load = function (peticion, ...resto) {
+  if (peticion === 'electron') return electronDeMentira;
+  return cargarDeVerdad.call(this, peticion, ...resto);
 };
 
 const { crearGuardiaDelRaton } = require('../src/main/raton.js');
