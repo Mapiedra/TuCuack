@@ -7,6 +7,56 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.38.1] - 2026-09-21
+
+### Corregido
+
+- **En Ubuntu al pato no se le podía tocar.** Se veía, caminaba y saludaba, pero no
+  había forma de señalarlo, pulsarlo ni arrastrarlo. El fallo estaba en la única pieza
+  del soporte de Linux que no se pudo probar antes de publicar, y era de raíz, no un
+  descuido:
+
+  Para saber cuándo el cursor llega al pato, el proceso principal le preguntaba al
+  sistema dónde estaba, 20 veces por segundo. Eso funciona en una sesión X11 de verdad,
+  pero **no bajo XWayland**, que es donde corre esto en Ubuntu: allí la posición del
+  cursor sólo se sabe mientras está sobre una superficie X11, y una ventana que deja
+  pasar los clics no lo es a efectos del compositor —el puntero está sobre lo que haya
+  debajo, que en GNOME suele ser Wayland puro—. Lo que se leía era la última posición
+  conocida, congelada. El pato no se enteraba nunca de que había alguien encima.
+
+  La solución es dejar de preguntar. Ahora hay un **timbre**
+  ([`src/main/sensor.js`](src/main/sensor.js)): una ventana diminuta, transparente, sin
+  foco y sin barra de tareas, puesta justo encima del pato, que **no** deja pasar los
+  clics. Como sí es una superficie nuestra, el sistema le entrega el ratón sin que haya
+  que preguntar nada; lo que oye se le pasa al overlay como un evento de ratón normal y
+  corriente, y de ahí en adelante manda el pato de siempre con su hit-test al píxel. Se
+  mueve con él, se quita de en medio en cuanto el overlay tiene el ratón —para no
+  robarle los eventos a quien los necesita— y se recorta para no invadir la franja de
+  la bandeja. El núcleo no se ha tocado: para el pato es el mismo `mousemove` de
+  siempre.
+
+  Un detalle que no es un detalle: al pulsar, X11 le entrega todo al que recibió la
+  pulsación **hasta que se suelte**, aunque el cursor se vaya a la otra punta de la
+  pantalla. Un arrastre que empieza en el timbre, termina en el timbre; así que el
+  timbre no se calla ni se mueve mientras haya un botón pulsado, en vez de dar por
+  hecho que el overlay recoge el testigo a mitad de gesto.
+
+  El sondeo del cursor se queda como estaba: donde funciona no estorba, y es un camino
+  menos que dependa de una sola cosa.
+
+### Añadido
+
+- **Tres interruptores para no volver a adivinar.** El camino del ratón en Linux no se
+  puede mirar desde Windows, así que ahora el pato lo cuenta él:
+  `--diagnostico` escribe una vez por segundo todo lo que sabe (cursor, ventana, caja
+  del pato, timbre) y reenvía a la terminal la consola del pato, que si no es un
+  silencio; `--timbre-de-prueba` toca el timbre solo seis veces, y si el pato se para es
+  que el camino entero llega hasta él; y `--raton=siempre` hace que el overlay no suelte
+  nunca el ratón, que es lo que separa "no se abre la puerta" de "la ventana no recibe
+  nada". Los tres están explicados en
+  [`docs/PROBAR-EN-UBUNTU.md`](docs/PROBAR-EN-UBUNTU.md), que es lo que se le pasa a
+  quien tenga la máquina.
+
 ## [0.38.0] - 2026-09-21
 
 ### Añadido
