@@ -397,8 +397,15 @@ ipcMain.on('open-external', (_evt, url) => {
   if (typeof url === 'string' && /^https?:\/\//.test(url)) shell.openExternal(url);
 });
 
+// El arranque con la sesión sólo lo toca el pato instalado.
+//
+// `--dev` no basta para saber que esto es desarrollo: `npm start` es `electron .`
+// a secas, y ahí `isDev` es falso. Lo que se registraba entonces era
+// `process.execPath` —el electron.exe de node_modules— y sin la ruta de la app,
+// así que al arrancar Windows salía la pantalla de bienvenida de Electron en vez
+// del pato. `app.isPackaged` sí distingue una cosa de la otra.
 function applyAutoLaunch(settings) {
-  if (isDev) return;
+  if (isDev || !app.isPackaged) return;
   sistema.aplicarArranqueAutomatico(app, !!(settings && settings.autoLaunch));
 }
 

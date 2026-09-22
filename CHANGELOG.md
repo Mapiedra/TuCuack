@@ -7,6 +7,26 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Corregido
+
+- **Al encender Windows salía la pantalla de bienvenida de Electron.** No era un fallo
+  del pato instalado —ese arrancaba bien—, sino un segundo arranque de sesión que se
+  colaba: en el registro había una entrada de más apuntando al `electron.exe` de
+  `node_modules`, **sin la ruta de la app**, así que Windows lanzaba Electron a secas y
+  Electron enseñaba su portada.
+
+  La escribía el propio pato, desde el repositorio. `applyAutoLaunch` se saltaba el
+  registro en desarrollo mirando `--dev`, pero `npm start` es `electron .` a secas: sin
+  ese argumento, una sesión de desarrollo se tenía por instalada y guardaba en el
+  arranque `process.execPath`, que fuera del paquete es el Electron de las dependencias.
+  Con el ajuste de «arrancar con el sistema» puesto, lo hacía en cada `npm start`.
+
+  Ahora el arranque automático exige además `app.isPackaged`, que sí distingue el pato
+  instalado del que se lanza desde el código. Una entrada que se haya quedado escrita de
+  antes no se va sola; se quita con
+  `reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v electron.app.Electron /f`
+  —sin tocar `electron.app.TuCuack`, que es la del pato de verdad—.
+
 ## [0.38.1] - 2026-09-21
 
 ### Corregido
