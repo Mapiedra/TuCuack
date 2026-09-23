@@ -7,6 +7,8 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.38.2] - 2026-09-24
+
 ### Corregido
 
 - **Al encender Windows salía la pantalla de bienvenida de Electron.** No era un fallo
