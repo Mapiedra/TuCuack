@@ -130,6 +130,19 @@ const PRESUPUESTO_MS = 8.5 * 60 * 1000;
 /** A partir de aquí el marcador avisa de que queda poco. */
 const AVISO_MS = 60 * 1000;
 
+/**
+ * Lo que se le espera al rival cuando el reloj se acaba en SU turno.
+ *
+ * Cerrar por tiempo sólo se hace en el turno propio (ver `cerrarPorTiempo`), así
+ * que en el del rival hay que esperar a que él cierre y lo diga. Esto es el
+ * plazo por si no lo dice nunca: porque se ha ido, o porque al otro lado hay una
+ * versión anterior a que esto se avisara. Pasado el plazo se cierra igual.
+ *
+ * Veinte segundos es muchísimo para una tacada que ya está en el aire —que es lo
+ * único que puede cruzarse— y poco para quien esté mirando la pantalla.
+ */
+const GRACIA_TIEMPO_MS = 20 * 1000;
+
 /** Lo que se piensa la mascota antes de tirar. Sin esto tira en el mismo cuadro. */
 const PENSAR_S = 1.1;
 /** Y lo que como mucho dura la repetición del tiro del rival. */
@@ -224,7 +237,7 @@ export function crearPartida(ctx) {
   let troneras = troneraDelCampo(campo, radio);
 
   let bajaSala = null;
-  if (enRed) bajaSala = ctx.sala.alRecibir((m) => recibirTacada(m));
+  if (enRed) bajaSala = ctx.sala.alRecibir((m) => recibirDeLaSala(m));
 
   colocarBolas();
   pista.cursor('crosshair');
@@ -252,7 +265,8 @@ export function crearPartida(ctx) {
     // el aire dejaría a los dos lados con tableros distintos, y además se vería
     // fatal. La espera está acotada: `TOPE_REPETICION_S` para la mesa pase lo
     // que pase.
-    if (transcurrido >= PRESUPUESTO_MS && fase !== 'rodando' && !pendiente) {
+    if (transcurrido >= PRESUPUESTO_MS && fase !== 'rodando' && !pendiente
+        && meTocaCerrar()) {
       cerrarPorTiempo();
       return;
     }
@@ -593,6 +607,24 @@ export function crearPartida(ctx) {
   }
 
   /**
+   * Lo que llega por la sala.
+   *
+   * Hay dos clases de mensaje y no una: la tacada de siempre y el aviso de que
+   * al rival se le ha acabado el tiempo. Lo que no se reconozca se descarta sin
+   * ruido —puede venir de una versión más nueva—.
+   */
+  function recibirDeLaSala(m) {
+    if (!m || terminada) return;
+    if (m.t === 'tacada') { recibirTacada(m); return; }
+    if (m.t === 'tiempo') {
+      // Al rival se le ha acabado a él. Se cierra igual que él y sin volver a
+      // avisar: el aviso ya ha dado la vuelta, y contestarlo sería un eco.
+      ctx.decir('Se acabó el tiempo. Empate.');
+      acabar('empate', 'tiempo');
+    }
+  }
+
+  /**
    * La tacada del rival.
    *
    * Se repite el tiro para que se vea lo que hizo, pero lo que manda es `mesa`:
@@ -661,21 +693,51 @@ export function crearPartida(ctx) {
   // ---- Final -------------------------------------------------------------
 
   /**
+   * ¿Puede este lado cerrar YA por tiempo?
+   *
+   * Contra la mascota, siempre: no hay otro reloj con el que discrepar.
+   *
+   * En red, sólo **en el turno propio**, y ahí está todo el arreglo. Cada lado
+   * cuenta su propio reloj, así que el mío puede agotarse mientras el rival está
+   * tirando: yo cerraba solo por tiempo —empate— y su tacada llegaba después,
+   * cuando ya no la miraba. Si esa tacada acababa la partida, él se iba con
+   * victoria o derrota y yo con empate: **la misma partida recordada de dos
+   * maneras**, que es lo peor que puede pasar en una de red.
+   *
+   * En mi turno eso no cabe: si me toca a mí, el rival no tiene nada en el aire.
+   * Y si me toca a él, espero —él cerrará en el suyo y lo dirá—, con el plazo de
+   * `GRACIA_TIEMPO_MS` por si no lo dice nunca.
+   *
+   * Lo encontró `npm run red:check` jugando sesenta partidas seguidas: dos
+   * acabaron en «empate» contra «derrota». A mano no sale, porque hace falta que
+   * los dos relojes se crucen en el segundo justo del final.
+   */
+  function meTocaCerrar() {
+    if (!enRed) return true;
+    if (turno === 'yo') return true;
+    // Se le ha esperado bastante: o se ha ido, o es de una versión que no avisa.
+    return transcurrido >= PRESUPUESTO_MS + GRACIA_TIEMPO_MS;
+  }
+
+  /**
    * Se acabó el tiempo.
    *
    * Contra la mascota gana quien lleve menos bolas por meter, que es lo justo.
    *
    * **En red es empate, y no por pereza.** Los dos lados no cuentan el reloj a
-   * la vez, así que uno puede cerrar con la última tacada del otro todavía
-   * viajando: medido, dos tableros separados por una bola. Con eso, contar las
-   * que quedan puede dar victoria en una pantalla y empate en la otra, y un
-   * resultado que no cuadra entre los dos es peor que un empate romo. Arreglarlo
-   * de verdad pediría un apretón de manos al final que el protocolo no tiene, y
-   * no lo merece un caso que sólo pasa cuando los dos han jugado ocho minutos y
-   * medio sin llegar a la negra.
+   * la vez, así que contar las bolas que quedan puede dar victoria en una
+   * pantalla y empate en la otra —medido, dos tableros separados por una bola—.
+   * Un resultado que no cuadra entre los dos es peor que un empate romo.
+   *
+   * Y el empate se AVISA. Sin eso, el rival se queda esperando una tacada que no
+   * va a llegar hasta que su propio reloj lo saque, y por el camino puede cerrar
+   * de otra manera. Es un mensaje más por el mismo canal que las tacadas: una
+   * versión anterior no lo entiende, lo descarta y sale por donde salía antes
+   * —su propio reloj—, que es exactamente lo que tiene que pasar.
    */
   function cerrarPorTiempo() {
     if (enRed) {
+      ctx.sala.enviar({ t: 'tiempo' });
       ctx.decir('Se acabó el tiempo. Empate.');
       acabar('empate', 'tiempo');
       return;

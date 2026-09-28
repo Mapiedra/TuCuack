@@ -7,6 +7,31 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Corregido
+
+- **En 8 Pool, una partida que se acababa por tiempo podía quedar en «empate» para
+  uno y «derrota» para el otro.** La misma partida, recordada de dos maneras, que
+  es lo peor que puede pasar en una de red: no da ningún error y cada uno se la
+  lleva a casa distinta.
+
+  Cada lado cuenta su propio reloj. Si el mío se agotaba **mientras el rival
+  estaba tirando**, yo cerraba solo —en red, por tiempo es empate— y su tacada
+  llegaba después, cuando ya no la miraba. Si esa tacada acababa la partida, él se
+  iba con su resultado y yo con el mío. El código veía venir media cosa: había un
+  comentario explicando por qué en red se empata, pero eso sólo cubre que cierren
+  **los dos** por tiempo, no que uno cierre por tiempo y el otro por una jugada.
+
+  Ahora por tiempo se cierra **sólo en el turno propio**, que es cuando el rival
+  no tiene nada en el aire, y al cerrar **se avisa** por el mismo canal que las
+  tacadas. Quien lo recibe cierra igual. Si el aviso no llega nunca —porque el
+  rival se fue, o porque al otro lado hay una versión anterior— se cierra de todas
+  formas veinte segundos después, que es de sobra para una tacada que ya viajaba.
+
+  Lo encontró `npm run red:check`, que es para lo que está: dos de cada
+  doscientas cuarenta partidas. A mano no sale —hacen falta ocho minutos y medio
+  sin meter la negra y que los dos relojes se crucen en el segundo justo—, y en
+  integración continua salía en rojo aproximadamente una subida de cada quince.
+
 ## [0.38.2] - 2026-09-24
 
 ### Corregido
