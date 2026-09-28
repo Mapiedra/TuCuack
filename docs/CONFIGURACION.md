@@ -87,6 +87,12 @@ llamar como `anon`, valida lo que recibe— y termina sin tocar ninguna fila. De
 paso comprueba que con la clave publicable **no** se llega al saldo de nadie.
 Es lo que hay que lanzar tras añadir un juego, que es cuando se olvida.
 
+Y para **mirar** el monedero una vez en marcha —cuánta gente lo tiene, si se
+están pagando partidas, si hay algo atascado— están las consultas de
+[`supabase/consultas.sql`](../supabase/consultas.sql), que se pegan en el mismo
+editor y no escriben nada. Tienen que ir ahí y no en el pato: como `anon` la tabla
+de monederos no se puede ni leer, que es justo el diseño.
+
 Cada fichero lleva arriba un comentario largo con el porqué de cómo está hecho;
 `records.sql` es el que hay que leer primero, porque los demás dan por sabido lo
 que explica —cómo se identifica al dueño de una fila sin que haya cuentas—.
