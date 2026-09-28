@@ -7,6 +7,8 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.38.3] - 2026-09-28
+
 ### Añadido
 
 - **Tu mascota se puede llevar a otro ordenador.** En Ajustes hay ahora un código
