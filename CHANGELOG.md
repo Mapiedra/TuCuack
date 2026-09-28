@@ -7,6 +7,50 @@ y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Añadido
+
+- **Tu mascota se puede llevar a otro ordenador.** En Ajustes hay ahora un código
+  —`PATO-XXXXXX-…`— y un sitio donde pegar el de otra. Con él, tus récords, tus
+  partidas, tus privados y tus cuacks te siguen a otra máquina o sobreviven a una
+  reinstalación.
+
+  Hasta ahora no había forma: la firma con la que el pato se identifica en las
+  cuatro tablas se genera sola la primera vez y vive en los ajustes, así que
+  **perder los ajustes era perderlo todo**, sin nadie a quien reclamar. Eso era
+  asumible mientras los cuacks sólo compraran minijuegos. Con premios de por
+  medio deja de serlo: alguien se queda sin lo que tenía y no hay manera de
+  devolvérselo ni de comprobar que era él.
+
+  Sigue **sin haber registro**: ni cuenta, ni correo, ni servidor que sepa quién
+  eres. Lo único que cambia es que ahora la identidad cabe en un papel. Y con la
+  consecuencia dicha donde se enseña, que es donde toca: **quien tenga tu código,
+  es tú**.
+
+  Traerse otra mascota **sustituye a la de esa instalación**, no la fusiona. Se
+  avisa antes y hace falta confirmar: lo que hubiera aquí no se borra de ningún
+  sitio —sigue en el servidor con su propio código—, pero deja de estar en este
+  ordenador. Después el pato se reinicia, porque cambiar de identidad cambia quién
+  eres en cuatro tablas y en la presencia del canal a la vez.
+
+  El código lleva una **suma de comprobación**, y no es un adorno: sin ella, un
+  cáracter mal copiado es un código perfectamente válido de alguien que no existe,
+  y el pato se estrenaría a cero sin dar ningún error. Ahora se rechaza en el acto
+  —probado carácter a carácter y con parejas bailadas en `npm run identidad:check`—
+  y se perdona todo lo demás: mayúsculas, espacios, saltos de línea y el prefijo
+  puesto o quitado.
+
+  **En la extensión no aparece**, y es a propósito: allí el pato vive dentro de la
+  página web que estés viendo, y enseñar ahí el código sería dárselo a esa web.
+
+### Cambiado
+
+- **La firma de identidad nueva sale de `crypto`, no de `Math.random`.** Sólo
+  afecta a las instalaciones nuevas; las que ya existían siguen igual. Mientras
+  esa firma sólo guardara récords era discutible; ahora sostiene el monedero y,
+  detrás, los premios. `Math.random` es un generador corriente y predecible, y
+  además el apaño anterior rellenaba con ceros cuando la tirada salía corta, con
+  lo que media firma era de adorno.
+
 ### Corregido
 
 - **En 8 Pool, una partida que se acababa por tiempo podía quedar en «empate» para

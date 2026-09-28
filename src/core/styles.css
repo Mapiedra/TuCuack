@@ -1526,3 +1526,11 @@ html, body {
 .fl-casilla.nocabe { background: rgba(193, 18, 31, 0.5); }
 
 .fl-pie { margin-top: 6px; }
+
+/* El código de recuperación. Monoespaciado y que quepa entero: la gente lo va a
+   leer carácter a carácter para copiarlo a otra máquina. */
+.panel input.codigo-identidad {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}

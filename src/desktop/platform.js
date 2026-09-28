@@ -24,6 +24,8 @@ export function crearPlataformaElectron() {
       juegosDeEscenario: true,
       marcadorGlobal: true,
       monederoEnServidor: true,
+      // El renderer del escritorio es una ventana nuestra, no una página ajena.
+      identidad: true,
       historialDePartidas: true,
       privados: true,
       focus: true
@@ -66,6 +68,10 @@ export function crearPlataformaElectron() {
       guardar: (record) => pato.marcadorGuardar(record)
     },
 
+    identidad: {
+      codigo: () => pato.identidadCodigo(),
+      adoptar: (codigo) => pato.identidadAdoptar(codigo)
+    },
     monedero: {
       mios: () => pato.cuacksMios(),
       estrenar: (local) => pato.cuacksEstrenar(local),

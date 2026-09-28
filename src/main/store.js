@@ -3,6 +3,7 @@
 const { app } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const identidad = require('./identidad.js');
 
 // Ficheros JSON en la carpeta de datos del usuario.
 function userDataDir() {
@@ -106,16 +107,36 @@ function patoIdValido(v) {
  *   - **No sale de aquí.** El núcleo nunca lo ve: pide «guarda esta marca» y
  *     quien la firma es el proceso principal. Si viviera en el renderer estaría
  *     también en la extensión, dentro de la página de cualquiera.
- *   - **No se puede recuperar.** Perder los ajustes es perder las filas, y no
- *     hay a quién reclamar: no hay cuenta, ni correo, ni servidor que sepa quién
- *     eres. Es el precio de no pedirle a nadie que se registre para jugar.
+ *   - **No hay quien lo recupere por ti, pero se puede copiar.** No hay cuenta,
+ *     ni correo, ni servidor que sepa quién eres, así que perder los ajustes sin
+ *     más es perder las filas. Por eso el pato sabe enseñar un CÓDIGO con el que
+ *     llevarse esta identidad a otra máquina (ver `codigoDeRecuperacion` y
+ *     `main/identidad.js`). Sigue sin haber registro: la copia la guarda quien
+ *     quiera guardarla.
  *
- * Treinta y dos caracteres de dos tiradas: el SQL exige veinticuatro como
+ * Treinta y dos caracteres, o sea 128 bits: el SQL exige veinticuatro como
  * mínimo, precisamente para que no se pueda adivinar a fuerza de llamadas.
+ *
+ * **De `crypto`, no de `Math.random`.** Hasta que existió el código de
+ * recuperación esto se hacía con dos tiradas de `Math.random().toString(36)`, y
+ * mientras el secreto sólo guardara récords era discutible pero no grave. Ya no:
+ * `Math.random` es un generador de números pseudoaleatorios corriente —en V8, un
+ * xorshift de 128 bits de estado—, predecible para quien vea unas cuantas
+ * salidas seguidas, y además aquel apaño rellenaba con ceros cuando la tirada
+ * salía corta, con lo que la mitad de los secretos llevaban ceros de adorno en
+ * vez de azar. Para lo que ahora sostiene esta firma —el monedero, y con él los
+ * premios— eso no vale.
+ *
+ * En hexadecimal y no en base 36 a propósito: el código de recuperación se
+ * escribe a mano y se limpia de todo lo que no sea alfanumérico, así que el
+ * alfabeto tiene que ser minúsculas y dígitos y nada más. Un `base64url` traería
+ * guiones bajos que la limpieza se llevaría por delante.
+ *
+ * Los secretos de antes siguen valiendo tal cual: esto sólo decide cómo nacen
+ * los nuevos.
  */
 function nuevoRecordSecreto() {
-  const trozo = () => Math.random().toString(36).slice(2).padEnd(16, '0').slice(0, 16);
-  return `${trozo()}${trozo()}`;
+  return require('crypto').randomBytes(16).toString('hex');
 }
 
 function recordSecretoValido(v) {
@@ -167,7 +188,11 @@ module.exports = {
    */
   loadSettings() {
     const guardados = leerAjustes();
-    const { recordSecreto, ...paraElPato } = guardados;
+    // Fuera los dos secretos, no sólo el de ahora: el anterior abre exactamente
+    // lo mismo que abría ayer, o sea las filas de quien fuera este pato antes de
+    // adoptar otro código. Dejarlo cruzar sería la misma fuga por la puerta de
+    // al lado.
+    const { recordSecreto, secretoAnterior, ...paraElPato } = guardados;
     return paraElPato;
   },
 
@@ -180,12 +205,16 @@ module.exports = {
    */
   saveSettings(data) {
     const guardados = leerAjustes();
-    writeJson(SETTINGS_FILE, {
+    const escrito = {
       ...DEFAULT_SETTINGS,
       ...(data || {}),
       patoId: guardados.patoId,
       recordSecreto: guardados.recordSecreto
-    });
+    };
+    // El secreto anterior sólo se conserva si lo había: no se escribe la clave
+    // vacía en los ajustes de todo el mundo para nada.
+    if (guardados.secretoAnterior) escrito.secretoAnterior = guardados.secretoAnterior;
+    writeJson(SETTINGS_FILE, escrito);
   },
 
   /** La firma para el marcador global. Sólo la usa el proceso principal. */
@@ -206,6 +235,55 @@ module.exports = {
     const secreto = leerAjustes().recordSecreto;
     if (!secreto) return '';
     return require('crypto').createHash('sha256').update(secreto).digest('hex');
+  },
+
+  /**
+   * El código con el que esta identidad se lleva a otra máquina.
+   *
+   * Lleva el secreto dentro, así que **sólo se le puede enseñar a quien ya es el
+   * dueño de este disco**. En el escritorio eso es el propio pato, que corre en
+   * una ventana nuestra; en la extensión el pato vive dentro de la página web de
+   * cualquiera y ahí esto NO puede bajar (ver `capacidades.identidad` en
+   * core/platform.js).
+   */
+  codigoDeRecuperacion() {
+    return identidad.codigoDe(leerAjustes().recordSecreto);
+  },
+
+  /**
+   * Adopta la identidad de otro código.
+   *
+   * Lo que cambia no es «el monedero»: es **quién eres** en las cuatro tablas a
+   * la vez —marcador, historial de partidas, privados y cuacks—, porque las
+   * cuatro llevan la misma firma. Lo que hubiera en esta instalación no se borra
+   * de ningún sitio: sigue en el servidor bajo el secreto de antes, simplemente
+   * deja de ser tuyo. Avisar de eso ANTES es cosa de quien llama.
+   *
+   * El secreto anterior se guarda al lado. No es una función de deshacer con
+   * botones —no la hay—: es para que un «me he equivocado de pato» tenga arreglo
+   * mirando el fichero de ajustes, en vez de ser definitivo.
+   *
+   * @param {string} codigo
+   * @returns {{ok:boolean, error?:string, mensaje?:string}}
+   */
+  adoptarCodigo(codigo) {
+    const leido = identidad.leerCodigo(codigo);
+    if (!leido.ok) {
+      return { ok: false, error: leido.error, mensaje: identidad.explicar(leido.error) };
+    }
+
+    const ajustes = leerAjustes();
+    if (leido.secreto === ajustes.recordSecreto) {
+      return { ok: false, error: 'ya-eres-ese', mensaje: 'Ese código ya es el de esta mascota.' };
+    }
+
+    writeJson(SETTINGS_FILE, {
+      ...ajustes,
+      recordSecreto: leido.secreto,
+      // Por si el código era el que no tenía que ser.
+      secretoAnterior: ajustes.recordSecreto
+    });
+    return { ok: true };
   }
 };
 

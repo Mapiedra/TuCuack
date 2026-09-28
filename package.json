@@ -20,6 +20,7 @@
     "salas:check": "node tools/probar-salas.mjs",
     "red:check": "node tools/probar-juegos-en-red.mjs",
     "presencia:check": "node tools/probar-presencia.js",
+    "identidad:check": "node tools/probar-identidad.js",
     "raton:check": "node tools/probar-raton.js",
     "cuacks:check": "node tools/probar-cuacks.mjs",
     "cuacks:sql": "node tools/probar-cuacks-sql.mjs",

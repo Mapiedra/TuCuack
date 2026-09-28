@@ -63,6 +63,14 @@ const CAPACIDADES_POR_DEFECTO = {
   // Lo que cambia es quién manda, y eso sí hay que preguntarlo antes de decirle
   // a nadie que su saldo está a salvo de que le toquen el fichero.
   monederoEnServidor: false,
+  // ¿Se puede enseñar aquí el código de recuperación?
+  //
+  // No es una cuestión de si la carcasa sabe hacerlo, es de **dónde se pinta el
+  // pato**. El código lleva dentro el secreto con el que se firma en las cuatro
+  // tablas, así que sólo puede bajar a un documento nuestro. En el escritorio lo
+  // es; en la extensión el pato vive dentro de la página web de cualquiera, y
+  // enseñarlo ahí sería dárselo a esa web. Ver main/identidad.js.
+  identidad: false,
   // ¿Tiene sentido el modo concentración? Necesita poder esconderse Y volver a
   // sacarse él solo (a diferencia de `ocultar`, que sólo lo primero) y un sitio
   // fuera del documento donde enseñar la cuenta atrás mientras está escondido.
@@ -171,6 +179,23 @@ const MONEDERO_DESACTIVADO = {
   /** Tira el monedero propio. Sin vuelta atrás.
    *  @type {() => Promise<object>} */
   borrar: async () => ({ ok: false, error: 'sin-monedero' })
+};
+
+/**
+ * El código de recuperación, cuando no se puede enseñar.
+ *
+ * Desactivado no es «esta carcasa no sabe»: es «aquí no se puede enseñar sin
+ * regálarselo a la página». La interfaz tiene que preguntar por
+ * `capacidades.identidad` y no ofrecerlo, en vez de ofrecerlo y que falle.
+ */
+const IDENTIDAD_DESACTIVADA = {
+  /** El código de esta instalación. Vacío si no se puede dar.
+   *  @type {() => Promise<string>} */
+  codigo: async () => '',
+  /** Adopta la identidad de otro código. Después, la carcasa se reinicia.
+   *  @type {(codigo:string) => Promise<{ok:boolean, error?:string, mensaje?:string}>} */
+  adoptar: async () => ({ ok: false, error: 'sin-identidad',
+    mensaje: 'Aquí no se puede cambiar de mascota.' })
 };
 
 /**
@@ -324,6 +349,9 @@ export function normalizarPlataforma(p = {}) {
 
     // ---- El monedero -----------------------------------------------------
     monedero: { ...MONEDERO_DESACTIVADO, ...(p.monedero || {}) },
+
+    // ---- La identidad ----------------------------------------------------
+    identidad: { ...IDENTIDAD_DESACTIVADA, ...(p.identidad || {}) },
 
     // ---- Mensajes privados -----------------------------------------------
     privados: { ...PRIVADOS_DESACTIVADOS, ...(p.privados || {}) }

@@ -362,6 +362,25 @@ ipcMain.handle('cuacks:comprar', (_evt, id) => cuacks.comprar(id));
 ipcMain.handle('cuacks:broma', (_evt, nivel) => cuacks.cobrarBroma(nivel));
 ipcMain.handle('cuacks:borrar', () => cuacks.borrar());
 
+// La identidad: el código con el que este pato se lleva sus récords, su
+// historial, sus privados y su monedero a otra máquina (ver main/identidad.js).
+//
+// El código lleva el secreto dentro, así que esto SÍ cruza el puente —es lo único
+// del secreto que lo hace—. Puede porque al otro lado hay una ventana nuestra y
+// no una página ajena; en la extensión, donde el pato vive dentro de la web de
+// cualquiera, esta capacidad va apagada.
+ipcMain.handle('identidad:codigo', () => store.codigoDeRecuperacion());
+ipcMain.handle('identidad:adoptar', (_evt, codigo) => {
+  const r = store.adoptarCodigo(codigo);
+  // Cambiar de identidad cambia quién eres en CUATRO tablas y en la presencia
+  // del canal. Rehacer todo eso en caliente sería un reguero de estados a medio
+  // actualizar, así que se arranca de nuevo: cuesta dos segundos y no deja nada
+  // colgando. Se hace después de contestar, para que al pato le dé tiempo a
+  // decirlo por pantalla.
+  if (r.ok) setTimeout(() => { app.relaunch(); app.exit(0); }, 1200);
+  return r;
+});
+
 // Mensajes privados. Ni el secreto ni la lista de bloqueados cruzan el puente:
 // el pato pide y este lado firma (ver mensajes.js y supabase/mensajes.sql).
 ipcMain.handle('privados:enviar', (_evt, m) => mensajes.enviar(m || {}));

@@ -953,6 +953,9 @@ function openSettings(x, y) {
     chatReady: chat.connected,
     puedeAutoArrancar: api.capacidades.autoArranque,
     puedeFoco: api.capacidades.focus,
+    // El código para llevarse esta mascota a otra máquina. Sólo donde puede
+    // bajar sin regálarselo a la página (ver `capacidades.identidad`).
+    identidad: api.capacidades.identidad ? api.identidad : null,
     // Sólo donde el pato tiene la pantalla para él. Sobre una página ajena, ni
     // el botón aparece: llenarla de patos capturándole el ratón a quien está
     // leyendo no es una broma.

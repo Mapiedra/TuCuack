@@ -192,6 +192,132 @@ export function buildSettingsPanel(settings, version, handlers) {
     gSistema.appendChild(row2);
   }
 
+  // ---- Tu mascota en otro sitio -------------------------------------------
+  //
+  // Sólo donde el código puede bajar sin regálarselo a nadie: en el escritorio
+  // el pato corre en una ventana nuestra; en la extensión vive dentro de la
+  // página web de cualquiera. Ver `capacidades.identidad` en core/platform.js.
+  if (handlers.identidad) {
+    const gYo = grupo('Tu mascota en otro sitio');
+
+    const porQue = document.createElement('div');
+    porQue.className = 'muted';
+    porQue.textContent = 'Tus récords, tus partidas, tus privados y tus cuacks van '
+      + 'con este código, no con este ordenador. Guárdalo: es lo único que los '
+      + 'recupera si cambias de máquina o reinstalas.';
+    gYo.appendChild(porQue);
+
+    const filaCodigo = document.createElement('div');
+    filaCodigo.className = 'row';
+    const lblCodigo = document.createElement('label');
+    lblCodigo.textContent = 'Tu código';
+    const codigo = document.createElement('input');
+    codigo.type = 'text';
+    codigo.readOnly = true;
+    codigo.className = 'codigo-identidad';
+    codigo.value = '…';
+
+    const copiar = document.createElement('button');
+    copiar.type = 'button';
+    copiar.className = 'btn';
+    copiar.textContent = 'Copiar';
+
+    // Se pide al abrir el panel y no antes: el código vive al otro lado del
+    // puente y traerlo es una vuelta.
+    const sinCodigo = () => { codigo.value = 'No disponible'; copiar.disabled = true; };
+    Promise.resolve(handlers.identidad.codigo())
+      .then((c) => { if (c) codigo.value = c; else sinCodigo(); })
+      .catch(sinCodigo);
+    copiar.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(codigo.value);
+        copiar.textContent = 'Copiado';
+      } catch {
+        // Sin portapapeles se selecciona, que es lo que se puede ofrecer.
+        codigo.select();
+        copiar.textContent = 'Selecciona y copia';
+      }
+      setTimeout(() => { copiar.textContent = 'Copiar'; }, 1800);
+    });
+
+    filaCodigo.append(lblCodigo, codigo, copiar);
+    gYo.appendChild(filaCodigo);
+
+    const aviso = document.createElement('div');
+    aviso.className = 'muted';
+    // Se dice sin adornos: es la consecuencia de que no haya registro.
+    aviso.textContent = 'Quién lo tenga, es tú. No hay contraseña detrás.';
+    gYo.appendChild(aviso);
+
+    // ---- Y traerse otra --------------------------------------------------
+    const filaTraer = document.createElement('div');
+    filaTraer.className = 'row';
+    const lblTraer = document.createElement('label');
+    lblTraer.textContent = 'Traerte otra mascota';
+    const otro = document.createElement('input');
+    otro.type = 'text';
+    otro.placeholder = 'PATO-…';
+    otro.autocomplete = 'off';
+    const nota = document.createElement('div');
+    nota.className = 'muted';
+    const traer = document.createElement('button');
+    traer.type = 'button';
+    traer.className = 'btn peligro';
+    traer.textContent = 'Traerla aquí';
+
+    /** Si ya se ha avisado y el siguiente clic es el que lo hace de verdad. */
+    let confirmando = false;
+    const volverAlPrincipio = () => {
+      confirmando = false;
+      traer.textContent = 'Traerla aquí';
+    };
+    otro.addEventListener('input', () => {
+      nota.textContent = '';
+      nota.classList.remove('error');
+      volverAlPrincipio();
+    });
+
+    traer.addEventListener('click', async () => {
+      const texto = otro.value.trim();
+      if (!texto) {
+        nota.textContent = 'Pega aquí el código de tu otra mascota.';
+        nota.classList.add('error');
+        return;
+      }
+
+      // Se avisa ANTES y hace falta un segundo clic. Lo de esta máquina no se
+      // borra de ningún sitio —sigue en el servidor con su código—, pero deja de
+      // estar aquí, y eso hay que leerlo antes de que pase, no después.
+      if (!confirmando) {
+        confirmando = true;
+        nota.textContent = 'Esta mascota pasará a ser la del código. Lo de aquí '
+          + '—saldo, récords, partidas y privados— se queda con el código de arriba: '
+          + 'guárdalo antes si aún no lo has hecho. El pato se reiniciará.';
+        nota.classList.remove('error');
+        traer.textContent = 'Sí, tráela';
+        return;
+      }
+
+      traer.disabled = true;
+      traer.textContent = 'Trayendo…';
+      const r = await Promise.resolve(handlers.identidad.adoptar(texto))
+        .catch(() => ({ ok: false, mensaje: 'No se ha podido.' }));
+      if (!r || !r.ok) {
+        nota.textContent = (r && r.mensaje) || 'Ese código no vale.';
+        nota.classList.add('error');
+        traer.disabled = false;
+        volverAlPrincipio();
+        return;
+      }
+      nota.textContent = 'Hecho. El pato se reinicia para ser el de ese código…';
+      nota.classList.remove('error');
+      traer.textContent = 'Reiniciando…';
+    });
+
+    filaTraer.append(lblTraer, otro, traer, nota);
+    gYo.appendChild(filaTraer);
+  }
+
   // ---- Actualizaciones ----------------------------------------------------
   //
   // Lo automático sigue funcionando igual. Esto es para las dos veces en que no

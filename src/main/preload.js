@@ -65,6 +65,9 @@ contextBridge.exposeInMainWorld('pato', {
   cuacksComprar: (id) => ipcRenderer.invoke('cuacks:comprar', id),
   cuacksBroma: (nivel) => ipcRenderer.invoke('cuacks:broma', nivel),
   cuacksBorrar: () => ipcRenderer.invoke('cuacks:borrar'),
+  // La identidad: el código para llevarse este pato a otra máquina.
+  identidadCodigo: () => ipcRenderer.invoke('identidad:codigo'),
+  identidadAdoptar: (codigo) => ipcRenderer.invoke('identidad:adoptar', codigo),
   // Mensajes privados.
   privadosEnviar: (m) => ipcRenderer.invoke('privados:enviar', m),
   privadosLeer: (con, tope) => ipcRenderer.invoke('privados:leer', con, tope),
